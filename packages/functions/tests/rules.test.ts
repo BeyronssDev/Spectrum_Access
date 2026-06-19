@@ -89,7 +89,62 @@ describe("Firestore security rules", () => {
       })
     );
 
+    await assertSucceeds(tutorDb.collection("childProfiles").doc("child-a").get());
     await assertFails(otherDb.collection("childProfiles").doc("child-a").get());
+  });
+
+  it("forces user-created comments to start pending", async () => {
+    const userDb = testEnv.authenticatedContext("user-a").firestore();
+
+    await assertSucceeds(
+      userDb.collection("comments").doc("comment-1").set({
+        targetType: "place",
+        targetId: "place-1",
+        authorUid: "user-a",
+        body: "Entrada clara i personal tranquil.",
+        status: "pending",
+        createdAt: "2026-06-19T00:00:00.000Z",
+        updatedAt: "2026-06-19T00:00:00.000Z"
+      })
+    );
+
+    await assertFails(
+      userDb.collection("comments").doc("comment-2").set({
+        targetType: "place",
+        targetId: "place-1",
+        authorUid: "user-a",
+        body: "No ha de sortir actiu directament.",
+        status: "active",
+        createdAt: "2026-06-19T00:00:00.000Z",
+        updatedAt: "2026-06-19T00:00:00.000Z"
+      })
+    );
+  });
+
+  it("forces professional verification profiles to start pending", async () => {
+    const userDb = testEnv.authenticatedContext("professional-a").firestore();
+
+    await assertSucceeds(
+      userDb.collection("professionalProfiles").doc("professional-a").set({
+        ownerUid: "professional-a",
+        professionalName: "Marta Gomez",
+        licenseNumber: "COPC 47145",
+        professionalCollege: "Col.legi Oficial de Psicologia de Catalunya",
+        specialty: "Autisme adult",
+        verificationStatus: "pending_verification"
+      })
+    );
+
+    await assertFails(
+      userDb.collection("professionalProfiles").doc("professional-b").set({
+        ownerUid: "professional-a",
+        professionalName: "Pau Ferrer",
+        licenseNumber: "COPC 50218",
+        professionalCollege: "Col.legi Oficial de Psicologia de Catalunya",
+        specialty: "Infancia",
+        verificationStatus: "verified"
+      })
+    );
   });
 
   it("blocks non-admins from admin action writes", async () => {
