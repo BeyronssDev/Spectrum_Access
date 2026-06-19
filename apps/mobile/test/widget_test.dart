@@ -1,20 +1,17 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:sensory_access/main.dart';
+import 'package:sensory_access/spectrum_app.dart';
 
 void main() {
-  testWidgets('loads home and mobile tabs aligned with the web app', (
+  testWidgets('loads Spectrum Access premium mobile flow', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const SensoryAccessApp());
+    await tester.pumpWidget(const SpectrumAccessApp());
     await tester.pumpAndSettle();
 
     expect(find.text('Spectrum Access'), findsWidgets);
-    expect(find.text('Inici'), findsOneWidget);
-    expect(
-      find.text('El teu espai de Spectrum Access'),
-      findsOneWidget,
-    );
+    expect(find.text('Bon dia, Josep'), findsOneWidget);
     expect(find.text('Consulta'), findsWidgets);
     expect(find.text('Aportacions'), findsWidgets);
     expect(find.text('Ajuda'), findsWidgets);
@@ -23,15 +20,23 @@ void main() {
     await tester.tap(find.text('Aportacions').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Pujar imatge'), findsOneWidget);
-    expect(find.text('Afegir comentari'), findsOneWidget);
-    expect(find.text('Publicar com a anonim'), findsOneWidget);
+    expect(find.text('Aportació sensorial'), findsOneWidget);
+    expect(find.text('Biblioteca Veridian'), findsOneWidget);
+    expect(find.text('Pujar imatges'), findsOneWidget);
+    expect(find.text('Publicar com a anònim'), findsOneWidget);
 
     await tester.tap(find.text('Perfils').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Professionals verificats'), findsOneWidget);
-    expect(find.text('Dra. Marta Soler'), findsOneWidget);
-    expect(find.text('Associacio Autisme Obert'), findsOneWidget);
+    expect(find.text('Marta Gómez'), findsOneWidget);
+    expect(find.text('Centre TEA Catalunya'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Perfil infantil tutelat'),
+      500,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Perfil infantil tutelat'), findsOneWidget);
   });
 }
