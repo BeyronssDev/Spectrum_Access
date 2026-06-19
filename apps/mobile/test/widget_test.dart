@@ -9,10 +9,10 @@ void main() {
     await tester.pumpWidget(const SensoryAccessApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Accessibilitat sensorial'), findsWidgets);
+    expect(find.text('Spectrum Access'), findsWidgets);
     expect(find.text('Inici'), findsOneWidget);
     expect(
-      find.text('El teu espai d accessibilitat sensorial'),
+      find.text('El teu espai de Spectrum Access'),
       findsOneWidget,
     );
     expect(find.text('Consulta'), findsWidgets);

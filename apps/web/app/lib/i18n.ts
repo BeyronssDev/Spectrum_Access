@@ -2,7 +2,7 @@ import type { Locale } from "@accessibilitat/shared";
 
 export const dictionary: Record<Locale, Record<string, string>> = {
   ca: {
-    appName: "Accessibilitat sensorial",
+    appName: "Spectrum Access",
     map: "Mapa",
     contributions: "Aportacions",
     support: "Ajuda",
@@ -20,7 +20,7 @@ export const dictionary: Record<Locale, Record<string, string>> = {
     childProfile: "Perfil tutelat"
   },
   es: {
-    appName: "Accesibilidad sensorial",
+    appName: "Spectrum Access",
     map: "Mapa",
     contributions: "Aportaciones",
     support: "Ayuda",
@@ -38,7 +38,7 @@ export const dictionary: Record<Locale, Record<string, string>> = {
     childProfile: "Perfil tutelado"
   },
   en: {
-    appName: "Sensory accessibility",
+    appName: "Spectrum Access",
     map: "Map",
     contributions: "Contributions",
     support: "Support",

@@ -18,7 +18,7 @@ class _SensoryAccessAppState extends State<SensoryAccessApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Accessibilitat sensorial',
+      title: 'Spectrum Access',
       debugShowCheckedModeBanner: false,
       themeMode: _themeMode,
       theme: _buildTheme(Brightness.light),
@@ -874,7 +874,7 @@ class BrandLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Logo oficial Accessibilitat sensorial',
+      label: 'Logo oficial Spectrum Access',
       image: true,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
@@ -1828,13 +1828,13 @@ class AppLabels {
 
 const translations = {
   LocaleOption.ca: AppLabels(
-    appName: 'Accessibilitat sensorial',
+    appName: 'Spectrum Access',
     home: 'Inici',
     consultation: 'Consulta',
     contributions: 'Aportacions',
     support: 'Ajuda',
     profiles: 'Perfils',
-    homeTitle: 'El teu espai d accessibilitat sensorial',
+    homeTitle: 'El teu espai de Spectrum Access',
     homeIntro:
         'Consulta llocs, prepara aportacions amb calma i accedeix rapidament a ajuda, perfils i verificacions.',
     sessionStatus: 'Sessio protegida',
@@ -1902,13 +1902,13 @@ const translations = {
     contact: 'Contactar',
   ),
   LocaleOption.es: AppLabels(
-    appName: 'Accesibilidad sensorial',
+    appName: 'Spectrum Access',
     home: 'Inicio',
     consultation: 'Consulta',
     contributions: 'Aportaciones',
     support: 'Ayuda',
     profiles: 'Perfiles',
-    homeTitle: 'Tu espacio de accesibilidad sensorial',
+    homeTitle: 'Tu espacio de Spectrum Access',
     homeIntro:
         'Consulta lugares, prepara aportaciones con calma y accede rapido a ayuda, perfiles y verificaciones.',
     sessionStatus: 'Sesion protegida',
@@ -1976,13 +1976,13 @@ const translations = {
     contact: 'Contactar',
   ),
   LocaleOption.en: AppLabels(
-    appName: 'Sensory accessibility',
+    appName: 'Spectrum Access',
     home: 'Home',
     consultation: 'Consult',
     contributions: 'Contributions',
     support: 'Help',
     profiles: 'Profiles',
-    homeTitle: 'Your sensory accessibility space',
+    homeTitle: 'Your Spectrum Access space',
     homeIntro:
         'Review places, prepare contributions calmly and reach help, profiles and verification shortcuts fast.',
     sessionStatus: 'Protected session',
