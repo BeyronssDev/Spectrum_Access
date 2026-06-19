@@ -1,0 +1,155 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    function isModerator() {
+      return signedIn() && (request.auth.token.moderator == true || request.auth.token.admin == true);
+    }
+
+    function isActive() {
+      return resource.data.status == "active";
+    }
+
+    function createsPendingContent() {
+      return request.resource.data.status == "pending";
+    }
+
+    function immutableOwner(field) {
+      return !resource.data.keys().hasAny([field]) || request.resource.data[field] == resource.data[field];
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isModerator();
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.status == "active";
+      allow update: if isOwner(uid)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.roles == resource.data.roles
+        && request.resource.data.status == resource.data.status;
+      allow delete: if isAdmin();
+    }
+
+    match /userPrivate/{uid} {
+      allow read, write: if isOwner(uid);
+      allow delete: if isAdmin();
+    }
+
+    match /childProfiles/{profileId} {
+      allow read, create: if signedIn() && request.resource.data.tutorUid == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.tutorUid == request.auth.uid
+        && request.resource.data.tutorUid == resource.data.tutorUid;
+      allow delete: if signedIn() && resource.data.tutorUid == request.auth.uid;
+    }
+
+    match /places/{placeId} {
+      allow read: if isActive() || isModerator();
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && createsPendingContent();
+      allow update: if isModerator();
+      allow delete: if isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.authorUid);
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && createsPendingContent()
+        && (
+          !request.resource.data.keys().hasAny(["childProfileId"]) ||
+          get(/databases/$(database)/documents/childProfiles/$(request.resource.data.childProfileId)).data.tutorUid == request.auth.uid
+        );
+      allow update: if isModerator()
+        || (isOwner(resource.data.authorUid)
+          && immutableOwner("authorUid")
+          && request.resource.data.status == resource.data.status);
+      allow delete: if isModerator();
+    }
+
+    match /comments/{commentId} {
+      allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.authorUid);
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && createsPendingContent();
+      allow update: if isModerator()
+        || (isOwner(resource.data.authorUid)
+          && immutableOwner("authorUid")
+          && request.resource.data.status == resource.data.status);
+      allow delete: if isModerator();
+    }
+
+    match /placeImages/{imageId} {
+      allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.authorUid);
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.scanStatus == "not_configured";
+      allow update: if isModerator();
+      allow delete: if isModerator();
+    }
+
+    match /reports/{reportId} {
+      allow create: if signedIn() && request.resource.data.reporterUid == request.auth.uid;
+      allow read: if isModerator() || isOwner(resource.data.reporterUid);
+      allow update, delete: if isModerator();
+    }
+
+    match /professionalProfiles/{profileId} {
+      allow read: if resource.data.verificationStatus in ["verified", "pending_verification"] || isModerator() || isOwner(resource.data.ownerUid);
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.verificationStatus == "pending_verification";
+      allow update: if isModerator()
+        || (isOwner(resource.data.ownerUid)
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.verificationStatus == resource.data.verificationStatus);
+      allow delete: if isModerator();
+    }
+
+    match /organizationProfiles/{profileId} {
+      allow read: if resource.data.verificationStatus in ["verified", "pending_verification"] || isModerator() || isOwner(resource.data.ownerUid);
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.verificationStatus == "pending_verification";
+      allow update: if isModerator()
+        || (isOwner(resource.data.ownerUid)
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.verificationStatus == resource.data.verificationStatus);
+      allow delete: if isModerator();
+    }
+
+    match /verificationRequests/{requestId} {
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow read: if isModerator() || isOwner(resource.data.ownerUid);
+      allow update, delete: if isModerator();
+    }
+
+    match /userNotifications/{uid}/items/{notificationId} {
+      allow read, update, delete: if isOwner(uid);
+      allow create: if isModerator();
+    }
+
+    match /adminActions/{actionId} {
+      allow read, create: if isModerator();
+      allow update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "plataforma-accessibilitat-sensorial",
+  "private": true,
+  "version": "0.1.0",
+  "license": "GPL-3.0-only",
+  "packageManager": "pnpm@11.1.2",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @accessibilitat/shared build && pnpm --filter @accessibilitat/web dev",
+    "build": "pnpm --filter @accessibilitat/shared build && pnpm --filter @accessibilitat/functions build && pnpm --filter @accessibilitat/web build",
+    "typecheck": "pnpm --filter @accessibilitat/shared build && pnpm --filter @accessibilitat/functions typecheck && pnpm --filter @accessibilitat/web typecheck",
+    "test": "pnpm --filter @accessibilitat/shared test && pnpm --filter @accessibilitat/functions test",
+    "firebase:emulators": "firebase emulators:start --project demo-accessibilitat-sensorial",
+    "rules:test": "firebase emulators:exec --project demo-accessibilitat-sensorial --only firestore,storage \"pnpm --filter @accessibilitat/functions test:rules\"",
+    "mobile:test": "cd apps/mobile && flutter test",
+    "mobile:analyze": "cd apps/mobile && flutter analyze"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

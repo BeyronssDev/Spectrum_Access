@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isModerator() {
+      return signedIn() && (request.auth.token.moderator == true || request.auth.token.admin == true);
+    }
+
+    function validImage() {
+      return request.resource != null
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches("image/.*");
+    }
+
+    match /place-images/{uid}/{imageId}/{fileName} {
+      allow read: if isModerator()
+        || firestore.exists(/databases/(default)/documents/placeImages/$(imageId))
+        && firestore.get(/databases/(default)/documents/placeImages/$(imageId)).data.status == "active";
+      allow write: if isOwner(uid) && validImage();
+      allow delete: if isModerator();
+    }
+
+    match /professional-photos/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(uid) && validImage();
+      allow delete: if isOwner(uid) || isModerator();
+    }
+
+    match /organization-logos/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(uid) && validImage();
+      allow delete: if isOwner(uid) || isModerator();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,10 @@
+* text=auto
+
+*.dart text
+*.ts text
+*.tsx text
+*.json text
+*.md text
+*.yaml text
+*.yml text
+*.rules text
