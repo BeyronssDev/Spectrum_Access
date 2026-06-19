@@ -1308,10 +1308,7 @@ function MapPanel({
   onSelectPlace: (id: string) => void;
   onOpen?: () => void;
 }) {
-  const googleMapsKey =
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() ||
-    "";
+  const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
 
   return (
     <section className="panel map-panel" data-tall={tall}>
