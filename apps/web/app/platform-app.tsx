@@ -1,28 +1,24 @@
 "use client";
 
 import {
-  Accessibility,
   Bell,
-  BookOpen,
   Bookmark,
   Building2,
-  Camera,
-  CheckCircle2,
+  CalendarCheck,
+  Check,
   ChevronRight,
   CircleHelp,
-  DoorOpen,
-  Filter,
+  FileText,
   Flag,
   Globe2,
-  Hand,
-  Heart,
+  HeartHandshake,
   Home,
-  Image as ImageIcon,
+  ImagePlus,
   Languages,
   Layers,
   LifeBuoy,
-  Lightbulb,
   LocateFixed,
+  Lock,
   Map,
   MapPin,
   MessageSquare,
@@ -34,34 +30,62 @@ import {
   Send,
   ShieldCheck,
   SlidersHorizontal,
-  SquareStack,
+  Sparkles,
   Star,
   Sun,
   Upload,
   UserRound,
-  Users,
   UsersRound,
-  Volume2,
-  Wifi
+  Volume2
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
-import {
-  categoryLabels,
-  localeNames,
-  sensoryLabels,
-  type Locale,
-  type Place
-} from "@accessibilitat/shared";
-import { dictionary } from "./lib/i18n";
-import { organizations, places, professionals } from "./lib/mock-data";
 
-type AppView = "home" | "consultation" | "contributions" | "support" | "profiles" | "verified";
+type Locale = "ca" | "es" | "en";
+type ViewId = "home" | "consult" | "contribute" | "support" | "profiles" | "verified";
+type SensoryKey = "noise" | "density" | "light" | "wait";
 
-const tabs: Array<{ id: AppView; icon: LucideIcon }> = [
+type Place = {
+  id: string;
+  name: string;
+  area: string;
+  city: string;
+  category: string;
+  score: number;
+  distance: string;
+  description: string;
+  quietDb: string;
+};
+
+type Professional = {
+  id: string;
+  name: string;
+  role: string;
+  license: string;
+  college: string;
+  specialty: string;
+  initials: string;
+};
+
+type Organization = {
+  id: string;
+  name: string;
+  city: string;
+  registry: string;
+  description: string;
+  initials: string;
+};
+
+const locales: Record<Locale, string> = {
+  ca: "Català",
+  es: "Castellano",
+  en: "English"
+};
+
+const navItems: Array<{ id: ViewId; icon: LucideIcon }> = [
   { id: "home", icon: Home },
-  { id: "consultation", icon: Search },
-  { id: "contributions", icon: Upload },
+  { id: "consult", icon: Search },
+  { id: "contribute", icon: Upload },
   { id: "support", icon: CircleHelp },
   { id: "profiles", icon: UsersRound },
   { id: "verified", icon: ShieldCheck }
@@ -70,299 +94,411 @@ const tabs: Array<{ id: AppView; icon: LucideIcon }> = [
 const copy: Record<
   Locale,
   {
-    workspace: Record<AppView, string>;
+    nav: Record<ViewId, string>;
     status: string;
-    mapSubtitle: string;
-    filters: string;
-    quiet: string;
-    lowLight: string;
-    clearExit: string;
-    selectedPlace: string;
-    score: string;
-    reviews: string;
-    images: string;
-    favorite: string;
-    report: string;
-    sensoryReading: string;
-    placeQueue: string;
-    uploadDrop: string;
-    commentPlaceholder: string;
-    savedDraft: string;
-    childDraft: string;
-    publicName: string;
-    verificationQueue: string;
-    license: string;
-    registry: string;
-    privacy: string;
-    verifiedStrip: string;
-    profileSummary: string;
+    focus: string;
+    focusOn: string;
     darkMode: string;
     lightMode: string;
-    experienceTitle: string;
-    experienceSubtitle: string;
-    shareExperience: string;
-    uploadHint: string;
-    experienceQuestion: string;
-    starRating: string;
-    anonymous: string;
-    publish: string;
-    verifiedProfessionals: string;
-    seeAll: string;
-    contact: string;
-    aboutPlace: string;
-    reviewsTab: string;
-    openNow: string;
-    until: string;
-    rampAccess: string;
-    adaptedBathroom: string;
-    quietZone: string;
-    wifi: string;
-    homeTitle: string;
+    greeting: string;
     homeIntro: string;
-    quickActions: string;
-    nearbyMap: string;
-    draftContribution: string;
-    tutoredProfiles: string;
-    openConsultation: string;
-    openContribution: string;
-    openHelp: string;
-    openProfiles: string;
+    sensoryMap: string;
+    mapArea: string;
+    savedPlaces: string;
+    viewAll: string;
+    trust: string;
+    professionalsAndEntities: string;
+    pendingDraft: string;
+    continueDraft: string;
+    tutorReview: string;
+    supportCard: string;
+    openSupport: string;
+    consultTitle: string;
+    consultIntro: string;
+    searchPlaceholder: string;
+    filters: string[];
+    placeDetails: string;
+    sensoryState: string;
+    reportPlace: string;
+    favorite: string;
+    contributionTitle: string;
+    contributionIntro: string;
+    uploadImage: string;
+    notes: string;
+    notesPlaceholder: string;
+    submit: string;
+    anonymous: string;
+    pendingModeration: string;
+    childApproval: string;
+    supportTitle: string;
+    supportIntro: string;
+    supportMessage: string;
+    trustedContact: string;
+    focusModeTitle: string;
+    focusModeBody: string;
+    profilesTitle: string;
+    profilesIntro: string;
+    adultProfile: string;
+    tutorProfile: string;
+    childProfile: string;
+    sensoryProfile: string;
+    verifiedTitle: string;
+    verifiedIntro: string;
+    license: string;
+    registry: string;
+    contact: string;
+    verified: string;
+    privateEvidence: string;
   }
 > = {
   ca: {
-    workspace: {
+    nav: {
       home: "Inici",
-      consultation: "Consulta",
-      contributions: "Aportacions",
+      consult: "Consulta",
+      contribute: "Aportacions",
       support: "Ajuda",
       profiles: "Perfils",
       verified: "Verificats"
     },
     status: "Sessió protegida",
-    mapSubtitle: "Consulta llocs, desa favorits i revisa el context abans d'anar-hi.",
-    filters: "Filtres",
-    quiet: "Soroll baix",
-    lowLight: "Llum suau",
-    clearExit: "Sortida clara",
-    selectedPlace: "Lloc seleccionat",
-    score: "Score",
-    reviews: "Valoracions",
-    images: "Imatges",
-    favorite: "Preferit",
-    report: "Informar",
-    sensoryReading: "Indicadors sensorials",
-    placeQueue: "Contingut pendent de moderació",
-    uploadDrop: "Arrossega una imatge o fes clic per pujar",
-    commentPlaceholder: "Comparteix detalls que puguin ajudar altres persones...",
-    savedDraft: "Esborrany guardat",
-    childDraft: "Perfil infantil pendent de tutor",
-    publicName: "Pseudònim públic",
-    verificationQueue: "Revisió manual abans de mostrar-se com a verificat.",
-    license: "Col·legiada",
-    registry: "Registre",
-    privacy: "Documents interns privats",
-    verifiedStrip: "Professionals i entitats amb confiança visible",
-    profileSummary: "Adults, tutors i perfils identificats comparteixen el mateix accés web i mòbil.",
+    focus: "Mode focus",
+    focusOn: "Focus actiu",
     darkMode: "Mode fosc",
     lightMode: "Mode clar",
-    experienceTitle: "Aporta la teva experiència",
-    experienceSubtitle: "Un punt ràpid",
-    shareExperience: "Com ha estat la teva experiència en aquest lloc?",
-    uploadHint: "JPG, PNG (màx. 10 MB)",
-    experienceQuestion: "Com ha estat la teva experiència?",
-    starRating: "La teva valoració global",
-    anonymous: "Publica com a anònim",
-    publish: "Publica",
-    verifiedProfessionals: "Professionals i entitats verificades",
-    seeAll: "Veure totes",
+    greeting: "Bon dia, Josep",
+    homeIntro:
+      "Basat en el teu perfil sensorial, et suggerim visitar espais amb baixa densitat acústica i sortides clares.",
+    sensoryMap: "Mapa Sensorial",
+    mapArea: "Barcelona, districtes de pau",
+    savedPlaces: "Llocs desats",
+    viewAll: "Veure tots",
+    trust: "Confiança",
+    professionalsAndEntities: "Professionals i entitats",
+    pendingDraft: "Esborrany pendent",
+    continueDraft: "Continuar esborrany",
+    tutorReview: "Revisió del tutor",
+    supportCard: "Targeta d'ajuda",
+    openSupport: "Obrir targeta",
+    consultTitle: "Explora llocs sensorials",
+    consultIntro:
+      "Consulta el mapa, filtra per necessitats sensorials i revisa la fitxa abans d'anar-hi.",
+    searchPlaceholder: "Cerca llocs, ciutat o categoria",
+    filters: ["Baix soroll", "Llum suau", "Poca densitat", "Sortida clara"],
+    placeDetails: "Fitxa del lloc",
+    sensoryState: "Estat sensorial",
+    reportPlace: "Reportar",
+    favorite: "Desar",
+    contributionTitle: "Aportació sensorial",
+    contributionIntro:
+      "Comparteix l'estat actual del lloc quan ho puguis fer amb calma. Les imatges queden pendents de moderació.",
+    uploadImage: "Pujar imatges",
+    notes: "Notes atmosfèriques",
+    notesPlaceholder: "Descriu soroll, llum, afluència, espera o qualsevol detall útil...",
+    submit: "Enviar aportació",
+    anonymous: "Publicar com a anònim",
+    pendingModeration: "Pendent de moderació",
+    childApproval: "Si publica un perfil infantil, el tutor ho revisa abans d'enviar.",
+    supportTitle: "Ajuda immediata",
+    supportIntro: "Targeta de comunicació, contacte de confiança i focus mode per reduir càrrega cognitiva.",
+    supportMessage:
+      "Soc una persona autista. Ara mateix em costa parlar o respondre. Necessito uns minuts, un lloc tranquil o contactar amb una persona de confiança.",
+    trustedContact: "Contacte de confiança",
+    focusModeTitle: "Focus mode",
+    focusModeBody: "Redueix informació secundària, manté accions crítiques i fa la navegació més tranquil·la.",
+    profilesTitle: "Perfils",
+    profilesIntro:
+      "Adults, tutors i perfils tutelats conviuen dins el mateix compte sense separar infants com a registre lliure.",
+    adultProfile: "Adult o persona identificada",
+    tutorProfile: "Tutor principal",
+    childProfile: "Perfil infantil tutelat",
+    sensoryProfile: "Perfil sensorial",
+    verifiedTitle: "Professionals i entitats verificades",
+    verifiedIntro:
+      "Perfils amb foto o logo, número de col·legiat o registre, i verificació manual abans de mostrar confiança pública.",
+    license: "Col·legiat/da",
+    registry: "Registre",
     contact: "Contactar",
-    aboutPlace: "Sobre el lloc",
-    reviewsTab: "Valoracions",
-    openNow: "Obert ara",
-    until: "Fins a les 20:00",
-    rampAccess: "Accés amb rampa",
-    adaptedBathroom: "Lavabo adaptat",
-    quietZone: "Zona tranquil·la",
-    wifi: "Wi‑Fi",
-    homeTitle: "El teu espai de Spectrum Access",
-    homeIntro: "Consulta llocs, prepara aportacions amb calma i accedeix ràpidament a ajuda, perfils i verificacions.",
-    quickActions: "Accions ràpides",
-    nearbyMap: "Mapa proper",
-    draftContribution: "Aportació pendent",
-    tutoredProfiles: "Perfils tutelats",
-    openConsultation: "Obrir consulta",
-    openContribution: "Aportar experiència",
-    openHelp: "Obrir ajuda",
-    openProfiles: "Gestionar perfils"
+    verified: "Verificat",
+    privateEvidence: "L'evidència documental queda privada per administració."
   },
   es: {
-    workspace: {
+    nav: {
       home: "Inicio",
-      consultation: "Consulta",
-      contributions: "Aportaciones",
+      consult: "Consulta",
+      contribute: "Aportaciones",
       support: "Ayuda",
       profiles: "Perfiles",
       verified: "Verificados"
     },
     status: "Sesión protegida",
-    mapSubtitle: "Consulta lugares, guarda favoritos y revisa el contexto antes de ir.",
-    filters: "Filtros",
-    quiet: "Ruido bajo",
-    lowLight: "Luz suave",
-    clearExit: "Salida clara",
-    selectedPlace: "Lugar seleccionado",
-    score: "Score",
-    reviews: "Valoraciones",
-    images: "Imágenes",
-    favorite: "Favorito",
-    report: "Informar",
-    sensoryReading: "Indicadores sensoriales",
-    placeQueue: "Contenido pendiente de moderación",
-    uploadDrop: "Arrastra una imagen o haz clic para subir",
-    commentPlaceholder: "Comparte detalles que puedan ayudar a otras personas...",
-    savedDraft: "Borrador guardado",
-    childDraft: "Perfil infantil pendiente del tutor",
-    publicName: "Seudónimo público",
-    verificationQueue: "Revisión manual antes de mostrarse como verificado.",
-    license: "Colegiada",
-    registry: "Registro",
-    privacy: "Documentos internos privados",
-    verifiedStrip: "Profesionales y entidades con confianza visible",
-    profileSummary: "Adultos, tutores y perfiles identificados comparten el mismo acceso web y móvil.",
+    focus: "Modo focus",
+    focusOn: "Focus activo",
     darkMode: "Modo oscuro",
     lightMode: "Modo claro",
-    experienceTitle: "Aporta tu experiencia",
-    experienceSubtitle: "Un punto rápido",
-    shareExperience: "¿Cómo ha sido tu experiencia en este lugar?",
-    uploadHint: "JPG, PNG (máx. 10 MB)",
-    experienceQuestion: "¿Cómo ha sido tu experiencia?",
-    starRating: "Tu valoración global",
+    greeting: "Buenos días, Josep",
+    homeIntro:
+      "Según tu perfil sensorial, sugerimos visitar espacios con baja densidad acústica y salidas claras.",
+    sensoryMap: "Mapa Sensorial",
+    mapArea: "Barcelona, distritos de paz",
+    savedPlaces: "Lugares guardados",
+    viewAll: "Ver todos",
+    trust: "Confianza",
+    professionalsAndEntities: "Profesionales y entidades",
+    pendingDraft: "Borrador pendiente",
+    continueDraft: "Continuar borrador",
+    tutorReview: "Revisión del tutor",
+    supportCard: "Tarjeta de ayuda",
+    openSupport: "Abrir tarjeta",
+    consultTitle: "Explora lugares sensoriales",
+    consultIntro:
+      "Consulta el mapa, filtra por necesidades sensoriales y revisa la ficha antes de ir.",
+    searchPlaceholder: "Busca lugares, ciudad o categoría",
+    filters: ["Bajo ruido", "Luz suave", "Poca densidad", "Salida clara"],
+    placeDetails: "Ficha del lugar",
+    sensoryState: "Estado sensorial",
+    reportPlace: "Reportar",
+    favorite: "Guardar",
+    contributionTitle: "Aportación sensorial",
+    contributionIntro:
+      "Comparte el estado actual del lugar cuando puedas hacerlo con calma. Las imágenes quedan pendientes de moderación.",
+    uploadImage: "Subir imágenes",
+    notes: "Notas atmosféricas",
+    notesPlaceholder: "Describe ruido, luz, afluencia, espera o cualquier detalle útil...",
+    submit: "Enviar aportación",
     anonymous: "Publicar como anónimo",
-    publish: "Publicar",
-    verifiedProfessionals: "Profesionales y entidades verificadas",
-    seeAll: "Ver todas",
+    pendingModeration: "Pendiente de moderación",
+    childApproval: "Si publica un perfil infantil, el tutor lo revisa antes de enviar.",
+    supportTitle: "Ayuda inmediata",
+    supportIntro: "Tarjeta de comunicación, contacto de confianza y focus mode para reducir carga cognitiva.",
+    supportMessage:
+      "Soy una persona autista. Ahora mismo me cuesta hablar o responder. Necesito unos minutos, un lugar tranquilo o contactar con una persona de confianza.",
+    trustedContact: "Contacto de confianza",
+    focusModeTitle: "Focus mode",
+    focusModeBody: "Reduce información secundaria, mantiene acciones críticas y hace la navegación más tranquila.",
+    profilesTitle: "Perfiles",
+    profilesIntro:
+      "Adultos, tutores y perfiles tutelados conviven en la misma cuenta sin separar menores como registro libre.",
+    adultProfile: "Adulto o persona identificada",
+    tutorProfile: "Tutor principal",
+    childProfile: "Perfil infantil tutelado",
+    sensoryProfile: "Perfil sensorial",
+    verifiedTitle: "Profesionales y entidades verificadas",
+    verifiedIntro:
+      "Perfiles con foto o logo, número de colegiado o registro, y verificación manual antes de mostrar confianza pública.",
+    license: "Colegiado/a",
+    registry: "Registro",
     contact: "Contactar",
-    aboutPlace: "Sobre el lugar",
-    reviewsTab: "Valoraciones",
-    openNow: "Abierto ahora",
-    until: "Hasta las 20:00",
-    rampAccess: "Acceso con rampa",
-    adaptedBathroom: "Baño adaptado",
-    quietZone: "Zona tranquila",
-    wifi: "Wi‑Fi",
-    homeTitle: "Tu espacio de Spectrum Access",
-    homeIntro: "Consulta lugares, prepara aportaciones con calma y accede rápido a ayuda, perfiles y verificaciones.",
-    quickActions: "Acciones rápidas",
-    nearbyMap: "Mapa cercano",
-    draftContribution: "Aportación pendiente",
-    tutoredProfiles: "Perfiles tutelados",
-    openConsultation: "Abrir consulta",
-    openContribution: "Aportar experiencia",
-    openHelp: "Abrir ayuda",
-    openProfiles: "Gestionar perfiles"
+    verified: "Verificado",
+    privateEvidence: "La evidencia documental queda privada para administración."
   },
   en: {
-    workspace: {
-      home: "Home",
-      consultation: "Consult",
-      contributions: "Contributions",
+    nav: {
+      home: "Dashboard",
+      consult: "Discover",
+      contribute: "Report",
       support: "Help",
       profiles: "Profiles",
-      verified: "Verified"
+      verified: "Expert"
     },
     status: "Protected session",
-    mapSubtitle: "Review places, save favorites and check context before going.",
-    filters: "Filters",
-    quiet: "Low noise",
-    lowLight: "Soft light",
-    clearExit: "Clear exit",
-    selectedPlace: "Selected place",
-    score: "Score",
-    reviews: "Reviews",
-    images: "Images",
-    favorite: "Favorite",
-    report: "Report",
-    sensoryReading: "Sensory indicators",
-    placeQueue: "Content pending moderation",
-    uploadDrop: "Drag an image or click to upload",
-    commentPlaceholder: "Share details that could help other people...",
-    savedDraft: "Draft saved",
-    childDraft: "Child profile pending tutor",
-    publicName: "Public nickname",
-    verificationQueue: "Manual review before showing as verified.",
-    license: "License",
-    registry: "Registry",
-    privacy: "Internal documents private",
-    verifiedStrip: "Professionals and organizations with visible trust",
-    profileSummary: "Adults, tutors and identified profiles share the same web and mobile access.",
+    focus: "Focus mode",
+    focusOn: "Focus active",
     darkMode: "Dark mode",
     lightMode: "Light mode",
-    experienceTitle: "Share your experience",
-    experienceSubtitle: "A quick point",
-    shareExperience: "How was your experience in this place?",
-    uploadHint: "JPG, PNG (max. 10 MB)",
-    experienceQuestion: "How was your experience?",
-    starRating: "Your overall rating",
+    greeting: "Good morning, Josep",
+    homeIntro:
+      "Based on your sensory profile, we suggest spaces with low acoustic density and clear exits.",
+    sensoryMap: "Sensory Map",
+    mapArea: "Barcelona, calm districts",
+    savedPlaces: "Saved places",
+    viewAll: "View all",
+    trust: "Trust",
+    professionalsAndEntities: "Professionals and entities",
+    pendingDraft: "Pending draft",
+    continueDraft: "Continue draft",
+    tutorReview: "Tutor review",
+    supportCard: "Help card",
+    openSupport: "Open card",
+    consultTitle: "Explore sensory places",
+    consultIntro: "Use the map, filter by sensory needs and review the place before going.",
+    searchPlaceholder: "Search places, city or category",
+    filters: ["Low noise", "Soft light", "Low density", "Clear exit"],
+    placeDetails: "Place details",
+    sensoryState: "Sensory state",
+    reportPlace: "Report",
+    favorite: "Save",
+    contributionTitle: "Sensory report",
+    contributionIntro:
+      "Share the current state of the place when you can do it calmly. Images stay pending moderation.",
+    uploadImage: "Upload images",
+    notes: "Atmospheric notes",
+    notesPlaceholder: "Describe noise, light, crowding, waiting or any useful detail...",
+    submit: "Submit report",
     anonymous: "Post anonymously",
-    publish: "Publish",
-    verifiedProfessionals: "Verified professionals and organizations",
-    seeAll: "View all",
+    pendingModeration: "Pending moderation",
+    childApproval: "If a child profile publishes, the tutor reviews before sending.",
+    supportTitle: "Immediate help",
+    supportIntro: "Communication card, trusted contact and focus mode to reduce cognitive load.",
+    supportMessage:
+      "I am autistic. Right now it is hard for me to speak or answer. I need a few minutes, a quiet place or a trusted contact.",
+    trustedContact: "Trusted contact",
+    focusModeTitle: "Focus mode",
+    focusModeBody: "Reduces secondary information, keeps critical actions and makes navigation calmer.",
+    profilesTitle: "Profiles",
+    profilesIntro:
+      "Adults, tutors and tutored profiles live inside the same account without free child registration.",
+    adultProfile: "Adult or identified person",
+    tutorProfile: "Main tutor",
+    childProfile: "Tutored child profile",
+    sensoryProfile: "Sensory profile",
+    verifiedTitle: "Verified professionals and entities",
+    verifiedIntro:
+      "Profiles with photo or logo, license or registry number, and manual verification before showing public trust.",
+    license: "License",
+    registry: "Registry",
     contact: "Contact",
-    aboutPlace: "About the place",
-    reviewsTab: "Reviews",
-    openNow: "Open now",
-    until: "Until 20:00",
-    rampAccess: "Ramp access",
-    adaptedBathroom: "Adapted bathroom",
-    quietZone: "Quiet zone",
-    wifi: "Wi‑Fi",
-    homeTitle: "Your Spectrum Access space",
-    homeIntro: "Review places, prepare contributions calmly and reach help, profiles and verification shortcuts fast.",
-    quickActions: "Quick actions",
-    nearbyMap: "Nearby map",
-    draftContribution: "Pending contribution",
-    tutoredProfiles: "Tutored profiles",
-    openConsultation: "Open consult",
-    openContribution: "Share experience",
-    openHelp: "Open help",
-    openProfiles: "Manage profiles"
+    verified: "Verified",
+    privateEvidence: "Documentary evidence remains private for administration."
   }
 };
 
-const filtersByLocale = (locale: Locale) => [
-  copy[locale].quiet,
-  copy[locale].lowLight,
-  copy[locale].clearExit
+const places: Place[] = [
+  {
+    id: "biblioteca-veridian",
+    name: "Biblioteca Veridian",
+    area: "Zona silenciosa",
+    city: "Barcelona",
+    category: "Cultura",
+    score: 9.8,
+    distance: "0.4 km",
+    quietDb: "34dB",
+    description:
+      "Biblioteca amb llum difusa, plantes baixes tranquil·les i sortida principal visible des de la sala de lectura."
+  },
+  {
+    id: "atrium-garden",
+    name: "Jardí Atrium",
+    area: "Espai verd",
+    city: "Barcelona",
+    category: "Exterior",
+    score: 9.5,
+    distance: "0.8 km",
+    quietDb: "38dB",
+    description:
+      "Pati obert amb recorregut senzill, bancs separats i zones d'ombra. Recomanat en hores de baixa afluència."
+  },
+  {
+    id: "mar-blau",
+    name: "Esbeteria Mar Blau",
+    area: "Cafeteria tranquil·la",
+    city: "Barcelona",
+    category: "Cafeteria",
+    score: 8.9,
+    distance: "1.2 km",
+    quietDb: "42dB",
+    description:
+      "Interior petit amb música baixa al matí, personal amable i una taula lateral amb menys estímuls visuals."
+  }
 ];
 
-const pinPositions = [
-  { left: "45%", top: "43%" },
-  { left: "27%", top: "58%" },
-  { left: "72%", top: "72%" }
+const professionals: Professional[] = [
+  {
+    id: "marta-gomez",
+    name: "Marta Gómez",
+    role: "Psicòloga",
+    license: "COPC 47145",
+    college: "Col·legi Oficial de Psicologia de Catalunya",
+    specialty: "Autisme adult i suport familiar",
+    initials: "MG"
+  },
+  {
+    id: "pau-ferrer",
+    name: "Pau Ferrer",
+    role: "Psicòleg",
+    license: "COPC 50218",
+    college: "Col·legi Oficial de Psicologia de Catalunya",
+    specialty: "Infància, tutors i regulació sensorial",
+    initials: "PF"
+  }
 ];
 
-const sensoryScores = [
-  { key: "noise", value: 2, tone: "teal", Icon: Volume2, level: { ca: "Baix", es: "Bajo", en: "Low" } },
-  { key: "lighting", value: 3, tone: "amber", Icon: Lightbulb, level: { ca: "Mitjà", es: "Medio", en: "Medium" } },
-  { key: "crowd", value: 2, tone: "teal", Icon: Users, level: { ca: "Baixa", es: "Baja", en: "Low" } },
-  { key: "quietSpace", value: 2, tone: "sage", Icon: Hand, level: { ca: "Baix", es: "Bajo", en: "Low" } },
-  { key: "exitEase", value: 5, tone: "blue", Icon: DoorOpen, level: { ca: "Alta", es: "Alta", en: "High" } }
-] as const;
+const organizations: Organization[] = [
+  {
+    id: "centre-tea",
+    name: "Centre TEA Catalunya",
+    city: "Barcelona",
+    registry: "Reg. E-12345",
+    description: "Centre d'acompanyament per a persones autistes i famílies.",
+    initials: "CT"
+  },
+  {
+    id: "tea-valles",
+    name: "Associació TEA Vallès",
+    city: "Sabadell",
+    registry: "Reg. E-98765",
+    description: "Associació local amb activitats de suport i orientació.",
+    initials: "TV"
+  }
+];
+
+const childProfiles = [
+  { alias: "Aina", age: "8", state: "Aportació pendent" },
+  { alias: "Pau", age: "11", state: "Preferències actualitzades" }
+];
+
+const sensoryKeys: Array<{ key: SensoryKey; low: string; high: string }> = [
+  { key: "noise", low: "Silenci", high: "Actiu" },
+  { key: "density", low: "Privat", high: "Social" },
+  { key: "light", low: "Suau", high: "Vibrant" },
+  { key: "wait", low: "Ràpid", high: "Llarg" }
+];
+
+const sensoryLabels: Record<Locale, Record<SensoryKey, string>> = {
+  ca: { noise: "Soroll", density: "Densitat", light: "Impacte visual", wait: "Espera" },
+  es: { noise: "Ruido", density: "Densidad", light: "Impacto visual", wait: "Espera" },
+  en: { noise: "Noise", density: "Density", light: "Visual impact", wait: "Waiting" }
+};
+
+const sensoryWords: Record<Locale, Record<SensoryKey, string[]>> = {
+  ca: {
+    noise: ["Silenciós", "Suau", "Moderat", "Actiu", "Intens"],
+    density: ["Aïllat", "Tranquil", "Mitjà", "Social", "Ple"],
+    light: ["Calma", "Serena", "Clara", "Viva", "Saturada"],
+    wait: ["Immediat", "Curt", "Moderat", "Llarg", "Molt llarg"]
+  },
+  es: {
+    noise: ["Silencioso", "Suave", "Moderado", "Activo", "Intenso"],
+    density: ["Aislado", "Tranquilo", "Medio", "Social", "Lleno"],
+    light: ["Calma", "Serena", "Clara", "Viva", "Saturada"],
+    wait: ["Inmediato", "Corto", "Moderado", "Largo", "Muy largo"]
+  },
+  en: {
+    noise: ["Silent", "Muted", "Moderate", "Active", "Intense"],
+    density: ["Secluded", "Quiet", "Medium", "Social", "Full"],
+    light: ["Calm", "Serene", "Clear", "Vivid", "Saturated"],
+    wait: ["Immediate", "Short", "Moderate", "Long", "Very long"]
+  }
+};
 
 export function PlatformApp() {
   const [locale, setLocale] = useState<Locale>("ca");
-  const [activeView, setActiveView] = useState<AppView>("home");
-  const [selectedPlaceId, setSelectedPlaceId] = useState(places[0]?.id ?? "");
+  const [activeView, setActiveView] = useState<ViewId>("home");
+  const [darkMode, setDarkMode] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [query, setQuery] = useState("");
-  const [pendingFiles, setPendingFiles] = useState<string[]>([]);
-  const [comment, setComment] = useState("");
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [experienceOpen, setExperienceOpen] = useState(true);
+  const [selectedPlaceId, setSelectedPlaceId] = useState(places[0].id);
+  const [selectedFilter, setSelectedFilter] = useState(0);
   const [anonymous, setAnonymous] = useState(false);
-  const [rating, setRating] = useState(0);
-  const t = dictionary[locale];
-  const c = copy[locale];
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
+  const [ratings, setRatings] = useState<Record<SensoryKey, number>>({
+    noise: 2,
+    density: 2,
+    light: 2,
+    wait: 1
+  });
 
+  const c = copy[locale];
   const filteredPlaces = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
@@ -370,1068 +506,942 @@ export function PlatformApp() {
     }
 
     return places.filter((place) =>
-      [place.name, place.city, place.addressOrArea, categoryLabels[place.category][locale]]
+      [place.name, place.area, place.city, place.category]
         .join(" ")
         .toLowerCase()
         .includes(normalized)
     );
-  }, [locale, query]);
+  }, [query]);
 
   const selectedPlace = places.find((place) => place.id === selectedPlaceId) ?? places[0];
 
+  const updateRating = (key: SensoryKey, value: number) => {
+    setRatings((current) => ({ ...current, [key]: value }));
+  };
+
   return (
-    <main data-theme={isDarkMode ? "dark" : "light"} className="app-shell reference-app-shell">
-      <div className="reference-frame">
-        <aside className="reference-sidebar">
-          <div className="reference-brand">
-            <OfficialLogoMark size={42} />
-            <h1>{t.appName}</h1>
+    <main
+      className="spectrum-app"
+      data-theme={darkMode ? "dark" : "light"}
+      data-focus={focusMode ? "true" : "false"}
+    >
+      <div className="app-frame">
+        <aside className="side-rail" aria-label="Spectrum Access">
+          <div className="brand-block">
+            <OfficialLogo size={54} />
+            <div>
+              <strong>Spectrum Access</strong>
+              <span>Sensory Accessibility</span>
+            </div>
           </div>
 
-          <nav aria-label="Navegació principal" className="reference-nav">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeView === tab.id;
+          <nav className="primary-nav" aria-label="Navegació principal">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const selected = activeView === item.id;
               return (
                 <button
-                  key={tab.id}
-                  className={`focus-ring reference-nav-item ${isActive ? "reference-nav-item-active" : ""}`}
-                  onClick={() => setActiveView(tab.id)}
-                  aria-pressed={isActive}
+                  key={item.id}
+                  type="button"
+                  className="nav-button"
+                  data-active={selected}
+                  aria-pressed={selected}
+                  onClick={() => setActiveView(item.id)}
                 >
-                  <Icon aria-hidden="true" size={22} />
-                  <span>{c.workspace[tab.id]}</span>
+                  <Icon aria-hidden="true" size={21} />
+                  <span>{c.nav[item.id]}</span>
+                  {selected ? <ChevronRight aria-hidden="true" size={15} /> : null}
                 </button>
               );
             })}
           </nav>
 
-          <div className="reference-sidebar-footer">
-            <section className="reference-user-card">
-              <span className="reference-avatar">JB</span>
+          <div className="side-footer focus-hide">
+            <div className="member-card">
+              <span className="avatar avatar-small">JB</span>
               <div>
                 <strong>Josep B.</strong>
                 <span>Tutor</span>
               </div>
-              <ChevronRight aria-hidden="true" size={15} />
-            </section>
-            <section className="reference-account-status">
-              <ShieldCheck aria-hidden="true" size={24} />
+            </div>
+            <div className="security-card">
+              <ShieldCheck aria-hidden="true" size={22} />
               <div>
-                <span>Estat del compte</span>
-                <strong>Verificat</strong>
+                <span>{c.status}</span>
+                <strong>{c.verified}</strong>
               </div>
-            </section>
+            </div>
           </div>
         </aside>
 
-        <section className="reference-main">
-          <header className="reference-header">
-            <h2>{c.workspace[activeView]}</h2>
-            <div className="reference-header-actions">
-              <span className="reference-ok">
-                <span aria-hidden="true" />
-                Tot en ordre
+        <section className="work-area">
+          <header className="topbar">
+            <div>
+              <p className="screen-label">Spectrum Access</p>
+              <h1>{c.nav[activeView]}</h1>
+            </div>
+
+            <div className="top-actions">
+              <span className="health-pill focus-hide">
+                <Check aria-hidden="true" size={15} />
+                {c.status}
               </span>
-              <label className="focus-within-ring reference-select">
-                <Globe2 aria-hidden="true" size={18} />
+              <label className="select-control">
+                <Globe2 aria-hidden="true" size={17} />
                 <select
-                  value={locale}
                   aria-label="Idioma"
+                  value={locale}
                   onChange={(event) => setLocale(event.target.value as Locale)}
                 >
-                  {Object.entries(localeNames).map(([key, label]) => (
+                  {Object.entries(locales).map(([key, label]) => (
                     <option key={key} value={key}>
                       {label}
                     </option>
                   ))}
                 </select>
               </label>
-              <button
-                className="focus-ring reference-mode"
-                aria-pressed={isDarkMode}
-                onClick={() => setIsDarkMode((value) => !value)}
-              >
-                {isDarkMode ? <Sun aria-hidden="true" size={18} /> : <Moon aria-hidden="true" size={18} />}
-                <span>{isDarkMode ? c.lightMode : c.darkMode}</span>
-                <span className="reference-switch" data-on={isDarkMode} />
-              </button>
-              <button className="focus-ring reference-icon-button" aria-label="Notificacions">
-                <Bell aria-hidden="true" size={23} />
+              <ToggleButton
+                active={focusMode}
+                label={focusMode ? c.focusOn : c.focus}
+                activeIcon={Sparkles}
+                inactiveIcon={Sparkles}
+                onClick={() => setFocusMode((value) => !value)}
+              />
+              <ToggleButton
+                active={darkMode}
+                label={darkMode ? c.lightMode : c.darkMode}
+                activeIcon={Sun}
+                inactiveIcon={Moon}
+                onClick={() => setDarkMode((value) => !value)}
+              />
+              <button type="button" className="icon-button focus-hide" aria-label="Notificacions">
+                <Bell aria-hidden="true" size={22} />
               </button>
             </div>
           </header>
 
-          {activeView === "home" && (
-            <HomeDashboard locale={locale} selectedPlace={selectedPlace} onNavigate={setActiveView} />
-          )}
+          {focusMode ? <FocusNotice copy={c} onOpenSupport={() => setActiveView("support")} /> : null}
 
-          {activeView === "consultation" && (
-            <div className="reference-view-panel">
-              <MapWorkspace
-                locale={locale}
-                selectedPlace={selectedPlace}
-                selectedPlaceId={selectedPlace.id}
-                filteredPlaces={filteredPlaces}
-                experienceOpen={experienceOpen}
-                files={pendingFiles}
-                comment={comment}
-                rating={rating}
-                anonymous={anonymous}
-                onSelectPlace={setSelectedPlaceId}
-                onToggleExperience={() => setExperienceOpen((value) => !value)}
-                onFiles={(files) => setPendingFiles(files)}
-                onComment={setComment}
-                onRating={setRating}
-                onAnonymous={setAnonymous}
-                onOpenVerified={() => setActiveView("verified")}
-              />
-            </div>
-          )}
+          {activeView === "home" ? (
+            <HomeView
+              copy={c}
+              locale={locale}
+              selectedPlace={selectedPlace}
+              onNavigate={setActiveView}
+              onSelectPlace={setSelectedPlaceId}
+            />
+          ) : null}
 
-          {activeView === "contributions" && (
-            <div className="reference-view-panel">
-              <Contributions
-                files={pendingFiles}
-                comment={comment}
-                placeName={selectedPlace.name}
-                locale={locale}
-                onFiles={(files) => setPendingFiles(files)}
-                onComment={setComment}
-                labels={{
-                  uploadImage: t.uploadImage,
-                  addComment: t.addComment,
-                  pendingModeration: t.pendingModeration,
-                  submitReview: t.submitReview,
-                  uploadDrop: c.uploadDrop,
-                  commentPlaceholder: c.commentPlaceholder,
-                  savedDraft: c.savedDraft
-                }}
-              />
-            </div>
-          )}
+          {activeView === "consult" ? (
+            <ConsultView
+              copy={c}
+              locale={locale}
+              query={query}
+              selectedFilter={selectedFilter}
+              selectedPlace={selectedPlace}
+              places={filteredPlaces}
+              onQuery={setQuery}
+              onFilter={setSelectedFilter}
+              onSelectPlace={setSelectedPlaceId}
+              onNavigate={setActiveView}
+            />
+          ) : null}
 
-          {activeView === "support" && (
-            <div className="reference-view-panel">
-              <SupportCard labels={{ quickCard: t.quickCard, calmMode: t.calmMode }} />
-            </div>
-          )}
+          {activeView === "contribute" ? (
+            <ContributeView
+              copy={c}
+              locale={locale}
+              ratings={ratings}
+              notes={notes}
+              anonymous={anonymous}
+              uploadedFiles={uploadedFiles}
+              selectedPlace={selectedPlace}
+              onRating={updateRating}
+              onNotes={setNotes}
+              onAnonymous={setAnonymous}
+              onFiles={setUploadedFiles}
+            />
+          ) : null}
 
-          {activeView === "profiles" && (
-            <div className="reference-view-panel">
-              <Profiles
-                labels={{
-                  childProfile: t.childProfile,
-                  tutorReview: t.tutorReview,
-                  childDraft: c.childDraft
-                }}
-              />
-            </div>
-          )}
+          {activeView === "support" ? (
+            <SupportView copy={c} focusMode={focusMode} onFocus={() => setFocusMode(true)} />
+          ) : null}
 
-          {activeView === "verified" && (
-            <div className="reference-view-panel">
-              <VerifiedDirectory
-                labels={{
-                  professionalTrust: t.professionalTrust,
-                  verified: t.verified,
-                  verifiedStrip: c.verifiedStrip,
-                  license: c.license,
-                  registry: c.registry,
-                  privacy: c.privacy,
-                  verificationQueue: c.verificationQueue,
-                  contact: c.contact
-                }}
-              />
-            </div>
-          )}
+          {activeView === "profiles" ? <ProfilesView copy={c} locale={locale} /> : null}
+
+          {activeView === "verified" ? <VerifiedView copy={c} /> : null}
         </section>
       </div>
     </main>
   );
 }
 
-function OfficialLogoMark({ size = 46 }: { size?: number }) {
+function OfficialLogo({ size }: { size: number }) {
   return (
     <img
       src="/brand/accessibilitat-logo.svg"
-      alt=""
-      className="official-logo-mark"
-      style={{ height: size, width: size }}
+      width={size}
+      height={size}
+      alt="Spectrum Access"
+      className="official-logo"
     />
   );
 }
 
-function HomeDashboard({
-  locale,
-  selectedPlace,
-  onNavigate
+function ToggleButton({
+  active,
+  label,
+  activeIcon: ActiveIcon,
+  inactiveIcon: InactiveIcon,
+  onClick
 }: {
-  locale: Locale;
-  selectedPlace: Place;
-  onNavigate: (view: AppView) => void;
+  active: boolean;
+  label: string;
+  activeIcon: LucideIcon;
+  inactiveIcon: LucideIcon;
+  onClick: () => void;
 }) {
-  const c = copy[locale];
-  const savedPlaces = [
-    { name: "Parc de la Ciutadella", meta: "Barcelona · 800 m", score: "7,5", tone: "green" },
-    { name: "Biblioteca Central", meta: "Barcelona · 1,2 km", score: "6,0", tone: "amber" },
-    { name: "Centre Comercial Diagonal", meta: "Barcelona · 1,8 km", score: "8,0", tone: "green" }
-  ];
+  const Icon = active ? ActiveIcon : InactiveIcon;
 
   return (
-    <div className="reference-home-grid">
-      <section className="reference-card reference-map-card">
-        <div className="reference-card-heading">
-          <h3>{c.nearbyMap}</h3>
-          <button className="focus-ring reference-arrow-button" onClick={() => onNavigate("consultation")} aria-label="Obre el mapa complet">
-            <ChevronRight aria-hidden="true" size={20} />
-          </button>
-        </div>
-        <ReferenceMap />
-        <button className="focus-ring reference-card-link" onClick={() => onNavigate("consultation")}>
-          Obre el mapa complet <ChevronRight aria-hidden="true" size={18} />
-        </button>
-      </section>
-
-      <section className="reference-card reference-draft-card">
-        <div className="reference-card-heading">
-          <h3>Esborrany pendent</h3>
-          <span className="reference-count-pill">1</span>
-        </div>
-        <div className="reference-draft-body">
-          <img src="/media/reference-cafe.png" alt="" />
-          <div className="reference-draft-copy">
-            <h4>Cafeteria Mar Blau</h4>
-            <p>Avinguda del Mar, 25 · Barcelona</p>
-            <span><ClockIcon /> Creat: 18/06/2025</span>
-            <span><EditIcon /> En revisió del tutor</span>
-          </div>
-        </div>
-        <button className="focus-ring reference-primary-button" onClick={() => onNavigate("contributions")}>
-          Continuar esborrany
-        </button>
-        <button className="focus-ring reference-card-link" onClick={() => onNavigate("contributions")}>
-          Veure tots els esborranys <ChevronRight aria-hidden="true" size={18} />
-        </button>
-      </section>
-
-      <section className="reference-card reference-saved-card">
-        <div className="reference-card-heading">
-          <h3><Bookmark aria-hidden="true" size={20} /> Llocs desats</h3>
-        </div>
-        <div className="reference-saved-list">
-          {savedPlaces.map((place, index) => (
-            <button key={place.name} className="focus-ring reference-saved-row" onClick={() => onNavigate("consultation")}>
-              <img src="/media/reference-place-thumb.png" alt="" />
-              <span>
-                <strong>{place.name}</strong>
-                <small>{place.meta}</small>
-              </span>
-              <em data-tone={place.tone}>{place.score}</em>
-              <ChevronRight aria-hidden="true" size={17} />
-            </button>
-          ))}
-        </div>
-        <button className="focus-ring reference-card-link" onClick={() => onNavigate("consultation")}>
-          Veure tots els desats <ChevronRight aria-hidden="true" size={18} />
-        </button>
-      </section>
-
-      <section className="reference-card reference-trust-card">
-        <div className="reference-card-heading">
-          <h3>Confiança · Professionals i entitats verificades</h3>
-          <button className="focus-ring reference-card-link compact" onClick={() => onNavigate("verified")}>
-            Veure tots <ChevronRight aria-hidden="true" size={18} />
-          </button>
-        </div>
-        <div className="reference-trust-grid">
-          <TrustMiniCard kind="person" title="Marta Gómez" subtitle="Psicòloga" meta="Col. 47145" />
-          <TrustMiniCard kind="org" title="Centre TEA Catalunya" subtitle="Entitat" meta="Reg. E-12345" />
-          <TrustMiniCard kind="org" title="Associació TEA Vallès" subtitle="Entitat" meta="Reg. E-98765" />
-        </div>
-      </section>
-
-      <section className="reference-card reference-help-card">
-        <div className="reference-help-copy">
-          <div>
-            <h3><CircleHelp aria-hidden="true" size={22} /> Targeta d'ajuda</h3>
-            <p>Necessites suport o tens una crisi sensorial?</p>
-            <p>Utilitza la targeta per comunicar el que necessites de forma ràpida i clara.</p>
-          </div>
-          <div className="reference-help-visual">
-            <UserRound aria-hidden="true" size={42} />
-            <span />
-            <span />
-          </div>
-          <div className="reference-help-actions">
-            <button className="focus-ring reference-primary-button" onClick={() => onNavigate("support")}>
-              Obrir targeta d'ajuda
-            </button>
-            <button className="focus-ring reference-card-link" onClick={() => onNavigate("support")}>
-              Veure opcions de comunicació <ChevronRight aria-hidden="true" size={18} />
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
+    <button type="button" className="toggle-button" data-active={active} aria-pressed={active} onClick={onClick}>
+      <Icon aria-hidden="true" size={17} />
+      <span>{label}</span>
+      <span className="switch" />
+    </button>
   );
 }
 
-function ReferenceMap() {
+function FocusNotice({ copy: c, onOpenSupport }: { copy: (typeof copy)[Locale]; onOpenSupport: () => void }) {
   return (
-    <div className="reference-map-visual" aria-label="Mapa proper">
-    </div>
-  );
-}
-
-function TrustMiniCard({
-  kind,
-  title,
-  subtitle,
-  meta
-}: {
-  kind: "person" | "org";
-  title: string;
-  subtitle: string;
-  meta: string;
-}) {
-  return (
-    <article className="reference-trust-mini">
-      <span className="reference-trust-avatar" data-kind={kind}>
-        {kind === "person" ? (
-          <img src="/media/reference-professional.png" alt="" />
-        ) : (
-          <Building2 aria-hidden="true" size={28} />
-        )}
-      </span>
-      <h4>{title}</h4>
-      <p>{subtitle}</p>
-      <p>{meta}</p>
-      <span className="reference-verified-pill">
-        <CheckCircle2 aria-hidden="true" size={14} /> Verificat
-      </span>
-    </article>
-  );
-}
-
-function ClockIcon() {
-  return <CircleHelp aria-hidden="true" size={15} />;
-}
-
-function EditIcon() {
-  return <MessageSquare aria-hidden="true" size={15} />;
-}
-
-function MapWorkspace({
-  locale,
-  selectedPlace,
-  selectedPlaceId,
-  filteredPlaces,
-  experienceOpen,
-  files,
-  comment,
-  rating,
-  anonymous,
-  onSelectPlace,
-  onToggleExperience,
-  onFiles,
-  onComment,
-  onRating,
-  onAnonymous,
-  onOpenVerified
-}: {
-  locale: Locale;
-  selectedPlace: Place;
-  selectedPlaceId: string;
-  filteredPlaces: Place[];
-  experienceOpen: boolean;
-  files: string[];
-  comment: string;
-  rating: number;
-  anonymous: boolean;
-  onSelectPlace: (id: string) => void;
-  onToggleExperience: () => void;
-  onFiles: (files: string[]) => void;
-  onComment: (comment: string) => void;
-  onRating: (rating: number) => void;
-  onAnonymous: (anonymous: boolean) => void;
-  onOpenVerified: () => void;
-}) {
-  return (
-    <div className="reference-workspace">
-      <section className="map-stage surface-panel">
-        <div className="map-canvas reference-map" aria-label="Mapa visual de llocs sensorials">
-          <div className="map-block map-block-a" />
-          <div className="map-block map-block-b" />
-          <div className="map-block map-block-c" />
-          <div className="map-block map-block-d" />
-          <div className="map-road map-road-main" />
-          <div className="map-road map-road-cross" />
-          <div className="map-road map-road-diagonal" />
-          <div className="map-green map-green-a" />
-          <div className="map-green map-green-b" />
-          <div className="map-water" />
-
-          <div className="map-tools" aria-label="Controls del mapa">
-            <button className="focus-ring" aria-label="Apropar">
-              <Plus aria-hidden="true" size={18} />
-            </button>
-            <button className="focus-ring" aria-label="Allunyar">
-              <Minus aria-hidden="true" size={18} />
-            </button>
-            <button className="focus-ring" aria-label="Ubicació">
-              <LocateFixed aria-hidden="true" size={18} />
-            </button>
-            <button className="focus-ring" aria-label="Capes">
-              <Layers aria-hidden="true" size={18} />
-            </button>
-          </div>
-
-          {places.map((place, index) => {
-            const active = place.id === selectedPlaceId;
-            const position = pinPositions[index % pinPositions.length];
-            return (
-              <button
-                key={place.id}
-                className={`focus-ring map-pin ${active ? "map-pin-active" : ""}`}
-                style={position}
-                onClick={() => onSelectPlace(place.id)}
-                title={place.name}
-                aria-pressed={active}
-              >
-                <MapPin aria-hidden="true" size={19} />
-                <span className="sr-only">{place.name}</span>
-              </button>
-            );
-          })}
-
-          <div className="map-scale">200 m</div>
-        </div>
-
-      </section>
-
-      <PlaceDetailsPanel locale={locale} selectedPlace={selectedPlace} />
-
-      <ExperienceDock
-        locale={locale}
-        open={experienceOpen}
-        files={files}
-        comment={comment}
-        rating={rating}
-        anonymous={anonymous}
-        onToggle={onToggleExperience}
-        onFiles={onFiles}
-        onComment={onComment}
-        onRating={onRating}
-        onAnonymous={onAnonymous}
-        onOpenVerified={onOpenVerified}
-      />
-    </div>
-  );
-}
-
-function PlaceDetailsPanel({ locale, selectedPlace }: { locale: Locale; selectedPlace: Place }) {
-  const c = copy[locale];
-
-  return (
-    <aside className="place-detail-panel surface-panel overflow-hidden">
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-4">
-          <div className="flex min-w-0 gap-4">
-            <div className="detail-place-icon">
-              <BookOpen aria-hidden="true" size={28} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-[27px] font-semibold leading-tight">{selectedPlace.name}</h2>
-              <p className="mt-1 text-[13px] leading-5 text-[var(--muted)]">
-                Carrer del Comte Borrell, 44 · {selectedPlace.city}
-              </p>
-              <p className="mt-2 inline-flex items-center gap-2 rounded-md bg-[var(--teal-tint)] px-2 py-1 text-[12px] font-semibold text-[var(--teal-strong)]">
-                <CheckCircle2 aria-hidden="true" size={14} />
-                {c.openNow} · {c.until}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[32px] font-semibold leading-none">{selectedPlace.averageScore.toFixed(1)}</span>
-              <RatingStars value={4} />
-            </div>
-            <p className="mt-1 text-[12px] text-[var(--muted)]">({selectedPlace.ratingCount} {c.reviews.toLowerCase()})</p>
-          </div>
-          <div className="flex gap-2">
-            <button className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-[13px] font-semibold">
-              <Heart aria-hidden="true" size={17} />
-              {c.favorite}
-            </button>
-            <button className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-[13px] font-semibold">
-              <Flag aria-hidden="true" size={17} />
-              {c.report}
-            </button>
-          </div>
-        </div>
-
-        <div className="place-gallery mt-4">
-          <img src="/media/calm-place-preview.png" alt="" className="place-gallery-main" loading="eager" />
-          <img src="/media/calm-place-preview.png" alt="" className="place-gallery-side" loading="eager" />
-          <div className="place-gallery-more">+ 5 fotos</div>
-        </div>
-
-        <div className="mt-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-[16px] font-semibold">{c.sensoryReading}</h3>
-            <button className="focus-ring inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--teal-strong)]">
-              <CircleHelp aria-hidden="true" size={15} />
-              Què signifiquen?
-            </button>
-          </div>
-          <div className="space-y-3.5">
-            {sensoryScores.map((score) => (
-              <DetailedSensoryIndicator
-                key={score.key}
-                label={sensoryLabels[score.key][locale]}
-                value={score.value}
-                tone={score.tone}
-                Icon={score.Icon}
-                level={score.level[locale]}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="detail-tabs mt-6">
-          <button className="detail-tab-active">{c.aboutPlace}</button>
-          <button>
-            {c.reviewsTab} ({selectedPlace.ratingCount})
-          </button>
-        </div>
-
-        <p className="mt-4 text-[14px] leading-6 text-[var(--foreground)]">
-          Biblioteca pública amb espais d'estudi, zona infantil i activitats culturals. {selectedPlace.description}
-        </p>
-
-        <div className="amenity-grid mt-5">
-          <Amenity icon={Accessibility} label={c.rampAccess} />
-          <Amenity icon={Wifi} label={c.wifi} />
-          <Amenity icon={SquareStack} label={c.adaptedBathroom} />
-          <Amenity icon={Navigation} label={c.quietZone} />
-        </div>
+    <section className="focus-notice" aria-live="polite">
+      <div>
+        <strong>{c.focusModeTitle}</strong>
+        <span>{c.focusModeBody}</span>
       </div>
-    </aside>
-  );
-}
-
-function ExperienceDock({
-  locale,
-  open,
-  files,
-  comment,
-  rating,
-  anonymous,
-  onToggle,
-  onFiles,
-  onComment,
-  onRating,
-  onAnonymous,
-  onOpenVerified
-}: {
-  locale: Locale;
-  open: boolean;
-  files: string[];
-  comment: string;
-  rating: number;
-  anonymous: boolean;
-  onToggle: () => void;
-  onFiles: (files: string[]) => void;
-  onComment: (comment: string) => void;
-  onRating: (rating: number) => void;
-  onAnonymous: (anonymous: boolean) => void;
-  onOpenVerified: () => void;
-}) {
-  const c = copy[locale];
-  const verifiedCards = [
-    {
-      id: professionals[0]?.id ?? "professional",
-      name: professionals[0]?.professionalName ?? "Clara Ferrer",
-      kind: locale === "ca" ? "Psicòloga verificada" : locale === "es" ? "Psicóloga verificada" : "Verified psychologist",
-      image: professionals[0]?.photoPath,
-      detail: `${c.license}: ${professionals[0]?.licenseNumber ?? "24678"}`
-    },
-    {
-      id: organizations[0]?.id ?? "organization",
-      name: organizations[0]?.name ?? "Centre TEA Catalunya",
-      kind: locale === "ca" ? "Entitat verificada" : locale === "es" ? "Entidad verificada" : "Verified organization",
-      image: organizations[0]?.logoPath,
-      detail: `${c.registry}: ${organizations[0]?.registryNumber ?? "AS-0312/2018"}`
-    }
-  ];
-
-  return (
-    <section className="experience-dock surface-panel">
-      <button className="focus-ring experience-toggle" onClick={onToggle} aria-expanded={open}>
-        <div className="experience-toggle-icon">
-          <Plus aria-hidden="true" size={19} />
-        </div>
-        <div className="min-w-0 text-left">
-          <h3>{c.experienceTitle}</h3>
-          <p>{c.experienceSubtitle}</p>
-        </div>
-        <ChevronRight aria-hidden="true" size={18} className={open ? "rotate-90" : ""} />
+      <button type="button" onClick={onOpenSupport}>
+        {c.openSupport}
+        <ChevronRight aria-hidden="true" size={17} />
       </button>
-
-      {open && (
-        <div className="experience-content">
-          <div className="experience-form">
-            <label className="focus-within-ring upload-mini">
-              <ImageIcon aria-hidden="true" size={28} />
-              <span>{c.uploadDrop}</span>
-              <small>{c.uploadHint}</small>
-              <input
-                className="sr-only"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(event) => onFiles(Array.from(event.target.files ?? []).map((file) => file.name))}
-              />
-            </label>
-
-            <div className="experience-comment">
-              <p className="text-[12px] font-semibold text-[var(--muted)]">{c.shareExperience}</p>
-              <textarea
-                className="focus-ring mt-2 min-h-[104px] w-full resize-y rounded-md border border-[var(--line)] bg-white p-3 text-[13px] leading-5 outline-none placeholder:text-[var(--muted)]"
-                value={comment}
-                placeholder={c.commentPlaceholder}
-                onChange={(event) => onComment(event.target.value)}
-              />
-              <p className="mt-1 text-right text-[11px] text-[var(--muted)]">{comment.length}/600</p>
-            </div>
-
-            <div className="experience-actions">
-              <p className="text-[12px] font-semibold text-[var(--muted)]">{c.starRating}</p>
-              <div className="mt-2 flex gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    className={`focus-ring rating-button ${rating >= star ? "rating-button-active" : ""}`}
-                    onClick={() => onRating(star)}
-                    aria-pressed={rating >= star}
-                    aria-label={`${star}/5`}
-                  >
-                    <Star aria-hidden="true" size={18} />
-                  </button>
-                ))}
-              </div>
-              <label className="mt-4 flex items-center gap-2 text-[12px] font-medium text-[var(--muted)]">
-                <input
-                  className="accent-[var(--teal)]"
-                  type="checkbox"
-                  checked={anonymous}
-                  onChange={(event) => onAnonymous(event.target.checked)}
-                />
-                {c.anonymous}
-              </label>
-              <button className="focus-ring mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--teal-strong)] px-4 py-3 text-[13px] font-semibold text-white">
-                <Send aria-hidden="true" size={16} />
-                {c.publish}
-              </button>
-            </div>
-          </div>
-
-          <div className="verified-strip">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3>{c.verifiedProfessionals}</h3>
-              <button className="focus-ring text-link" onClick={onOpenVerified}>
-                {c.seeAll}
-              </button>
-            </div>
-            <div className="verified-strip-grid">
-              {verifiedCards.map((card) => (
-                <article key={card.id} className="verified-card">
-                  <img src={card.image} alt="" className="h-14 w-14 rounded-md object-cover" />
-                  <h4>{card.name}</h4>
-                  <p className="verified-kind">
-                    <ShieldCheck aria-hidden="true" size={13} />
-                    {card.kind}
-                  </p>
-                  <p>{card.detail}</p>
-                  <button className="focus-ring">{c.contact}</button>
-                </article>
-              ))}
-            </div>
-          </div>
-
-          {files.length > 0 && (
-            <ul className="experience-files">
-              {files.map((file) => (
-                <li key={file}>
-                  <ImageIcon aria-hidden="true" size={15} />
-                  {file}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
     </section>
   );
 }
 
-function Contributions({
-  placeName,
+function HomeView({
+  copy: c,
   locale,
-  files,
-  comment,
-  labels,
-  onFiles,
-  onComment
+  selectedPlace,
+  onNavigate,
+  onSelectPlace
 }: {
-  placeName: string;
+  copy: (typeof copy)[Locale];
   locale: Locale;
-  files: string[];
-  comment: string;
-  labels: Record<
-    "uploadImage" | "addComment" | "pendingModeration" | "submitReview" | "uploadDrop" | "commentPlaceholder" | "savedDraft",
-    string
-  >;
-  onFiles: (files: string[]) => void;
-  onComment: (comment: string) => void;
+  selectedPlace: Place;
+  onNavigate: (view: ViewId) => void;
+  onSelectPlace: (id: string) => void;
 }) {
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
-      <section className="surface-panel p-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h3 className="text-[24px] font-semibold">{placeName}</h3>
-            <p className="mt-2 text-[14px] text-[var(--muted)]">{labels.pendingModeration}</p>
-          </div>
-          <span className="inline-flex items-center gap-2 rounded-md bg-[var(--clay-tint)] px-3 py-2 text-[13px] font-semibold text-[var(--clay)]">
-            {labels.savedDraft}
-          </span>
-        </div>
+    <div className="dashboard-grid">
+      <section className="hero-copy">
+        <h2>{c.greeting}</h2>
+        <p>{c.homeIntro}</p>
+      </section>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {Object.entries(sensoryLabels).map(([key, label]) => (
-            <label key={key} className="sensory-control">
-              <span className="flex items-center justify-between gap-3">
-                <span className="text-[14px] font-semibold">{label[locale]}</span>
-                <span className="text-[12px] font-semibold text-[var(--muted)]">3/5</span>
+      <MapPanel
+        title={c.sensoryMap}
+        subtitle={c.mapArea}
+        selectedPlace={selectedPlace}
+        onSelectPlace={onSelectPlace}
+        onOpen={() => onNavigate("consult")}
+      />
+
+      <section className="panel saved-panel">
+        <PanelHeading title={c.savedPlaces} action={c.viewAll} onAction={() => onNavigate("consult")} />
+        <div className="saved-list">
+          {places.map((place) => (
+            <button key={place.id} type="button" className="saved-row" onClick={() => onNavigate("consult")}>
+              <PlaceSymbol />
+              <span>
+                <strong>{place.name}</strong>
+                <small>
+                  {place.area} · {place.distance}
+                </small>
               </span>
-              <input className="mt-3 w-full accent-[var(--teal)]" type="range" min="1" max="5" defaultValue="3" />
-            </label>
+              <em>{place.score.toFixed(1)}</em>
+              <ChevronRight aria-hidden="true" size={16} />
+            </button>
           ))}
         </div>
       </section>
 
-      <aside className="space-y-5">
-        <section className="surface-panel p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <Camera aria-hidden="true" size={20} className="text-[var(--teal)]" />
-            <h3 className="text-[16px] font-semibold">{labels.uploadImage}</h3>
+      <section className="panel draft-panel">
+        <PanelHeading title={c.pendingDraft} action={c.continueDraft} onAction={() => onNavigate("contribute")} />
+        <div className="draft-layout">
+          <PlaceSymbol large />
+          <div>
+            <h3>Esbeteria Mar Blau</h3>
+            <p>Avinguda del Mar, 25 · Barcelona</p>
+            <span>
+              <CalendarCheck aria-hidden="true" size={15} />
+              Creat: 18/06/2026
+            </span>
+            <span>
+              <Lock aria-hidden="true" size={15} />
+              {c.tutorReview}
+            </span>
           </div>
-          <label className="focus-within-ring upload-dropzone">
-            <Upload aria-hidden="true" size={24} />
-            <span className="text-[14px] font-semibold">{labels.uploadDrop}</span>
-            <input
-              className="sr-only"
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(event) => onFiles(Array.from(event.target.files ?? []).map((file) => file.name))}
+        </div>
+        <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
+          {c.continueDraft}
+        </button>
+      </section>
+
+      <section className="panel trust-panel">
+        <PanelHeading title={`${c.trust} · ${c.professionalsAndEntities}`} action={c.viewAll} onAction={() => onNavigate("verified")} />
+        <div className="trust-strip">
+          {professionals.slice(0, 1).map((professional) => (
+            <VerifiedMiniCard key={professional.id} title={professional.name} meta={professional.license} initials={professional.initials} />
+          ))}
+          {organizations.map((organization) => (
+            <VerifiedMiniCard key={organization.id} title={organization.name} meta={organization.registry} initials={organization.initials} />
+          ))}
+        </div>
+      </section>
+
+      <section className="panel support-panel">
+        <div>
+          <h3>{c.supportCard}</h3>
+          <p>{c.supportIntro}</p>
+        </div>
+        <button type="button" className="primary-action" onClick={() => onNavigate("support")}>
+          {c.openSupport}
+        </button>
+      </section>
+
+      <section className="panel profile-panel">
+        <PanelHeading title={c.profilesTitle} action={c.nav.profiles} onAction={() => onNavigate("profiles")} />
+        <div className="child-list">
+          {childProfiles.map((profile) => (
+            <div key={profile.alias} className="child-chip">
+              <span className="avatar">{profile.alias.slice(0, 1)}</span>
+              <div>
+                <strong>{profile.alias}</strong>
+                <small>
+                  {profile.age} · {profile.state}
+                </small>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="fineprint">{locale === "en" ? c.childApproval : c.childApproval}</p>
+      </section>
+    </div>
+  );
+}
+
+function ConsultView({
+  copy: c,
+  locale,
+  query,
+  selectedFilter,
+  selectedPlace,
+  places: visiblePlaces,
+  onQuery,
+  onFilter,
+  onSelectPlace,
+  onNavigate
+}: {
+  copy: (typeof copy)[Locale];
+  locale: Locale;
+  query: string;
+  selectedFilter: number;
+  selectedPlace: Place;
+  places: Place[];
+  onQuery: (query: string) => void;
+  onFilter: (index: number) => void;
+  onSelectPlace: (id: string) => void;
+  onNavigate: (view: ViewId) => void;
+}) {
+  return (
+    <div className="consult-grid">
+      <section className="section-intro">
+        <h2>{c.consultTitle}</h2>
+        <p>{c.consultIntro}</p>
+      </section>
+
+      <section className="panel search-panel">
+        <label className="search-box">
+          <Search aria-hidden="true" size={18} />
+          <input value={query} placeholder={c.searchPlaceholder} onChange={(event) => onQuery(event.target.value)} />
+        </label>
+        <div className="filter-row" aria-label="Filtres">
+          {c.filters.map((filter, index) => (
+            <button
+              key={filter}
+              type="button"
+              data-active={selectedFilter === index}
+              onClick={() => onFilter(index)}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <MapPanel
+        title={c.sensoryMap}
+        subtitle={c.mapArea}
+        selectedPlace={selectedPlace}
+        onSelectPlace={onSelectPlace}
+        tall
+      />
+
+      <PlaceDetailCard
+        copy={c}
+        locale={locale}
+        place={selectedPlace}
+        onContribute={() => onNavigate("contribute")}
+      />
+
+      <section className="panel results-panel">
+        <PanelHeading title={c.savedPlaces} />
+        <div className="saved-list">
+          {visiblePlaces.map((place) => (
+            <button
+              key={place.id}
+              type="button"
+              className="saved-row"
+              data-active={selectedPlace.id === place.id}
+              onClick={() => onSelectPlace(place.id)}
+            >
+              <PlaceSymbol />
+              <span>
+                <strong>{place.name}</strong>
+                <small>
+                  {place.city} · {place.distance}
+                </small>
+              </span>
+              <em>{place.score.toFixed(1)}</em>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ContributeView({
+  copy: c,
+  locale,
+  ratings,
+  notes,
+  anonymous,
+  uploadedFiles,
+  selectedPlace,
+  onRating,
+  onNotes,
+  onAnonymous,
+  onFiles
+}: {
+  copy: (typeof copy)[Locale];
+  locale: Locale;
+  ratings: Record<SensoryKey, number>;
+  notes: string;
+  anonymous: boolean;
+  uploadedFiles: string[];
+  selectedPlace: Place;
+  onRating: (key: SensoryKey, value: number) => void;
+  onNotes: (notes: string) => void;
+  onAnonymous: (anonymous: boolean) => void;
+  onFiles: (files: string[]) => void;
+}) {
+  return (
+    <div className="report-grid">
+      <section className="section-intro report-intro">
+        <h2>{c.contributionTitle}</h2>
+        <p>{c.contributionIntro}</p>
+      </section>
+
+      <section className="panel report-form">
+        <div className="place-context">
+          <PlaceSymbol />
+          <div>
+            <strong>{selectedPlace.name}</strong>
+            <span>
+              {selectedPlace.area} · {selectedPlace.quietDb}
+            </span>
+          </div>
+          <em>{c.pendingModeration}</em>
+        </div>
+
+        <div className="slider-stack">
+          {sensoryKeys.map((item) => (
+            <SensorySlider
+              key={item.key}
+              label={sensoryLabels[locale][item.key]}
+              low={item.low}
+              high={item.high}
+              word={sensoryWords[locale][item.key][ratings[item.key] - 1]}
+              value={ratings[item.key]}
+              onChange={(value) => onRating(item.key, value)}
             />
+          ))}
+        </div>
+
+        <label className="notes-field">
+          <span>{c.notes}</span>
+          <textarea value={notes} placeholder={c.notesPlaceholder} onChange={(event) => onNotes(event.target.value)} />
+        </label>
+
+        <div className="form-footer">
+          <label className="checkbox-row">
+            <input type="checkbox" checked={anonymous} onChange={(event) => onAnonymous(event.target.checked)} />
+            <span>{c.anonymous}</span>
           </label>
-          {files.length > 0 && (
-            <ul className="mt-4 space-y-2 text-[13px] text-[var(--muted)]">
-              {files.map((file) => (
-                <li key={file} className="flex items-center gap-2 rounded-md bg-[var(--stone)] px-3 py-2">
-                  <ImageIcon aria-hidden="true" size={15} />
+          <button type="button" className="primary-action">
+            <Send aria-hidden="true" size={17} />
+            {c.submit}
+          </button>
+        </div>
+      </section>
+
+      <aside className="side-stack">
+        <label className="panel upload-panel">
+          <ImagePlus aria-hidden="true" size={34} />
+          <strong>{c.uploadImage}</strong>
+          <span>JPG · PNG · WebP</span>
+          <input
+            className="sr-only"
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(event) => onFiles(Array.from(event.target.files ?? []).map((file) => file.name))}
+          />
+        </label>
+
+        <section className="panel approval-panel">
+          <Lock aria-hidden="true" size={24} />
+          <h3>{c.tutorReview}</h3>
+          <p>{c.childApproval}</p>
+        </section>
+
+        {uploadedFiles.length > 0 ? (
+          <section className="panel file-panel">
+            <PanelHeading title={c.uploadImage} />
+            <ul>
+              {uploadedFiles.map((file) => (
+                <li key={file}>
+                  <FileText aria-hidden="true" size={15} />
                   {file}
                 </li>
               ))}
             </ul>
-          )}
-        </section>
-
-        <section className="surface-panel p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <MessageSquare aria-hidden="true" size={20} className="text-[var(--teal)]" />
-            <h3 className="text-[16px] font-semibold">{labels.addComment}</h3>
-          </div>
-          <textarea
-            className="focus-ring min-h-36 w-full resize-y rounded-md border border-[var(--line)] bg-white p-3 text-[14px] leading-6 outline-none placeholder:text-[var(--muted)]"
-            value={comment}
-            placeholder={labels.commentPlaceholder}
-            onChange={(event) => onComment(event.target.value)}
-          />
-          <button className="focus-ring mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-[var(--teal-strong)] px-4 py-3 text-[14px] font-semibold text-white shadow-sm shadow-[rgba(15,93,98,0.22)]">
-            <Send aria-hidden="true" size={18} />
-            {labels.submitReview}
-          </button>
-        </section>
+          </section>
+        ) : null}
       </aside>
     </div>
   );
 }
 
-function SupportCard({ labels }: { labels: Record<"quickCard" | "calmMode", string> }) {
+function SupportView({
+  copy: c,
+  focusMode,
+  onFocus
+}: {
+  copy: (typeof copy)[Locale];
+  focusMode: boolean;
+  onFocus: () => void;
+}) {
   return (
-    <section className="surface-panel overflow-hidden">
-      <div className="grid min-h-[540px] gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="p-6 md:p-8">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[var(--teal-tint)] text-[var(--teal-strong)]">
-              <LifeBuoy aria-hidden="true" />
-            </div>
-            <h3 className="text-[24px] font-semibold">{labels.quickCard}</h3>
-          </div>
+    <div className="support-grid">
+      <section className="section-intro">
+        <h2>{c.supportTitle}</h2>
+        <p>{c.supportIntro}</p>
+      </section>
 
-          <div className="communication-card">
-            <p>
-              Soc una persona autista. Ara mateix em costa parlar o respondre. Necessito uns minuts, un lloc tranquil o
-              contactar amb una persona de confiança.
-            </p>
-          </div>
+      <section className="panel communication-panel">
+        <LifeBuoy aria-hidden="true" size={30} />
+        <h3>{c.supportCard}</h3>
+        <blockquote>{c.supportMessage}</blockquote>
+        <button type="button" className="primary-action">
+          <MessageSquare aria-hidden="true" size={17} />
+          {c.openSupport}
+        </button>
+      </section>
 
-          <button className="focus-ring mt-6 rounded-md bg-[var(--teal-strong)] px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-[rgba(15,93,98,0.22)]">
-            {labels.calmMode}
+      <section className="panel focus-panel">
+        <Sparkles aria-hidden="true" size={30} />
+        <h3>{c.focusModeTitle}</h3>
+        <p>{c.focusModeBody}</p>
+        <button type="button" className="secondary-action" disabled={focusMode} onClick={onFocus}>
+          {focusMode ? c.focusOn : c.focus}
+        </button>
+      </section>
+
+      <section className="panel trusted-panel">
+        <HeartHandshake aria-hidden="true" size={30} />
+        <h3>{c.trustedContact}</h3>
+        <p>Tutor principal · Josep B.</p>
+        <button type="button" className="secondary-action">
+          {c.contact}
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function ProfilesView({ copy: c, locale }: { copy: (typeof copy)[Locale]; locale: Locale }) {
+  return (
+    <div className="profiles-grid">
+      <section className="section-intro">
+        <h2>{c.profilesTitle}</h2>
+        <p>{c.profilesIntro}</p>
+      </section>
+
+      <ProfileCard icon={UserRound} title={c.adultProfile} meta="Josep B. · pseudònim públic editable">
+        <p>{locale === "en" ? "Same account for web and mobile actions." : "Mateix compte per a accions web i mòbil."}</p>
+      </ProfileCard>
+
+      <ProfileCard icon={UsersRound} title={c.tutorProfile} meta="Compte principal">
+        <p>{c.childApproval}</p>
+      </ProfileCard>
+
+      <section className="panel child-flow-panel">
+        <PanelHeading title={c.childProfile} />
+        <div className="child-list child-list-large">
+          {childProfiles.map((profile) => (
+            <article key={profile.alias} className="child-chip">
+              <span className="avatar">{profile.alias.slice(0, 1)}</span>
+              <div>
+                <strong>{profile.alias}</strong>
+                <small>
+                  {profile.age} anys · {profile.state}
+                </small>
+              </div>
+            </article>
+          ))}
+          <button type="button" className="add-child">
+            <Plus aria-hidden="true" size={20} />
+            Afegir
           </button>
         </div>
+      </section>
 
-        <div className="calm-panel flex items-end p-6">
-          <div className="rounded-md bg-[rgba(255,255,255,0.88)] p-4 shadow-sm">
-            <p className="text-[13px] font-semibold text-[var(--teal-strong)]">Contacte de confiança</p>
-            <p className="mt-1 text-[20px] font-semibold">Tutor principal</p>
-            <p className="mt-2 text-[13px] text-[var(--muted)]">Visible només amb permisos del compte.</p>
-          </div>
+      <section className="panel sensory-profile-panel">
+        <PanelHeading title={c.sensoryProfile} />
+        <div className="preference-bars">
+          <PreferenceBar label={sensoryLabels[locale].noise} value={35} />
+          <PreferenceBar label={sensoryLabels[locale].density} value={28} />
+          <PreferenceBar label={sensoryLabels[locale].light} value={42} />
+          <PreferenceBar label={sensoryLabels[locale].wait} value={25} />
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
 
-function Profiles({
-  labels
-}: {
-  labels: Record<"childProfile" | "tutorReview" | "childDraft", string>;
-}) {
+function VerifiedView({ copy: c }: { copy: (typeof copy)[Locale] }) {
   return (
-    <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <article className="surface-panel p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[var(--sage)] text-[var(--teal-strong)]">
-            <UsersRound aria-hidden="true" size={23} />
-          </div>
-          <span className="rounded-md bg-[var(--teal-tint)] px-3 py-2 text-[12px] font-semibold text-[var(--teal-strong)]">
-            Tutor
-          </span>
-        </div>
-        <h3 className="mt-5 text-[22px] font-semibold">{labels.childProfile}</h3>
-        <p className="mt-3 text-[14px] leading-6 text-[var(--muted)]">
-          Perfil infantil tutelat dins el compte del tutor, sense email propi. Les valoracions queden pendents de
-          revisió abans d'enviar-se.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-2">
-          <span className="rounded-md border border-[var(--line)] bg-white px-3 py-2 text-[13px] font-semibold">
-            Àlies
-          </span>
-          <span className="rounded-md border border-[var(--line)] bg-white px-3 py-2 text-[13px] font-semibold">
-            Preferències sensorials
-          </span>
-          <span className="rounded-md border border-[var(--line)] bg-white px-3 py-2 text-[13px] font-semibold">
-            {labels.childDraft}
-          </span>
-        </div>
-        <button className="focus-ring mt-6 rounded-md bg-[var(--teal-strong)] px-4 py-3 text-[14px] font-semibold text-white">
-          {labels.tutorReview}
-        </button>
-      </article>
+    <div className="verified-grid">
+      <section className="section-intro">
+        <h2>{c.verifiedTitle}</h2>
+        <p>{c.verifiedIntro}</p>
+      </section>
 
-      <article className="surface-panel p-6">
-        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[var(--clay-tint)] text-[var(--clay)]">
-          <Heart aria-hidden="true" size={23} />
-        </div>
-        <h3 className="mt-5 text-[22px] font-semibold">Perfil sensorial</h3>
-        <p className="mt-3 text-[14px] leading-6 text-[var(--muted)]">
-          Preferències funcionals de soroll, llum, afluència, temperatura i espera. No es demana cap diagnòstic per
-          utilitzar l'aplicació.
-        </p>
-        <div className="mt-6 space-y-3">
-          <SensoryBar label="Soroll" value={2} tone="teal" />
-          <SensoryBar label="Llum" value={3} tone="sage" />
-          <SensoryBar label="Afluència" value={4} tone="clay" />
-        </div>
-      </article>
-    </section>
-  );
-}
-
-function VerifiedDirectory({
-  labels
-}: {
-  labels: Record<
-    | "professionalTrust"
-    | "verified"
-    | "verifiedStrip"
-    | "license"
-    | "registry"
-    | "privacy"
-    | "verificationQueue"
-    | "contact",
-    string
-  >;
-}) {
-  return (
-    <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="surface-panel p-5">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <div className="mb-3 flex items-center gap-2 text-[var(--teal-strong)]">
-              <ShieldCheck aria-hidden="true" size={21} />
-              <h3 className="text-[21px] font-semibold text-[var(--foreground)]">{labels.professionalTrust}</h3>
-            </div>
-            <p className="text-[14px] leading-6 text-[var(--muted)]">{labels.verifiedStrip}</p>
-          </div>
-          <span className="rounded-md bg-[var(--teal-tint)] px-3 py-2 text-[12px] font-semibold text-[var(--teal-strong)]">
-            {labels.verified}
-          </span>
-        </div>
-
+      <section className="verified-list">
         {professionals.map((professional) => (
-          <article key={professional.id} className="directory-row">
-            <img src={professional.photoPath} alt="" className="h-20 w-20 rounded-md object-cover" />
-            <div className="min-w-0">
-              <h4 className="text-[16px] font-semibold">{professional.professionalName}</h4>
-              <p className="mt-1 text-[13px] leading-5 text-[var(--muted)]">{professional.specialty}</p>
-              <p className="mt-3 text-[13px] font-semibold text-[var(--teal-strong)]">
-                {labels.license}: {professional.licenseNumber}
-              </p>
-              <p className="mt-1 text-[12px] text-[var(--muted)]">{professional.professionalCollege}</p>
-              <button className="focus-ring mt-3 rounded-md border border-[var(--teal-soft)] px-3 py-2 text-[13px] font-semibold text-[var(--teal-strong)]">
-                {labels.contact}
-              </button>
+          <article key={professional.id} className="panel verified-profile-card">
+            <span className="portrait">{professional.initials}</span>
+            <div>
+              <h3>{professional.name}</h3>
+              <p>{professional.role}</p>
+              <strong>
+                {c.license}: {professional.license}
+              </strong>
+              <span>{professional.college}</span>
+              <em>{professional.specialty}</em>
             </div>
+            <VerifiedBadge label={c.verified} />
+            <button type="button" className="secondary-action">
+              {c.contact}
+            </button>
           </article>
         ))}
-
-        <p className="mt-4 rounded-md bg-[var(--stone)] px-3 py-2 text-[12px] font-medium text-[var(--muted)]">
-          {labels.privacy}
-        </p>
-      </div>
-
-      <div className="surface-panel p-5">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <div className="mb-3 flex items-center gap-2 text-[var(--clay)]">
-              <Building2 aria-hidden="true" size={21} />
-              <h3 className="text-[21px] font-semibold text-[var(--foreground)]">Associacions i centres</h3>
-            </div>
-            <p className="text-[14px] leading-6 text-[var(--muted)]">{labels.verificationQueue}</p>
-          </div>
-          <span className="rounded-md bg-[var(--clay-tint)] px-3 py-2 text-[12px] font-semibold text-[var(--clay)]">
-            {labels.verified}
-          </span>
-        </div>
 
         {organizations.map((organization) => (
-          <article key={organization.id} className="directory-row">
-            <img src={organization.logoPath} alt="" className="h-20 w-20 rounded-md object-cover" />
-            <div className="min-w-0">
-              <h4 className="text-[16px] font-semibold">{organization.name}</h4>
-              <p className="mt-1 text-[13px] leading-5 text-[var(--muted)]">{organization.description}</p>
-              <p className="mt-3 text-[13px] font-semibold text-[var(--clay)]">
-                {labels.registry}: {organization.registryNumber}
-              </p>
-              <p className="mt-1 text-[12px] text-[var(--muted)]">{organization.city}</p>
-              <button className="focus-ring mt-3 rounded-md border border-[var(--line)] px-3 py-2 text-[13px] font-semibold text-[var(--foreground)]">
-                {labels.contact}
-              </button>
+          <article key={organization.id} className="panel verified-profile-card">
+            <span className="portrait entity">{organization.initials}</span>
+            <div>
+              <h3>{organization.name}</h3>
+              <p>{organization.city}</p>
+              <strong>
+                {c.registry}: {organization.registry}
+              </strong>
+              <span>{organization.description}</span>
             </div>
+            <VerifiedBadge label={c.verified} />
+            <button type="button" className="secondary-action">
+              {c.contact}
+            </button>
           </article>
         ))}
+      </section>
+
+      <aside className="panel evidence-panel">
+        <Lock aria-hidden="true" size={24} />
+        <h3>{c.privateEvidence}</h3>
+        <p>{c.verifiedIntro}</p>
+      </aside>
+    </div>
+  );
+}
+
+function PanelHeading({
+  title,
+  action,
+  onAction
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="panel-heading">
+      <h3>{title}</h3>
+      {action ? (
+        <button type="button" onClick={onAction}>
+          {action}
+          <ChevronRight aria-hidden="true" size={16} />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function MapPanel({
+  title,
+  subtitle,
+  selectedPlace,
+  tall = false,
+  onSelectPlace,
+  onOpen
+}: {
+  title: string;
+  subtitle: string;
+  selectedPlace: Place;
+  tall?: boolean;
+  onSelectPlace: (id: string) => void;
+  onOpen?: () => void;
+}) {
+  const pinLayout = [
+    { left: "38%", top: "42%" },
+    { left: "58%", top: "31%" },
+    { left: "67%", top: "62%" }
+  ];
+
+  return (
+    <section className="panel map-panel" data-tall={tall}>
+      <div className="panel-heading">
+        <div>
+          <h3>{title}</h3>
+          <span>{subtitle}</span>
+        </div>
+        <div className="map-tools">
+          <button type="button" aria-label="Filtres">
+            <SlidersHorizontal aria-hidden="true" size={18} />
+          </button>
+          <button type="button" aria-label="Centrar mapa">
+            <LocateFixed aria-hidden="true" size={18} />
+          </button>
+          <button type="button" aria-label="Capes">
+            <Layers aria-hidden="true" size={18} />
+          </button>
+        </div>
       </div>
+      <div className="map-canvas" role="img" aria-label={title}>
+        <span className="map-region map-region-a" />
+        <span className="map-region map-region-b" />
+        <span className="map-region map-region-c" />
+        <span className="map-road map-road-a" />
+        <span className="map-road map-road-b" />
+        <span className="map-road map-road-c" />
+        <span className="map-water" />
+        {places.map((place, index) => (
+          <button
+            key={place.id}
+            type="button"
+            className="map-pin"
+            data-active={selectedPlace.id === place.id}
+            style={pinLayout[index]}
+            aria-label={place.name}
+            aria-pressed={selectedPlace.id === place.id}
+            onClick={() => onSelectPlace(place.id)}
+          />
+        ))}
+        <div className="current-status">
+          <span />
+          <div>
+            <small>Current status</small>
+            <strong>{selectedPlace.area}</strong>
+          </div>
+          <em>{selectedPlace.quietDb}</em>
+        </div>
+      </div>
+      {onOpen ? (
+        <button type="button" className="text-action" onClick={onOpen}>
+          Obrir mapa complet
+          <ChevronRight aria-hidden="true" size={16} />
+        </button>
+      ) : null}
     </section>
   );
 }
 
-function Amenity({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+function PlaceDetailCard({
+  copy: c,
+  locale,
+  place,
+  onContribute
+}: {
+  copy: (typeof copy)[Locale];
+  locale: Locale;
+  place: Place;
+  onContribute: () => void;
+}) {
   return (
-    <div className="flex items-center gap-3 text-[13px] font-medium text-[var(--muted)]">
-      <Icon aria-hidden="true" size={20} className="text-[var(--blue)]" />
-      {label}
+    <aside className="panel place-detail">
+      <PlaceSymbol large />
+      <h3>{place.name}</h3>
+      <p>
+        {place.area} · {place.city}
+      </p>
+      <div className="score-line">
+        <strong>{place.score.toFixed(1)}</strong>
+        <RatingStars value={5} />
+      </div>
+      <p>{place.description}</p>
+      <div className="metric-list">
+        {sensoryKeys.map((item, index) => (
+          <div key={item.key}>
+            <span>{sensoryLabels[locale][item.key]}</span>
+            <strong>{sensoryWords[locale][item.key][index]}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="detail-actions">
+        <button type="button" className="secondary-action">
+          <Bookmark aria-hidden="true" size={17} />
+          {c.favorite}
+        </button>
+        <button type="button" className="secondary-action">
+          <Flag aria-hidden="true" size={17} />
+          {c.reportPlace}
+        </button>
+      </div>
+      <button type="button" className="primary-action" onClick={onContribute}>
+        <Plus aria-hidden="true" size={17} />
+        {c.nav.contribute}
+      </button>
+    </aside>
+  );
+}
+
+function SensorySlider({
+  label,
+  low,
+  high,
+  word,
+  value,
+  onChange
+}: {
+  label: string;
+  low: string;
+  high: string;
+  word: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="report-slider">
+      <span>
+        <strong>{label}</strong>
+        <em>{word}</em>
+      </span>
+      <input type="range" min="1" max="5" value={value} onChange={(event) => onChange(Number(event.target.value))} />
+      <small>
+        <span>{low}</span>
+        <span>{high}</span>
+      </small>
+    </label>
+  );
+}
+
+function ProfileCard({
+  icon: Icon,
+  title,
+  meta,
+  children
+}: {
+  icon: LucideIcon;
+  title: string;
+  meta: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <article className="panel profile-card">
+      <Icon aria-hidden="true" size={28} />
+      <h3>{title}</h3>
+      <strong>{meta}</strong>
+      {children}
+    </article>
+  );
+}
+
+function PreferenceBar({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="preference-row">
+      <span>{label}</span>
+      <div>
+        <i style={{ width: `${value}%` }} />
+      </div>
     </div>
+  );
+}
+
+function VerifiedMiniCard({ title, meta, initials }: { title: string; meta: string; initials: string }) {
+  return (
+    <article className="verified-mini">
+      <span className="avatar">{initials}</span>
+      <strong>{title}</strong>
+      <small>{meta}</small>
+      <VerifiedBadge label="Verificat" />
+    </article>
+  );
+}
+
+function VerifiedBadge({ label }: { label: string }) {
+  return (
+    <span className="verified-badge">
+      <ShieldCheck aria-hidden="true" size={14} />
+      {label}
+    </span>
   );
 }
 
 function RatingStars({ value }: { value: number }) {
   return (
-    <div className="flex gap-0.5 text-[var(--amber)]">
+    <span className="rating-stars" aria-label={`${value}/5`}>
       {[1, 2, 3, 4, 5].map((star) => (
-        <Star
-          key={star}
-          aria-hidden="true"
-          size={18}
-          fill={star <= value ? "currentColor" : "transparent"}
-          className={star <= value ? "" : "text-[var(--line-strong)]"}
-        />
+        <Star key={star} aria-hidden="true" size={16} fill="currentColor" />
       ))}
-    </div>
+    </span>
   );
 }
 
-function DetailedSensoryIndicator({
-  label,
-  value,
-  tone,
-  Icon,
-  level
-}: {
-  label: string;
-  value: number;
-  tone: "teal" | "sage" | "clay" | "blue" | "amber";
-  Icon: LucideIcon;
-  level: string;
-}) {
+function PlaceSymbol({ large = false }: { large?: boolean }) {
   return (
-    <div className="sensory-indicator">
-      <Icon aria-hidden="true" size={18} />
-      <span>{label}</span>
-      <div className="sensory-spectrum" aria-hidden="true">
-        <div className={`sensory-marker sensory-marker-${tone}`} style={{ left: `${value * 20}%` }} />
-      </div>
-      <strong>{level}</strong>
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-r border-[var(--line)] px-3 last:border-r-0 first:pl-0 last:pr-0">
-      <p className="text-[12px] font-medium text-[var(--muted)]">{label}</p>
-      <p className="mt-1 text-[24px] font-semibold leading-none">{value}</p>
-    </div>
-  );
-}
-
-function SensoryBar({
-  label,
-  value,
-  tone
-}: {
-  label: string;
-  value: number;
-  tone: "teal" | "sage" | "clay" | "blue";
-}) {
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between gap-3">
-        <p className="text-[13px] font-semibold text-[var(--foreground)]">{label}</p>
-        <p className="text-[12px] font-semibold text-[var(--muted)]">{value}/5</p>
-      </div>
-      <div className="h-2 rounded-full bg-[var(--stone)]">
-        <div className={`sensory-fill sensory-fill-${tone}`} style={{ width: `${value * 20}%` }} />
-      </div>
-    </div>
+    <span className="place-symbol" data-large={large}>
+      <MapPin aria-hidden="true" size={large ? 28 : 20} />
+    </span>
   );
 }
