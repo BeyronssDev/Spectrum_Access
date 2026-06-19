@@ -42,6 +42,7 @@ dependencies:
   google_sign_in: ^7.2.0
   sign_in_with_apple: ^8.1.0
   image_picker: ^1.2.2
+  flutter_svg: ^2.2.3
 
 dev_dependencies:
   flutter_test:
@@ -64,6 +65,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/brand/accessibilitat-logo.svg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -2,7 +2,6 @@
 
 import {
   Accessibility,
-  BadgeCheck,
   BookOpen,
   Building2,
   Camera,
@@ -53,14 +52,14 @@ import {
 import { dictionary } from "./lib/i18n";
 import { organizations, places, professionals } from "./lib/mock-data";
 
-type AppView = "map" | "contributions" | "support" | "profiles" | "verified";
+type AppView = "home" | "consultation" | "contributions" | "support" | "profiles";
 
 const tabs: Array<{ id: AppView; icon: LucideIcon }> = [
-  { id: "map", icon: Map },
+  { id: "home", icon: SquareStack },
+  { id: "consultation", icon: Map },
   { id: "contributions", icon: Upload },
   { id: "support", icon: LifeBuoy },
-  { id: "profiles", icon: UsersRound },
-  { id: "verified", icon: BadgeCheck }
+  { id: "profiles", icon: UsersRound }
 ];
 
 const copy: Record<
@@ -113,15 +112,25 @@ const copy: Record<
     adaptedBathroom: string;
     quietZone: string;
     wifi: string;
+    homeTitle: string;
+    homeIntro: string;
+    quickActions: string;
+    nearbyMap: string;
+    draftContribution: string;
+    tutoredProfiles: string;
+    openConsultation: string;
+    openContribution: string;
+    openHelp: string;
+    openProfiles: string;
   }
 > = {
   ca: {
     workspace: {
-      map: "Mapa",
+      home: "Inici",
+      consultation: "Consulta",
       contributions: "Aportacions",
       support: "Targeta d'ajuda",
-      profiles: "Usuaris",
-      verified: "Directori verificat"
+      profiles: "Perfils"
     },
     status: "Sessió protegida",
     mapSubtitle: "Consulta llocs, desa favorits i revisa el context abans d'anar-hi.",
@@ -168,15 +177,25 @@ const copy: Record<
     rampAccess: "Accés amb rampa",
     adaptedBathroom: "Lavabo adaptat",
     quietZone: "Zona tranquil·la",
-    wifi: "Wi‑Fi"
+    wifi: "Wi‑Fi",
+    homeTitle: "El teu espai d'accessibilitat sensorial",
+    homeIntro: "Consulta llocs, prepara aportacions amb calma i accedeix ràpidament a ajuda, perfils i verificacions.",
+    quickActions: "Accions ràpides",
+    nearbyMap: "Mapa proper",
+    draftContribution: "Aportació pendent",
+    tutoredProfiles: "Perfils tutelats",
+    openConsultation: "Obrir consulta",
+    openContribution: "Aportar experiència",
+    openHelp: "Obrir ajuda",
+    openProfiles: "Gestionar perfils"
   },
   es: {
     workspace: {
-      map: "Mapa",
+      home: "Inicio",
+      consultation: "Consulta",
       contributions: "Aportaciones",
       support: "Tarjeta de ayuda",
-      profiles: "Usuarios",
-      verified: "Directorio verificado"
+      profiles: "Perfiles"
     },
     status: "Sesión protegida",
     mapSubtitle: "Consulta lugares, guarda favoritos y revisa el contexto antes de ir.",
@@ -223,15 +242,25 @@ const copy: Record<
     rampAccess: "Acceso con rampa",
     adaptedBathroom: "Baño adaptado",
     quietZone: "Zona tranquila",
-    wifi: "Wi‑Fi"
+    wifi: "Wi‑Fi",
+    homeTitle: "Tu espacio de accesibilidad sensorial",
+    homeIntro: "Consulta lugares, prepara aportaciones con calma y accede rápido a ayuda, perfiles y verificaciones.",
+    quickActions: "Acciones rápidas",
+    nearbyMap: "Mapa cercano",
+    draftContribution: "Aportación pendiente",
+    tutoredProfiles: "Perfiles tutelados",
+    openConsultation: "Abrir consulta",
+    openContribution: "Aportar experiencia",
+    openHelp: "Abrir ayuda",
+    openProfiles: "Gestionar perfiles"
   },
   en: {
     workspace: {
-      map: "Map",
+      home: "Home",
+      consultation: "Consult",
       contributions: "Contributions",
       support: "Help card",
-      profiles: "Users",
-      verified: "Verified directory"
+      profiles: "Profiles"
     },
     status: "Protected session",
     mapSubtitle: "Review places, save favorites and check context before going.",
@@ -278,7 +307,17 @@ const copy: Record<
     rampAccess: "Ramp access",
     adaptedBathroom: "Adapted bathroom",
     quietZone: "Quiet zone",
-    wifi: "Wi‑Fi"
+    wifi: "Wi‑Fi",
+    homeTitle: "Your sensory accessibility space",
+    homeIntro: "Review places, prepare contributions calmly and reach help, profiles and verification shortcuts fast.",
+    quickActions: "Quick actions",
+    nearbyMap: "Nearby map",
+    draftContribution: "Pending contribution",
+    tutoredProfiles: "Tutored profiles",
+    openConsultation: "Open consult",
+    openContribution: "Share experience",
+    openHelp: "Open help",
+    openProfiles: "Manage profiles"
   }
 };
 
@@ -304,7 +343,7 @@ const sensoryScores = [
 
 export function PlatformApp() {
   const [locale, setLocale] = useState<Locale>("ca");
-  const [activeView, setActiveView] = useState<AppView>("map");
+  const [activeView, setActiveView] = useState<AppView>("home");
   const [selectedPlaceId, setSelectedPlaceId] = useState(places[0]?.id ?? "");
   const [query, setQuery] = useState("");
   const [pendingFiles, setPendingFiles] = useState<string[]>([]);
@@ -340,9 +379,7 @@ export function PlatformApp() {
       <header className="topbar border-b border-[var(--line)]">
         <div className="topbar-inner mx-auto grid max-w-[1520px] gap-4 px-4 py-4 xl:grid-cols-[220px_minmax(320px,1fr)_auto_auto_auto] xl:items-center xl:px-6">
           <div className="flex items-center gap-3">
-            <div className="brand-mark">
-              <Map aria-hidden="true" size={23} />
-            </div>
+            <OfficialLogoMark />
             <div>
               <h1 className="text-[22px] font-semibold leading-tight tracking-normal text-[var(--teal-strong)]">
                 {t.appName}
@@ -390,7 +427,11 @@ export function PlatformApp() {
 
       <div className="mx-auto grid min-w-0 max-w-[1520px] gap-0 px-4 lg:grid-cols-[190px_minmax(0,1fr)] xl:px-6">
         <aside className="left-rail min-w-0 border-r border-[var(--line)] bg-[var(--panel)] lg:min-h-[calc(100vh-81px)]">
-          <nav aria-label="Navegació principal" className="flex max-w-full gap-2 overflow-x-auto p-4 lg:flex-col lg:overflow-visible">
+          <nav
+            aria-label="Navegació principal"
+            className="primary-nav-scroll flex max-w-full gap-2 overflow-x-auto p-4 lg:flex-col lg:overflow-visible"
+            style={{ scrollbarWidth: "none" }}
+          >
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeView === tab.id;
@@ -399,11 +440,11 @@ export function PlatformApp() {
                   key={tab.id}
                   className={`focus-ring nav-item ${isActive ? "nav-item-active" : ""}`}
                   onClick={() => setActiveView(tab.id)}
-                  title={t[tab.id]}
+                  title={c.workspace[tab.id]}
                   aria-pressed={isActive}
                 >
                   <Icon aria-hidden="true" size={20} />
-                  <span>{t[tab.id]}</span>
+                  <span>{c.workspace[tab.id]}</span>
                 </button>
               );
             })}
@@ -435,7 +476,17 @@ export function PlatformApp() {
         </aside>
 
         <section className="min-w-0 py-4 pl-0 lg:pl-4">
-          {activeView === "map" && (
+          {activeView === "home" && (
+            <HomeDashboard
+              locale={locale}
+              selectedPlace={selectedPlace}
+              onNavigate={setActiveView}
+              onToggleDarkMode={() => setIsDarkMode((value) => !value)}
+              isDarkMode={isDarkMode}
+            />
+          )}
+
+          {activeView === "consultation" && (
             <MapWorkspace
               locale={locale}
               selectedPlace={selectedPlace}
@@ -452,11 +503,11 @@ export function PlatformApp() {
               onComment={setComment}
               onRating={setRating}
               onAnonymous={setAnonymous}
-              onOpenVerified={() => setActiveView("verified")}
+              onOpenVerified={() => setActiveView("profiles")}
             />
           )}
 
-          {activeView !== "map" && (
+          {activeView !== "home" && activeView !== "consultation" && (
             <>
               <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
@@ -501,34 +552,191 @@ export function PlatformApp() {
               {activeView === "support" && <SupportCard labels={{ quickCard: t.quickCard, calmMode: t.calmMode }} />}
 
               {activeView === "profiles" && (
-                <Profiles
-                  labels={{
-                    childProfile: t.childProfile,
-                    tutorReview: t.tutorReview,
-                    childDraft: c.childDraft
-                  }}
-                />
-              )}
-
-              {activeView === "verified" && (
-                <VerifiedDirectory
-                  labels={{
-                    professionalTrust: t.professionalTrust,
-                    verified: t.verified,
-                    verifiedStrip: c.verifiedStrip,
-                    license: c.license,
-                    registry: c.registry,
-                    privacy: c.privacy,
-                    verificationQueue: c.verificationQueue,
-                    contact: c.contact
-                  }}
-                />
+                <div className="space-y-5">
+                  <Profiles
+                    labels={{
+                      childProfile: t.childProfile,
+                      tutorReview: t.tutorReview,
+                      childDraft: c.childDraft
+                    }}
+                  />
+                  <VerifiedDirectory
+                    labels={{
+                      professionalTrust: t.professionalTrust,
+                      verified: t.verified,
+                      verifiedStrip: c.verifiedStrip,
+                      license: c.license,
+                      registry: c.registry,
+                      privacy: c.privacy,
+                      verificationQueue: c.verificationQueue,
+                      contact: c.contact
+                    }}
+                  />
+                </div>
               )}
             </>
           )}
         </section>
       </div>
     </main>
+  );
+}
+
+function OfficialLogoMark({ size = 46 }: { size?: number }) {
+  return (
+    <img
+      src="/brand/accessibilitat-logo.svg"
+      alt=""
+      className="official-logo-mark"
+      style={{ height: size, width: size }}
+    />
+  );
+}
+
+function HomeDashboard({
+  locale,
+  selectedPlace,
+  isDarkMode,
+  onNavigate,
+  onToggleDarkMode
+}: {
+  locale: Locale;
+  selectedPlace: Place;
+  isDarkMode: boolean;
+  onNavigate: (view: AppView) => void;
+  onToggleDarkMode: () => void;
+}) {
+  const c = copy[locale];
+  const quickActions: Array<{ label: string; helper: string; icon: LucideIcon; view: AppView }> = [
+    { label: c.workspace.consultation, helper: c.openConsultation, icon: Map, view: "consultation" },
+    { label: c.workspace.contributions, helper: c.openContribution, icon: Upload, view: "contributions" },
+    { label: c.workspace.support, helper: c.openHelp, icon: LifeBuoy, view: "support" },
+    { label: c.workspace.profiles, helper: c.openProfiles, icon: UsersRound, view: "profiles" }
+  ];
+
+  return (
+    <div className="home-dashboard">
+      <section className="home-hero surface-panel">
+        <div className="flex items-start gap-4">
+          <OfficialLogoMark size={58} />
+          <div className="min-w-0">
+            <h2>{c.homeTitle}</h2>
+            <p>{c.homeIntro}</p>
+          </div>
+        </div>
+        <div className="home-status-row">
+          <span>
+            <ShieldCheck aria-hidden="true" size={16} />
+            {c.status}
+          </span>
+          <button className="focus-ring" onClick={onToggleDarkMode}>
+            {isDarkMode ? <Sun aria-hidden="true" size={16} /> : <Moon aria-hidden="true" size={16} />}
+            {isDarkMode ? c.lightMode : c.darkMode}
+          </button>
+        </div>
+      </section>
+
+      <section className="surface-panel home-section">
+        <div className="section-heading">
+          <h3>{c.quickActions}</h3>
+        </div>
+        <div className="quick-action-grid">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button key={action.view} className="focus-ring quick-action" onClick={() => onNavigate(action.view)}>
+                <Icon aria-hidden="true" size={22} />
+                <span>
+                  <strong>{action.label}</strong>
+                  <small>{action.helper}</small>
+                </span>
+                <ChevronRight aria-hidden="true" size={16} />
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="surface-panel home-map-card">
+        <div className="section-heading">
+          <h3>{c.nearbyMap}</h3>
+          <button className="focus-ring text-link" onClick={() => onNavigate("consultation")}>
+            {c.openConsultation}
+          </button>
+        </div>
+        <div className="home-map-preview">
+          <div className="map-block map-block-a" />
+          <div className="map-block map-block-c" />
+          <div className="map-road map-road-main" />
+          <div className="map-road map-road-cross" />
+          <div className="map-green map-green-a" />
+          <button className="map-pin map-pin-active" title={selectedPlace.name}>
+            <MapPin aria-hidden="true" size={18} />
+          </button>
+        </div>
+        <div className="home-place-summary">
+          <div>
+            <h4>{selectedPlace.name}</h4>
+            <p>
+              {selectedPlace.city} · {categoryLabels[selectedPlace.category][locale]}
+            </p>
+          </div>
+          <strong>{selectedPlace.averageScore.toFixed(1)}</strong>
+        </div>
+      </section>
+
+      <section className="surface-panel home-section home-draft-card">
+        <div className="section-heading">
+          <h3>{c.draftContribution}</h3>
+          <button className="focus-ring text-link" onClick={() => onNavigate("contributions")}>
+            {c.openContribution}
+          </button>
+        </div>
+        <div className="home-draft-grid">
+          <div className="home-draft-upload">
+            <ImageIcon aria-hidden="true" size={24} />
+            <span>{c.uploadDrop}</span>
+          </div>
+          <div>
+            <p>{c.commentPlaceholder}</p>
+            <RatingStars value={3} />
+          </div>
+        </div>
+      </section>
+
+      <section className="surface-panel home-section">
+        <div className="section-heading">
+          <h3>{c.workspace.support}</h3>
+          <button className="focus-ring text-link" onClick={() => onNavigate("support")}>
+            {c.openHelp}
+          </button>
+        </div>
+        <p className="home-help-copy">
+          Soc una persona autista. Ara mateix em costa parlar o respondre. Necessito uns minuts o un lloc tranquil.
+        </p>
+      </section>
+
+      <section className="surface-panel home-section home-profile-card">
+        <div className="section-heading">
+          <h3>{c.tutoredProfiles}</h3>
+          <button className="focus-ring text-link" onClick={() => onNavigate("profiles")}>
+            {c.openProfiles}
+          </button>
+        </div>
+        <div className="home-profile-grid">
+          <div>
+            <UsersRound aria-hidden="true" size={20} />
+            <strong>{c.childDraft}</strong>
+            <span>{c.profileSummary}</span>
+          </div>
+          <div>
+            <ShieldCheck aria-hidden="true" size={20} />
+            <strong>{c.verifiedProfessionals}</strong>
+            <span>{professionals[0]?.licenseNumber} · {organizations[0]?.registryNumber}</span>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
