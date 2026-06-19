@@ -2,7 +2,9 @@
 
 import {
   Accessibility,
+  Bell,
   BookOpen,
+  Bookmark,
   Building2,
   Camera,
   CheckCircle2,
@@ -11,8 +13,10 @@ import {
   DoorOpen,
   Filter,
   Flag,
+  Globe2,
   Hand,
   Heart,
+  Home,
   Image as ImageIcon,
   Languages,
   Layers,
@@ -52,14 +56,15 @@ import {
 import { dictionary } from "./lib/i18n";
 import { organizations, places, professionals } from "./lib/mock-data";
 
-type AppView = "home" | "consultation" | "contributions" | "support" | "profiles";
+type AppView = "home" | "consultation" | "contributions" | "support" | "profiles" | "verified";
 
 const tabs: Array<{ id: AppView; icon: LucideIcon }> = [
-  { id: "home", icon: SquareStack },
-  { id: "consultation", icon: Map },
+  { id: "home", icon: Home },
+  { id: "consultation", icon: Search },
   { id: "contributions", icon: Upload },
-  { id: "support", icon: LifeBuoy },
-  { id: "profiles", icon: UsersRound }
+  { id: "support", icon: CircleHelp },
+  { id: "profiles", icon: UsersRound },
+  { id: "verified", icon: ShieldCheck }
 ];
 
 const copy: Record<
@@ -129,8 +134,9 @@ const copy: Record<
       home: "Inici",
       consultation: "Consulta",
       contributions: "Aportacions",
-      support: "Targeta d'ajuda",
-      profiles: "Perfils"
+      support: "Ajuda",
+      profiles: "Perfils",
+      verified: "Verificats"
     },
     status: "Sessió protegida",
     mapSubtitle: "Consulta llocs, desa favorits i revisa el context abans d'anar-hi.",
@@ -194,8 +200,9 @@ const copy: Record<
       home: "Inicio",
       consultation: "Consulta",
       contributions: "Aportaciones",
-      support: "Tarjeta de ayuda",
-      profiles: "Perfiles"
+      support: "Ayuda",
+      profiles: "Perfiles",
+      verified: "Verificados"
     },
     status: "Sesión protegida",
     mapSubtitle: "Consulta lugares, guarda favoritos y revisa el contexto antes de ir.",
@@ -259,8 +266,9 @@ const copy: Record<
       home: "Home",
       consultation: "Consult",
       contributions: "Contributions",
-      support: "Help card",
-      profiles: "Profiles"
+      support: "Help",
+      profiles: "Profiles",
+      verified: "Verified"
     },
     status: "Protected session",
     mapSubtitle: "Review places, save favorites and check context before going.",
@@ -372,209 +380,170 @@ export function PlatformApp() {
   const selectedPlace = places.find((place) => place.id === selectedPlaceId) ?? places[0];
 
   return (
-    <main
-      data-theme={isDarkMode ? "dark" : "light"}
-      className="app-shell min-h-screen bg-[var(--background)] text-[var(--foreground)]"
-    >
-      <header className="topbar border-b border-[var(--line)]">
-        <div className="topbar-inner mx-auto grid max-w-[1520px] gap-4 px-4 py-4 xl:grid-cols-[220px_minmax(320px,1fr)_auto_auto_auto] xl:items-center xl:px-6">
-          <div className="flex items-center gap-3">
-            <OfficialLogoMark />
-            <div>
-              <h1 className="text-[22px] font-semibold leading-tight tracking-normal text-[var(--teal-strong)]">
-                {t.appName}
-              </h1>
-            </div>
+    <main data-theme={isDarkMode ? "dark" : "light"} className="app-shell reference-app-shell">
+      <div className="reference-frame">
+        <aside className="reference-sidebar">
+          <div className="reference-brand">
+            <OfficialLogoMark size={42} />
+            <h1>{t.appName}</h1>
           </div>
 
-          <label className="focus-within-ring top-search flex min-h-12 items-center gap-3 rounded-md border border-[var(--line)] bg-white px-4">
-            <Search aria-hidden="true" size={19} className="shrink-0 text-[var(--muted)]" />
-            <input
-              className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--muted)]"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={dictionary[locale].search}
-            />
-          </label>
-
-          <button className="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-white px-4 text-[14px] font-semibold text-[var(--foreground)]">
-            <SlidersHorizontal aria-hidden="true" size={17} />
-            {c.filters}
-          </button>
-
-          <label className="focus-within-ring inline-flex min-h-12 items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-[14px] font-medium">
-            <Languages aria-hidden="true" size={17} className="text-[var(--muted)]" />
-            <select
-              className="min-w-24 bg-transparent text-[14px] outline-none"
-              value={locale}
-              aria-label="Idioma"
-              onChange={(event) => setLocale(event.target.value as Locale)}
-            >
-              {Object.entries(localeNames).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <button className="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[var(--teal-strong)] px-4 text-[14px] font-semibold text-white shadow-sm shadow-[rgba(15,93,98,0.22)]">
-            <UserRound aria-hidden="true" size={17} />
-            Apple / Google
-          </button>
-        </div>
-      </header>
-
-      <div className="mx-auto grid min-w-0 max-w-[1520px] gap-0 px-4 lg:grid-cols-[190px_minmax(0,1fr)] xl:px-6">
-        <aside className="left-rail min-w-0 border-r border-[var(--line)] bg-[var(--panel)] lg:min-h-[calc(100vh-81px)]">
-          <nav
-            aria-label="Navegació principal"
-            className="primary-nav-scroll flex max-w-full gap-2 overflow-x-auto p-4 lg:flex-col lg:overflow-visible"
-            style={{ scrollbarWidth: "none" }}
-          >
+          <nav aria-label="Navegació principal" className="reference-nav">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeView === tab.id;
               return (
                 <button
                   key={tab.id}
-                  className={`focus-ring nav-item ${isActive ? "nav-item-active" : ""}`}
+                  className={`focus-ring reference-nav-item ${isActive ? "reference-nav-item-active" : ""}`}
                   onClick={() => setActiveView(tab.id)}
-                  title={c.workspace[tab.id]}
                   aria-pressed={isActive}
                 >
-                  <Icon aria-hidden="true" size={20} />
+                  <Icon aria-hidden="true" size={22} />
                   <span>{c.workspace[tab.id]}</span>
                 </button>
               );
             })}
           </nav>
 
-          <div className="hidden px-4 pb-5 lg:mt-auto lg:block">
-            <section className="account-card">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--teal)] text-white">
-                <UserRound aria-hidden="true" size={20} />
+          <div className="reference-sidebar-footer">
+            <section className="reference-user-card">
+              <span className="reference-avatar">JB</span>
+              <div>
+                <strong>Josep B.</strong>
+                <span>Tutor</span>
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-[14px] font-semibold">Laia M.</p>
-                <p className="truncate text-[12px] text-[var(--muted)]">Usuària</p>
-              </div>
-              <ChevronRight aria-hidden="true" size={15} className="ml-auto text-[var(--muted)]" />
+              <ChevronRight aria-hidden="true" size={15} />
             </section>
-
-            <button
-              className="focus-ring mode-toggle"
-              aria-pressed={isDarkMode}
-              aria-label={isDarkMode ? c.lightMode : c.darkMode}
-              onClick={() => setIsDarkMode((value) => !value)}
-            >
-              {isDarkMode ? <Sun aria-hidden="true" size={17} /> : <Moon aria-hidden="true" size={17} />}
-              <span>{isDarkMode ? c.lightMode : c.darkMode}</span>
-              <span className="mode-switch" data-on={isDarkMode} />
-            </button>
+            <section className="reference-account-status">
+              <ShieldCheck aria-hidden="true" size={24} />
+              <div>
+                <span>Estat del compte</span>
+                <strong>Verificat</strong>
+              </div>
+            </section>
           </div>
         </aside>
 
-        <section className="min-w-0 py-4 pl-0 lg:pl-4">
+        <section className="reference-main">
+          <header className="reference-header">
+            <h2>{c.workspace[activeView]}</h2>
+            <div className="reference-header-actions">
+              <span className="reference-ok">
+                <span aria-hidden="true" />
+                Tot en ordre
+              </span>
+              <label className="focus-within-ring reference-select">
+                <Globe2 aria-hidden="true" size={18} />
+                <select
+                  value={locale}
+                  aria-label="Idioma"
+                  onChange={(event) => setLocale(event.target.value as Locale)}
+                >
+                  {Object.entries(localeNames).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="focus-ring reference-mode"
+                aria-pressed={isDarkMode}
+                onClick={() => setIsDarkMode((value) => !value)}
+              >
+                {isDarkMode ? <Sun aria-hidden="true" size={18} /> : <Moon aria-hidden="true" size={18} />}
+                <span>{isDarkMode ? c.lightMode : c.darkMode}</span>
+                <span className="reference-switch" data-on={isDarkMode} />
+              </button>
+              <button className="focus-ring reference-icon-button" aria-label="Notificacions">
+                <Bell aria-hidden="true" size={23} />
+              </button>
+            </div>
+          </header>
+
           {activeView === "home" && (
-            <HomeDashboard
-              locale={locale}
-              selectedPlace={selectedPlace}
-              onNavigate={setActiveView}
-              onToggleDarkMode={() => setIsDarkMode((value) => !value)}
-              isDarkMode={isDarkMode}
-            />
+            <HomeDashboard locale={locale} selectedPlace={selectedPlace} onNavigate={setActiveView} />
           )}
 
           {activeView === "consultation" && (
-            <MapWorkspace
-              locale={locale}
-              selectedPlace={selectedPlace}
-              selectedPlaceId={selectedPlace.id}
-              filteredPlaces={filteredPlaces}
-              experienceOpen={experienceOpen}
-              files={pendingFiles}
-              comment={comment}
-              rating={rating}
-              anonymous={anonymous}
-              onSelectPlace={setSelectedPlaceId}
-              onToggleExperience={() => setExperienceOpen((value) => !value)}
-              onFiles={(files) => setPendingFiles(files)}
-              onComment={setComment}
-              onRating={setRating}
-              onAnonymous={setAnonymous}
-              onOpenVerified={() => setActiveView("profiles")}
-            />
+            <div className="reference-view-panel">
+              <MapWorkspace
+                locale={locale}
+                selectedPlace={selectedPlace}
+                selectedPlaceId={selectedPlace.id}
+                filteredPlaces={filteredPlaces}
+                experienceOpen={experienceOpen}
+                files={pendingFiles}
+                comment={comment}
+                rating={rating}
+                anonymous={anonymous}
+                onSelectPlace={setSelectedPlaceId}
+                onToggleExperience={() => setExperienceOpen((value) => !value)}
+                onFiles={(files) => setPendingFiles(files)}
+                onComment={setComment}
+                onRating={setRating}
+                onAnonymous={setAnonymous}
+                onOpenVerified={() => setActiveView("verified")}
+              />
+            </div>
           )}
 
-          {activeView !== "home" && activeView !== "consultation" && (
-            <>
-              <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h2 className="text-[28px] font-semibold leading-tight text-[var(--foreground)]">
-                    {c.workspace[activeView]}
-                  </h2>
-                  <p className="mt-1 max-w-2xl text-[14px] leading-6 text-[var(--muted)]">{c.profileSummary}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {filtersByLocale(locale).map((filter) => (
-                    <button
-                      key={filter}
-                      className="focus-ring inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 py-2 text-[13px] font-semibold text-[var(--foreground)]"
-                    >
-                      <Filter aria-hidden="true" size={15} />
-                      {filter}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {activeView === "contributions" && (
+            <div className="reference-view-panel">
+              <Contributions
+                files={pendingFiles}
+                comment={comment}
+                placeName={selectedPlace.name}
+                locale={locale}
+                onFiles={(files) => setPendingFiles(files)}
+                onComment={setComment}
+                labels={{
+                  uploadImage: t.uploadImage,
+                  addComment: t.addComment,
+                  pendingModeration: t.pendingModeration,
+                  submitReview: t.submitReview,
+                  uploadDrop: c.uploadDrop,
+                  commentPlaceholder: c.commentPlaceholder,
+                  savedDraft: c.savedDraft
+                }}
+              />
+            </div>
+          )}
 
-              {activeView === "contributions" && (
-                <Contributions
-                  files={pendingFiles}
-                  comment={comment}
-                  placeName={selectedPlace.name}
-                  locale={locale}
-                  onFiles={(files) => setPendingFiles(files)}
-                  onComment={setComment}
-                  labels={{
-                    uploadImage: t.uploadImage,
-                    addComment: t.addComment,
-                    pendingModeration: t.pendingModeration,
-                    submitReview: t.submitReview,
-                    uploadDrop: c.uploadDrop,
-                    commentPlaceholder: c.commentPlaceholder,
-                    savedDraft: c.savedDraft
-                  }}
-                />
-              )}
+          {activeView === "support" && (
+            <div className="reference-view-panel">
+              <SupportCard labels={{ quickCard: t.quickCard, calmMode: t.calmMode }} />
+            </div>
+          )}
 
-              {activeView === "support" && <SupportCard labels={{ quickCard: t.quickCard, calmMode: t.calmMode }} />}
+          {activeView === "profiles" && (
+            <div className="reference-view-panel">
+              <Profiles
+                labels={{
+                  childProfile: t.childProfile,
+                  tutorReview: t.tutorReview,
+                  childDraft: c.childDraft
+                }}
+              />
+            </div>
+          )}
 
-              {activeView === "profiles" && (
-                <div className="space-y-5">
-                  <Profiles
-                    labels={{
-                      childProfile: t.childProfile,
-                      tutorReview: t.tutorReview,
-                      childDraft: c.childDraft
-                    }}
-                  />
-                  <VerifiedDirectory
-                    labels={{
-                      professionalTrust: t.professionalTrust,
-                      verified: t.verified,
-                      verifiedStrip: c.verifiedStrip,
-                      license: c.license,
-                      registry: c.registry,
-                      privacy: c.privacy,
-                      verificationQueue: c.verificationQueue,
-                      contact: c.contact
-                    }}
-                  />
-                </div>
-              )}
-            </>
+          {activeView === "verified" && (
+            <div className="reference-view-panel">
+              <VerifiedDirectory
+                labels={{
+                  professionalTrust: t.professionalTrust,
+                  verified: t.verified,
+                  verifiedStrip: c.verifiedStrip,
+                  license: c.license,
+                  registry: c.registry,
+                  privacy: c.privacy,
+                  verificationQueue: c.verificationQueue,
+                  contact: c.contact
+                }}
+              />
+            </div>
           )}
         </section>
       </div>
@@ -596,148 +565,161 @@ function OfficialLogoMark({ size = 46 }: { size?: number }) {
 function HomeDashboard({
   locale,
   selectedPlace,
-  isDarkMode,
-  onNavigate,
-  onToggleDarkMode
+  onNavigate
 }: {
   locale: Locale;
   selectedPlace: Place;
-  isDarkMode: boolean;
   onNavigate: (view: AppView) => void;
-  onToggleDarkMode: () => void;
 }) {
   const c = copy[locale];
-  const quickActions: Array<{ label: string; helper: string; icon: LucideIcon; view: AppView }> = [
-    { label: c.workspace.consultation, helper: c.openConsultation, icon: Map, view: "consultation" },
-    { label: c.workspace.contributions, helper: c.openContribution, icon: Upload, view: "contributions" },
-    { label: c.workspace.support, helper: c.openHelp, icon: LifeBuoy, view: "support" },
-    { label: c.workspace.profiles, helper: c.openProfiles, icon: UsersRound, view: "profiles" }
+  const savedPlaces = [
+    { name: "Parc de la Ciutadella", meta: "Barcelona · 800 m", score: "7,5", tone: "green" },
+    { name: "Biblioteca Central", meta: "Barcelona · 1,2 km", score: "6,0", tone: "amber" },
+    { name: "Centre Comercial Diagonal", meta: "Barcelona · 1,8 km", score: "8,0", tone: "green" }
   ];
 
   return (
-    <div className="home-dashboard">
-      <section className="home-hero surface-panel">
-        <div className="flex items-start gap-4">
-          <OfficialLogoMark size={58} />
-          <div className="min-w-0">
-            <h2>{c.homeTitle}</h2>
-            <p>{c.homeIntro}</p>
-          </div>
-        </div>
-        <div className="home-status-row">
-          <span>
-            <ShieldCheck aria-hidden="true" size={16} />
-            {c.status}
-          </span>
-          <button className="focus-ring" onClick={onToggleDarkMode}>
-            {isDarkMode ? <Sun aria-hidden="true" size={16} /> : <Moon aria-hidden="true" size={16} />}
-            {isDarkMode ? c.lightMode : c.darkMode}
-          </button>
-        </div>
-      </section>
-
-      <section className="surface-panel home-section">
-        <div className="section-heading">
-          <h3>{c.quickActions}</h3>
-        </div>
-        <div className="quick-action-grid">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button key={action.view} className="focus-ring quick-action" onClick={() => onNavigate(action.view)}>
-                <Icon aria-hidden="true" size={22} />
-                <span>
-                  <strong>{action.label}</strong>
-                  <small>{action.helper}</small>
-                </span>
-                <ChevronRight aria-hidden="true" size={16} />
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="surface-panel home-map-card">
-        <div className="section-heading">
+    <div className="reference-home-grid">
+      <section className="reference-card reference-map-card">
+        <div className="reference-card-heading">
           <h3>{c.nearbyMap}</h3>
-          <button className="focus-ring text-link" onClick={() => onNavigate("consultation")}>
-            {c.openConsultation}
+          <button className="focus-ring reference-arrow-button" onClick={() => onNavigate("consultation")} aria-label="Obre el mapa complet">
+            <ChevronRight aria-hidden="true" size={20} />
           </button>
         </div>
-        <div className="home-map-preview">
-          <div className="map-block map-block-a" />
-          <div className="map-block map-block-c" />
-          <div className="map-road map-road-main" />
-          <div className="map-road map-road-cross" />
-          <div className="map-green map-green-a" />
-          <button className="map-pin map-pin-active" title={selectedPlace.name}>
-            <MapPin aria-hidden="true" size={18} />
-          </button>
+        <ReferenceMap />
+        <button className="focus-ring reference-card-link" onClick={() => onNavigate("consultation")}>
+          Obre el mapa complet <ChevronRight aria-hidden="true" size={18} />
+        </button>
+      </section>
+
+      <section className="reference-card reference-draft-card">
+        <div className="reference-card-heading">
+          <h3>Esborrany pendent</h3>
+          <span className="reference-count-pill">1</span>
         </div>
-        <div className="home-place-summary">
-          <div>
-            <h4>{selectedPlace.name}</h4>
-            <p>
-              {selectedPlace.city} · {categoryLabels[selectedPlace.category][locale]}
-            </p>
+        <div className="reference-draft-body">
+          <img src="/media/reference-cafe.png" alt="" />
+          <div className="reference-draft-copy">
+            <h4>Cafeteria Mar Blau</h4>
+            <p>Avinguda del Mar, 25 · Barcelona</p>
+            <span><ClockIcon /> Creat: 18/06/2025</span>
+            <span><EditIcon /> En revisió del tutor</span>
           </div>
-          <strong>{selectedPlace.averageScore.toFixed(1)}</strong>
+        </div>
+        <button className="focus-ring reference-primary-button" onClick={() => onNavigate("contributions")}>
+          Continuar esborrany
+        </button>
+        <button className="focus-ring reference-card-link" onClick={() => onNavigate("contributions")}>
+          Veure tots els esborranys <ChevronRight aria-hidden="true" size={18} />
+        </button>
+      </section>
+
+      <section className="reference-card reference-saved-card">
+        <div className="reference-card-heading">
+          <h3><Bookmark aria-hidden="true" size={20} /> Llocs desats</h3>
+        </div>
+        <div className="reference-saved-list">
+          {savedPlaces.map((place, index) => (
+            <button key={place.name} className="focus-ring reference-saved-row" onClick={() => onNavigate("consultation")}>
+              <img src="/media/reference-place-thumb.png" alt="" />
+              <span>
+                <strong>{place.name}</strong>
+                <small>{place.meta}</small>
+              </span>
+              <em data-tone={place.tone}>{place.score}</em>
+              <ChevronRight aria-hidden="true" size={17} />
+            </button>
+          ))}
+        </div>
+        <button className="focus-ring reference-card-link" onClick={() => onNavigate("consultation")}>
+          Veure tots els desats <ChevronRight aria-hidden="true" size={18} />
+        </button>
+      </section>
+
+      <section className="reference-card reference-trust-card">
+        <div className="reference-card-heading">
+          <h3>Confiança · Professionals i entitats verificades</h3>
+          <button className="focus-ring reference-card-link compact" onClick={() => onNavigate("verified")}>
+            Veure tots <ChevronRight aria-hidden="true" size={18} />
+          </button>
+        </div>
+        <div className="reference-trust-grid">
+          <TrustMiniCard kind="person" title="Marta Gómez" subtitle="Psicòloga" meta="Col. 47145" />
+          <TrustMiniCard kind="org" title="Centre TEA Catalunya" subtitle="Entitat" meta="Reg. E-12345" />
+          <TrustMiniCard kind="org" title="Associació TEA Vallès" subtitle="Entitat" meta="Reg. E-98765" />
         </div>
       </section>
 
-      <section className="surface-panel home-section home-draft-card">
-        <div className="section-heading">
-          <h3>{c.draftContribution}</h3>
-          <button className="focus-ring text-link" onClick={() => onNavigate("contributions")}>
-            {c.openContribution}
-          </button>
-        </div>
-        <div className="home-draft-grid">
-          <div className="home-draft-upload">
-            <ImageIcon aria-hidden="true" size={24} />
-            <span>{c.uploadDrop}</span>
-          </div>
+      <section className="reference-card reference-help-card">
+        <div className="reference-help-copy">
           <div>
-            <p>{c.commentPlaceholder}</p>
-            <RatingStars value={3} />
+            <h3><CircleHelp aria-hidden="true" size={22} /> Targeta d'ajuda</h3>
+            <p>Necessites suport o tens una crisi sensorial?</p>
+            <p>Utilitza la targeta per comunicar el que necessites de forma ràpida i clara.</p>
           </div>
-        </div>
-      </section>
-
-      <section className="surface-panel home-section">
-        <div className="section-heading">
-          <h3>{c.workspace.support}</h3>
-          <button className="focus-ring text-link" onClick={() => onNavigate("support")}>
-            {c.openHelp}
-          </button>
-        </div>
-        <p className="home-help-copy">
-          Soc una persona autista. Ara mateix em costa parlar o respondre. Necessito uns minuts o un lloc tranquil.
-        </p>
-      </section>
-
-      <section className="surface-panel home-section home-profile-card">
-        <div className="section-heading">
-          <h3>{c.tutoredProfiles}</h3>
-          <button className="focus-ring text-link" onClick={() => onNavigate("profiles")}>
-            {c.openProfiles}
-          </button>
-        </div>
-        <div className="home-profile-grid">
-          <div>
-            <UsersRound aria-hidden="true" size={20} />
-            <strong>{c.childDraft}</strong>
-            <span>{c.profileSummary}</span>
+          <div className="reference-help-visual">
+            <UserRound aria-hidden="true" size={42} />
+            <span />
+            <span />
           </div>
-          <div>
-            <ShieldCheck aria-hidden="true" size={20} />
-            <strong>{c.verifiedProfessionals}</strong>
-            <span>{professionals[0]?.licenseNumber} · {organizations[0]?.registryNumber}</span>
+          <div className="reference-help-actions">
+            <button className="focus-ring reference-primary-button" onClick={() => onNavigate("support")}>
+              Obrir targeta d'ajuda
+            </button>
+            <button className="focus-ring reference-card-link" onClick={() => onNavigate("support")}>
+              Veure opcions de comunicació <ChevronRight aria-hidden="true" size={18} />
+            </button>
           </div>
         </div>
       </section>
     </div>
   );
+}
+
+function ReferenceMap() {
+  return (
+    <div className="reference-map-visual" aria-label="Mapa proper">
+    </div>
+  );
+}
+
+function TrustMiniCard({
+  kind,
+  title,
+  subtitle,
+  meta
+}: {
+  kind: "person" | "org";
+  title: string;
+  subtitle: string;
+  meta: string;
+}) {
+  return (
+    <article className="reference-trust-mini">
+      <span className="reference-trust-avatar" data-kind={kind}>
+        {kind === "person" ? (
+          <img src="/media/reference-professional.png" alt="" />
+        ) : (
+          <Building2 aria-hidden="true" size={28} />
+        )}
+      </span>
+      <h4>{title}</h4>
+      <p>{subtitle}</p>
+      <p>{meta}</p>
+      <span className="reference-verified-pill">
+        <CheckCircle2 aria-hidden="true" size={14} /> Verificat
+      </span>
+    </article>
+  );
+}
+
+function ClockIcon() {
+  return <CircleHelp aria-hidden="true" size={15} />;
+}
+
+function EditIcon() {
+  return <MessageSquare aria-hidden="true" size={15} />;
 }
 
 function MapWorkspace({
