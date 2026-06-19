@@ -1308,7 +1308,10 @@ function MapPanel({
   onSelectPlace: (id: string) => void;
   onOpen?: () => void;
 }) {
-  const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
+  const googleMapsKey =
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() ||
+    "";
 
   return (
     <section className="panel map-panel" data-tall={tall}>
@@ -1338,7 +1341,12 @@ function MapPanel({
             onSelectPlace={onSelectPlace}
           />
         ) : (
-          <FallbackMapCanvas places={visiblePlaces} selectedPlace={selectedPlace} onSelectPlace={onSelectPlace} />
+          <FallbackMapCanvas
+            places={visiblePlaces}
+            selectedPlace={selectedPlace}
+            onSelectPlace={onSelectPlace}
+            label="Google Maps key missing"
+          />
         )}
         <div className="current-status">
           <span />
@@ -1432,7 +1440,14 @@ function GoogleMapCanvas({
   }, [apiKey, visiblePlaces, selectedPlace, onSelectPlace]);
 
   if (loadFailed) {
-    return <FallbackMapCanvas places={visiblePlaces} selectedPlace={selectedPlace} onSelectPlace={onSelectPlace} />;
+    return (
+      <FallbackMapCanvas
+        places={visiblePlaces}
+        selectedPlace={selectedPlace}
+        onSelectPlace={onSelectPlace}
+        label="Google Maps load error"
+      />
+    );
   }
 
   return (
@@ -1446,11 +1461,13 @@ function GoogleMapCanvas({
 function FallbackMapCanvas({
   places: visiblePlaces,
   selectedPlace,
-  onSelectPlace
+  onSelectPlace,
+  label
 }: {
   places: Place[];
   selectedPlace: Place;
   onSelectPlace: (id: string) => void;
+  label: string;
 }) {
   const pinLayout = [
     { left: "38%", top: "42%" },
@@ -1481,7 +1498,7 @@ function FallbackMapCanvas({
           onClick={() => onSelectPlace(place.id)}
         />
       ))}
-      <span className="map-provider-note">Fallback map</span>
+      <span className="map-provider-note">{label}</span>
     </>
   );
 }
