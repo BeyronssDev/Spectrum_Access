@@ -1,29 +1,45 @@
 "use client";
 
 import {
+  Accessibility,
   BadgeCheck,
+  BookOpen,
   Building2,
   Camera,
   CheckCircle2,
   ChevronRight,
-  Clock3,
+  CircleHelp,
+  DoorOpen,
   Filter,
   Flag,
+  Hand,
   Heart,
   Image as ImageIcon,
   Languages,
+  Layers,
   LifeBuoy,
+  Lightbulb,
+  LocateFixed,
   Map,
   MapPin,
   MessageSquare,
+  Minus,
+  Moon,
+  Navigation,
+  Plus,
   Search,
   Send,
   ShieldCheck,
   SlidersHorizontal,
+  SquareStack,
   Star,
+  Sun,
   Upload,
   UserRound,
-  UsersRound
+  Users,
+  UsersRound,
+  Volume2,
+  Wifi
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -52,7 +68,6 @@ const copy: Record<
   {
     workspace: Record<AppView, string>;
     status: string;
-    account: string;
     mapSubtitle: string;
     filters: string;
     quiet: string;
@@ -77,18 +92,38 @@ const copy: Record<
     privacy: string;
     verifiedStrip: string;
     profileSummary: string;
+    darkMode: string;
+    lightMode: string;
+    experienceTitle: string;
+    experienceSubtitle: string;
+    shareExperience: string;
+    uploadHint: string;
+    experienceQuestion: string;
+    starRating: string;
+    anonymous: string;
+    publish: string;
+    verifiedProfessionals: string;
+    seeAll: string;
+    contact: string;
+    aboutPlace: string;
+    reviewsTab: string;
+    openNow: string;
+    until: string;
+    rampAccess: string;
+    adaptedBathroom: string;
+    quietZone: string;
+    wifi: string;
   }
 > = {
   ca: {
     workspace: {
-      map: "Mapa sensorial",
+      map: "Mapa",
       contributions: "Aportacions",
       support: "Targeta d'ajuda",
       profiles: "Usuaris",
       verified: "Directori verificat"
     },
     status: "Sessió protegida",
-    account: "Entrar",
     mapSubtitle: "Consulta llocs, desa favorits i revisa el context abans d'anar-hi.",
     filters: "Filtres",
     quiet: "Soroll baix",
@@ -98,32 +133,52 @@ const copy: Record<
     score: "Score",
     reviews: "Valoracions",
     images: "Imatges",
-    favorite: "Desar",
-    report: "Reportar",
-    sensoryReading: "Lectura sensorial",
-    placeQueue: "Imatges pendents de moderació",
-    uploadDrop: "Arrossega imatges o selecciona fitxers",
-    commentPlaceholder: "Escriu el comentari quan estiguis tranquil.",
-    savedDraft: "Esborrany guardat al dispositiu",
+    favorite: "Preferit",
+    report: "Informar",
+    sensoryReading: "Indicadors sensorials",
+    placeQueue: "Contingut pendent de moderació",
+    uploadDrop: "Arrossega una imatge o fes clic per pujar",
+    commentPlaceholder: "Comparteix detalls que puguin ajudar altres persones...",
+    savedDraft: "Esborrany guardat",
     childDraft: "Perfil infantil pendent de tutor",
     publicName: "Pseudònim públic",
     verificationQueue: "Revisió manual abans de mostrar-se com a verificat.",
-    license: "Núm. col·legiat",
+    license: "Col·legiada",
     registry: "Registre",
     privacy: "Documents interns privats",
     verifiedStrip: "Professionals i entitats amb confiança visible",
-    profileSummary: "Adults, tutors i perfils identificats comparteixen el mateix accés web i mòbil."
+    profileSummary: "Adults, tutors i perfils identificats comparteixen el mateix accés web i mòbil.",
+    darkMode: "Mode fosc",
+    lightMode: "Mode clar",
+    experienceTitle: "Aporta la teva experiència",
+    experienceSubtitle: "Un punt ràpid",
+    shareExperience: "Com ha estat la teva experiència en aquest lloc?",
+    uploadHint: "JPG, PNG (màx. 10 MB)",
+    experienceQuestion: "Com ha estat la teva experiència?",
+    starRating: "La teva valoració global",
+    anonymous: "Publica com a anònim",
+    publish: "Publica",
+    verifiedProfessionals: "Professionals i entitats verificades",
+    seeAll: "Veure totes",
+    contact: "Contactar",
+    aboutPlace: "Sobre el lloc",
+    reviewsTab: "Valoracions",
+    openNow: "Obert ara",
+    until: "Fins a les 20:00",
+    rampAccess: "Accés amb rampa",
+    adaptedBathroom: "Lavabo adaptat",
+    quietZone: "Zona tranquil·la",
+    wifi: "Wi‑Fi"
   },
   es: {
     workspace: {
-      map: "Mapa sensorial",
+      map: "Mapa",
       contributions: "Aportaciones",
       support: "Tarjeta de ayuda",
       profiles: "Usuarios",
       verified: "Directorio verificado"
     },
     status: "Sesión protegida",
-    account: "Entrar",
     mapSubtitle: "Consulta lugares, guarda favoritos y revisa el contexto antes de ir.",
     filters: "Filtros",
     quiet: "Ruido bajo",
@@ -133,32 +188,52 @@ const copy: Record<
     score: "Score",
     reviews: "Valoraciones",
     images: "Imágenes",
-    favorite: "Guardar",
-    report: "Reportar",
-    sensoryReading: "Lectura sensorial",
-    placeQueue: "Imágenes pendientes de moderación",
-    uploadDrop: "Arrastra imágenes o selecciona archivos",
-    commentPlaceholder: "Escribe el comentario cuando estés tranquilo.",
-    savedDraft: "Borrador guardado en el dispositivo",
+    favorite: "Favorito",
+    report: "Informar",
+    sensoryReading: "Indicadores sensoriales",
+    placeQueue: "Contenido pendiente de moderación",
+    uploadDrop: "Arrastra una imagen o haz clic para subir",
+    commentPlaceholder: "Comparte detalles que puedan ayudar a otras personas...",
+    savedDraft: "Borrador guardado",
     childDraft: "Perfil infantil pendiente del tutor",
     publicName: "Seudónimo público",
     verificationQueue: "Revisión manual antes de mostrarse como verificado.",
-    license: "Núm. colegiado",
+    license: "Colegiada",
     registry: "Registro",
     privacy: "Documentos internos privados",
     verifiedStrip: "Profesionales y entidades con confianza visible",
-    profileSummary: "Adultos, tutores y perfiles identificados comparten el mismo acceso web y móvil."
+    profileSummary: "Adultos, tutores y perfiles identificados comparten el mismo acceso web y móvil.",
+    darkMode: "Modo oscuro",
+    lightMode: "Modo claro",
+    experienceTitle: "Aporta tu experiencia",
+    experienceSubtitle: "Un punto rápido",
+    shareExperience: "¿Cómo ha sido tu experiencia en este lugar?",
+    uploadHint: "JPG, PNG (máx. 10 MB)",
+    experienceQuestion: "¿Cómo ha sido tu experiencia?",
+    starRating: "Tu valoración global",
+    anonymous: "Publicar como anónimo",
+    publish: "Publicar",
+    verifiedProfessionals: "Profesionales y entidades verificadas",
+    seeAll: "Ver todas",
+    contact: "Contactar",
+    aboutPlace: "Sobre el lugar",
+    reviewsTab: "Valoraciones",
+    openNow: "Abierto ahora",
+    until: "Hasta las 20:00",
+    rampAccess: "Acceso con rampa",
+    adaptedBathroom: "Baño adaptado",
+    quietZone: "Zona tranquila",
+    wifi: "Wi‑Fi"
   },
   en: {
     workspace: {
-      map: "Sensory map",
+      map: "Map",
       contributions: "Contributions",
       support: "Help card",
       profiles: "Users",
       verified: "Verified directory"
     },
     status: "Protected session",
-    account: "Sign in",
     mapSubtitle: "Review places, save favorites and check context before going.",
     filters: "Filters",
     quiet: "Low noise",
@@ -168,21 +243,42 @@ const copy: Record<
     score: "Score",
     reviews: "Reviews",
     images: "Images",
-    favorite: "Save",
+    favorite: "Favorite",
     report: "Report",
-    sensoryReading: "Sensory reading",
-    placeQueue: "Images pending moderation",
-    uploadDrop: "Drag images or choose files",
-    commentPlaceholder: "Write the comment when you are calm.",
-    savedDraft: "Draft saved on device",
+    sensoryReading: "Sensory indicators",
+    placeQueue: "Content pending moderation",
+    uploadDrop: "Drag an image or click to upload",
+    commentPlaceholder: "Share details that could help other people...",
+    savedDraft: "Draft saved",
     childDraft: "Child profile pending tutor",
     publicName: "Public nickname",
     verificationQueue: "Manual review before showing as verified.",
-    license: "License no.",
+    license: "License",
     registry: "Registry",
     privacy: "Internal documents private",
     verifiedStrip: "Professionals and organizations with visible trust",
-    profileSummary: "Adults, tutors and identified profiles share the same web and mobile access."
+    profileSummary: "Adults, tutors and identified profiles share the same web and mobile access.",
+    darkMode: "Dark mode",
+    lightMode: "Light mode",
+    experienceTitle: "Share your experience",
+    experienceSubtitle: "A quick point",
+    shareExperience: "How was your experience in this place?",
+    uploadHint: "JPG, PNG (max. 10 MB)",
+    experienceQuestion: "How was your experience?",
+    starRating: "Your overall rating",
+    anonymous: "Post anonymously",
+    publish: "Publish",
+    verifiedProfessionals: "Verified professionals and organizations",
+    seeAll: "View all",
+    contact: "Contact",
+    aboutPlace: "About the place",
+    reviewsTab: "Reviews",
+    openNow: "Open now",
+    until: "Until 20:00",
+    rampAccess: "Ramp access",
+    adaptedBathroom: "Adapted bathroom",
+    quietZone: "Quiet zone",
+    wifi: "Wi‑Fi"
   }
 };
 
@@ -193,16 +289,17 @@ const filtersByLocale = (locale: Locale) => [
 ];
 
 const pinPositions = [
-  { left: "24%", top: "44%" },
-  { left: "59%", top: "30%" },
-  { left: "73%", top: "64%" }
+  { left: "45%", top: "43%" },
+  { left: "27%", top: "58%" },
+  { left: "72%", top: "72%" }
 ];
 
 const sensoryScores = [
-  { key: "noise", value: 2, tone: "teal" },
-  { key: "lighting", value: 3, tone: "sage" },
-  { key: "crowd", value: 2, tone: "clay" },
-  { key: "exitEase", value: 5, tone: "blue" }
+  { key: "noise", value: 2, tone: "teal", Icon: Volume2, level: { ca: "Baix", es: "Bajo", en: "Low" } },
+  { key: "lighting", value: 3, tone: "amber", Icon: Lightbulb, level: { ca: "Mitjà", es: "Medio", en: "Medium" } },
+  { key: "crowd", value: 2, tone: "teal", Icon: Users, level: { ca: "Baixa", es: "Baja", en: "Low" } },
+  { key: "quietSpace", value: 2, tone: "sage", Icon: Hand, level: { ca: "Baix", es: "Bajo", en: "Low" } },
+  { key: "exitEase", value: 5, tone: "blue", Icon: DoorOpen, level: { ca: "Alta", es: "Alta", en: "High" } }
 ] as const;
 
 export function PlatformApp() {
@@ -212,6 +309,10 @@ export function PlatformApp() {
   const [query, setQuery] = useState("");
   const [pendingFiles, setPendingFiles] = useState<string[]>([]);
   const [comment, setComment] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [experienceOpen, setExperienceOpen] = useState(true);
+  const [anonymous, setAnonymous] = useState(false);
+  const [rating, setRating] = useState(0);
   const t = dictionary[locale];
   const c = copy[locale];
 
@@ -232,53 +333,64 @@ export function PlatformApp() {
   const selectedPlace = places.find((place) => place.id === selectedPlaceId) ?? places[0];
 
   return (
-    <main className="app-shell min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <header className="topbar border-b border-[var(--line)] bg-[rgba(255,252,246,0.88)]">
-        <div className="mx-auto flex max-w-[1520px] flex-col gap-4 px-4 py-4 xl:flex-row xl:items-center xl:justify-between xl:px-6">
+    <main
+      data-theme={isDarkMode ? "dark" : "light"}
+      className="app-shell min-h-screen bg-[var(--background)] text-[var(--foreground)]"
+    >
+      <header className="topbar border-b border-[var(--line)]">
+        <div className="topbar-inner mx-auto grid max-w-[1520px] gap-4 px-4 py-4 xl:grid-cols-[220px_minmax(320px,1fr)_auto_auto_auto] xl:items-center xl:px-6">
           <div className="flex items-center gap-3">
             <div className="brand-mark">
               <Map aria-hidden="true" size={23} />
             </div>
             <div>
-              <p className="text-[13px] font-medium text-[var(--muted)]">MVP</p>
-              <h1 className="text-[22px] font-semibold tracking-normal text-[var(--foreground)]">{t.appName}</h1>
+              <h1 className="text-[22px] font-semibold leading-tight tracking-normal text-[var(--teal-strong)]">
+                {t.appName}
+              </h1>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--teal-strong)]">
-              <ShieldCheck aria-hidden="true" size={17} />
-              {c.status}
-            </span>
-            <label className="focus-within-ring inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 py-2 text-[13px] font-medium">
-              <Languages aria-hidden="true" size={17} className="text-[var(--muted)]" />
-              <select
-                className="min-w-24 bg-transparent text-[13px] outline-none"
-                value={locale}
-                aria-label="Idioma"
-                onChange={(event) => setLocale(event.target.value as Locale)}
-              >
-                {Object.entries(localeNames).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-[var(--teal-strong)] px-4 py-2 text-[13px] font-semibold text-white shadow-sm shadow-[rgba(15,93,98,0.22)]">
-              <UserRound aria-hidden="true" size={17} />
-              Apple / Google
-            </button>
-          </div>
+          <label className="focus-within-ring top-search flex min-h-12 items-center gap-3 rounded-md border border-[var(--line)] bg-white px-4">
+            <Search aria-hidden="true" size={19} className="shrink-0 text-[var(--muted)]" />
+            <input
+              className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--muted)]"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={dictionary[locale].search}
+            />
+          </label>
+
+          <button className="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-white px-4 text-[14px] font-semibold text-[var(--foreground)]">
+            <SlidersHorizontal aria-hidden="true" size={17} />
+            {c.filters}
+          </button>
+
+          <label className="focus-within-ring inline-flex min-h-12 items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-[14px] font-medium">
+            <Languages aria-hidden="true" size={17} className="text-[var(--muted)]" />
+            <select
+              className="min-w-24 bg-transparent text-[14px] outline-none"
+              value={locale}
+              aria-label="Idioma"
+              onChange={(event) => setLocale(event.target.value as Locale)}
+            >
+              {Object.entries(localeNames).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button className="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[var(--teal-strong)] px-4 text-[14px] font-semibold text-white shadow-sm shadow-[rgba(15,93,98,0.22)]">
+            <UserRound aria-hidden="true" size={17} />
+            Apple / Google
+          </button>
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1520px] gap-5 px-4 py-5 lg:grid-cols-[228px_minmax(0,1fr)] xl:px-6">
-        <aside className="min-w-0">
-          <nav
-            aria-label="Navegació principal"
-            className="surface-panel flex gap-2 overflow-x-auto p-2 lg:flex-col lg:overflow-visible"
-          >
+      <div className="mx-auto grid min-w-0 max-w-[1520px] gap-0 px-4 lg:grid-cols-[190px_minmax(0,1fr)] xl:px-6">
+        <aside className="left-rail min-w-0 border-r border-[var(--line)] bg-[var(--panel)] lg:min-h-[calc(100vh-81px)]">
+          <nav aria-label="Navegació principal" className="flex max-w-full gap-2 overflow-x-auto p-4 lg:flex-col lg:overflow-visible">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeView === tab.id;
@@ -290,119 +402,129 @@ export function PlatformApp() {
                   title={t[tab.id]}
                   aria-pressed={isActive}
                 >
-                  <Icon aria-hidden="true" size={19} />
+                  <Icon aria-hidden="true" size={20} />
                   <span>{t[tab.id]}</span>
-                  <ChevronRight aria-hidden="true" size={16} className="nav-chevron" />
                 </button>
               );
             })}
           </nav>
 
-          <div className="mt-4 hidden space-y-4 lg:block">
-            <section className="surface-panel p-4">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                {c.publicName}
-              </p>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[var(--sage)] text-[var(--teal-strong)]">
-                  <UserRound aria-hidden="true" size={20} />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-[14px] font-semibold">josep-b</p>
-                  <p className="truncate text-[12px] text-[var(--muted)]">Adult registrat</p>
-                </div>
+          <div className="hidden px-4 pb-5 lg:mt-auto lg:block">
+            <section className="account-card">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--teal)] text-white">
+                <UserRound aria-hidden="true" size={20} />
               </div>
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-semibold">Laia M.</p>
+                <p className="truncate text-[12px] text-[var(--muted)]">Usuària</p>
+              </div>
+              <ChevronRight aria-hidden="true" size={15} className="ml-auto text-[var(--muted)]" />
             </section>
 
-            <section className="surface-panel border-[var(--teal-soft)] bg-[var(--teal-tint)] p-4">
-              <div className="flex items-center gap-2 text-[var(--teal-strong)]">
-                <Clock3 aria-hidden="true" size={18} />
-                <p className="text-[13px] font-semibold">{c.placeQueue}</p>
-              </div>
-              <p className="mt-2 text-[28px] font-semibold leading-none text-[var(--foreground)]">14</p>
-            </section>
+            <button
+              className="focus-ring mode-toggle"
+              aria-pressed={isDarkMode}
+              aria-label={isDarkMode ? c.lightMode : c.darkMode}
+              onClick={() => setIsDarkMode((value) => !value)}
+            >
+              {isDarkMode ? <Sun aria-hidden="true" size={17} /> : <Moon aria-hidden="true" size={17} />}
+              <span>{isDarkMode ? c.lightMode : c.darkMode}</span>
+              <span className="mode-switch" data-on={isDarkMode} />
+            </button>
           </div>
         </aside>
 
-        <section className="min-w-0">
-          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 className="text-[28px] font-semibold leading-tight text-[var(--foreground)]">
-                {c.workspace[activeView]}
-              </h2>
-              <p className="mt-1 max-w-2xl text-[14px] leading-6 text-[var(--muted)]">
-                {activeView === "map" ? c.mapSubtitle : c.profileSummary}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {filtersByLocale(locale).map((filter) => (
-                <button
-                  key={filter}
-                  className="focus-ring inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 py-2 text-[13px] font-semibold text-[var(--foreground)]"
-                >
-                  <Filter aria-hidden="true" size={15} />
-                  {filter}
-                </button>
-              ))}
-            </div>
-          </div>
-
+        <section className="min-w-0 py-4 pl-0 lg:pl-4">
           {activeView === "map" && (
             <MapWorkspace
               locale={locale}
-              query={query}
               selectedPlace={selectedPlace}
               selectedPlaceId={selectedPlace.id}
               filteredPlaces={filteredPlaces}
-              onQueryChange={setQuery}
-              onSelectPlace={setSelectedPlaceId}
-            />
-          )}
-
-          {activeView === "contributions" && (
-            <Contributions
+              experienceOpen={experienceOpen}
               files={pendingFiles}
               comment={comment}
-              placeName={selectedPlace.name}
-              locale={locale}
+              rating={rating}
+              anonymous={anonymous}
+              onSelectPlace={setSelectedPlaceId}
+              onToggleExperience={() => setExperienceOpen((value) => !value)}
               onFiles={(files) => setPendingFiles(files)}
               onComment={setComment}
-              labels={{
-                uploadImage: t.uploadImage,
-                addComment: t.addComment,
-                pendingModeration: t.pendingModeration,
-                submitReview: t.submitReview,
-                uploadDrop: c.uploadDrop,
-                commentPlaceholder: c.commentPlaceholder,
-                savedDraft: c.savedDraft
-              }}
+              onRating={setRating}
+              onAnonymous={setAnonymous}
+              onOpenVerified={() => setActiveView("verified")}
             />
           )}
 
-          {activeView === "support" && <SupportCard labels={{ quickCard: t.quickCard, calmMode: t.calmMode }} />}
+          {activeView !== "map" && (
+            <>
+              <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h2 className="text-[28px] font-semibold leading-tight text-[var(--foreground)]">
+                    {c.workspace[activeView]}
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-[14px] leading-6 text-[var(--muted)]">{c.profileSummary}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {filtersByLocale(locale).map((filter) => (
+                    <button
+                      key={filter}
+                      className="focus-ring inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 py-2 text-[13px] font-semibold text-[var(--foreground)]"
+                    >
+                      <Filter aria-hidden="true" size={15} />
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {activeView === "profiles" && (
-            <Profiles
-              labels={{
-                childProfile: t.childProfile,
-                tutorReview: t.tutorReview,
-                childDraft: c.childDraft
-              }}
-            />
-          )}
+              {activeView === "contributions" && (
+                <Contributions
+                  files={pendingFiles}
+                  comment={comment}
+                  placeName={selectedPlace.name}
+                  locale={locale}
+                  onFiles={(files) => setPendingFiles(files)}
+                  onComment={setComment}
+                  labels={{
+                    uploadImage: t.uploadImage,
+                    addComment: t.addComment,
+                    pendingModeration: t.pendingModeration,
+                    submitReview: t.submitReview,
+                    uploadDrop: c.uploadDrop,
+                    commentPlaceholder: c.commentPlaceholder,
+                    savedDraft: c.savedDraft
+                  }}
+                />
+              )}
 
-          {activeView === "verified" && (
-            <VerifiedDirectory
-              labels={{
-                professionalTrust: t.professionalTrust,
-                verified: t.verified,
-                verifiedStrip: c.verifiedStrip,
-                license: c.license,
-                registry: c.registry,
-                privacy: c.privacy,
-                verificationQueue: c.verificationQueue
-              }}
-            />
+              {activeView === "support" && <SupportCard labels={{ quickCard: t.quickCard, calmMode: t.calmMode }} />}
+
+              {activeView === "profiles" && (
+                <Profiles
+                  labels={{
+                    childProfile: t.childProfile,
+                    tutorReview: t.tutorReview,
+                    childDraft: c.childDraft
+                  }}
+                />
+              )}
+
+              {activeView === "verified" && (
+                <VerifiedDirectory
+                  labels={{
+                    professionalTrust: t.professionalTrust,
+                    verified: t.verified,
+                    verifiedStrip: c.verifiedStrip,
+                    license: c.license,
+                    registry: c.registry,
+                    privacy: c.privacy,
+                    verificationQueue: c.verificationQueue,
+                    contact: c.contact
+                  }}
+                />
+              )}
+            </>
           )}
         </section>
       </div>
@@ -412,175 +534,358 @@ export function PlatformApp() {
 
 function MapWorkspace({
   locale,
-  query,
   selectedPlace,
   selectedPlaceId,
   filteredPlaces,
-  onQueryChange,
-  onSelectPlace
+  experienceOpen,
+  files,
+  comment,
+  rating,
+  anonymous,
+  onSelectPlace,
+  onToggleExperience,
+  onFiles,
+  onComment,
+  onRating,
+  onAnonymous,
+  onOpenVerified
 }: {
   locale: Locale;
-  query: string;
   selectedPlace: Place;
   selectedPlaceId: string;
   filteredPlaces: Place[];
-  onQueryChange: (value: string) => void;
+  experienceOpen: boolean;
+  files: string[];
+  comment: string;
+  rating: number;
+  anonymous: boolean;
   onSelectPlace: (id: string) => void;
+  onToggleExperience: () => void;
+  onFiles: (files: string[]) => void;
+  onComment: (comment: string) => void;
+  onRating: (rating: number) => void;
+  onAnonymous: (anonymous: boolean) => void;
+  onOpenVerified: () => void;
 }) {
-  const c = copy[locale];
-
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
-      <section className="surface-panel min-h-[690px] p-4 md:p-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <label className="focus-within-ring flex min-h-12 flex-1 items-center gap-3 rounded-md border border-[var(--line)] bg-white px-3">
-            <Search aria-hidden="true" size={19} className="shrink-0 text-[var(--muted)]" />
-            <input
-              className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--muted)]"
-              value={query}
-              onChange={(event) => onQueryChange(event.target.value)}
-              placeholder={dictionary[locale].search}
-            />
-          </label>
+    <div className="reference-workspace">
+      <section className="map-stage surface-panel">
+        <div className="map-canvas reference-map" aria-label="Mapa visual de llocs sensorials">
+          <div className="map-block map-block-a" />
+          <div className="map-block map-block-b" />
+          <div className="map-block map-block-c" />
+          <div className="map-block map-block-d" />
+          <div className="map-road map-road-main" />
+          <div className="map-road map-road-cross" />
+          <div className="map-road map-road-diagonal" />
+          <div className="map-green map-green-a" />
+          <div className="map-green map-green-b" />
+          <div className="map-water" />
 
-          <button className="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-4 text-[13px] font-semibold text-[var(--foreground)]">
-            <SlidersHorizontal aria-hidden="true" size={17} />
-            {c.filters}
-          </button>
-        </div>
-
-        <div className="map-frame mt-5">
-          <div className="map-canvas" aria-label="Mapa visual de llocs sensorials">
-            <div className="map-block map-block-a" />
-            <div className="map-block map-block-b" />
-            <div className="map-block map-block-c" />
-            <div className="map-block map-block-d" />
-            <div className="map-road map-road-main" />
-            <div className="map-road map-road-cross" />
-            <div className="map-road map-road-diagonal" />
-            <div className="map-green map-green-a" />
-            <div className="map-green map-green-b" />
-            <div className="map-water" />
-
-            {places.map((place, index) => {
-              const active = place.id === selectedPlaceId;
-              const position = pinPositions[index % pinPositions.length];
-              return (
-                <button
-                  key={place.id}
-                  className={`focus-ring map-pin ${active ? "map-pin-active" : ""}`}
-                  style={position}
-                  onClick={() => onSelectPlace(place.id)}
-                  title={place.name}
-                  aria-pressed={active}
-                >
-                  <MapPin aria-hidden="true" size={19} />
-                  <span className="sr-only">{place.name}</span>
-                </button>
-              );
-            })}
-
-            <div className="map-legend">
-              <span className="map-legend-dot" />
-              {c.selectedPlace}: {selectedPlace.name}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {filteredPlaces.map((place) => {
-            const active = place.id === selectedPlaceId;
-            return (
-              <button
-                key={place.id}
-                className={`focus-ring place-row ${active ? "place-row-active" : ""}`}
-                onClick={() => onSelectPlace(place.id)}
-              >
-                <span className="min-w-0">
-                  <span className="block truncate text-[14px] font-semibold">{place.name}</span>
-                  <span className="mt-1 block truncate text-[12px] text-[var(--muted)]">
-                    {place.city} · {categoryLabels[place.category][locale]}
-                  </span>
-                </span>
-                <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--teal-strong)]">
-                  <Star aria-hidden="true" size={14} />
-                  {place.averageScore.toFixed(1)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <aside className="surface-panel overflow-hidden">
-        <div className="relative h-44 overflow-hidden">
-          <img
-            src="/media/calm-place-preview.png"
-            alt=""
-            className="h-full w-full object-cover"
-            loading="eager"
-          />
-          <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-md bg-[rgba(255,255,255,0.9)] px-3 py-2 text-[12px] font-semibold text-[var(--teal-strong)] shadow-sm">
-            <CheckCircle2 aria-hidden="true" size={15} />
-            {categoryLabels[selectedPlace.category][locale]}
-          </div>
-        </div>
-
-        <div className="p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                {c.selectedPlace}
-              </p>
-              <h3 className="mt-1 text-[24px] font-semibold leading-tight">{selectedPlace.name}</h3>
-              <p className="mt-2 text-[14px] leading-6 text-[var(--muted)]">
-                {selectedPlace.city} · {selectedPlace.addressOrArea}
-              </p>
-            </div>
-            <button className="focus-ring flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[var(--line)] bg-white text-[var(--clay)]">
-              <Heart aria-hidden="true" size={18} />
-              <span className="sr-only">{c.favorite}</span>
+          <div className="map-tools" aria-label="Controls del mapa">
+            <button className="focus-ring" aria-label="Apropar">
+              <Plus aria-hidden="true" size={18} />
+            </button>
+            <button className="focus-ring" aria-label="Allunyar">
+              <Minus aria-hidden="true" size={18} />
+            </button>
+            <button className="focus-ring" aria-label="Ubicació">
+              <LocateFixed aria-hidden="true" size={18} />
+            </button>
+            <button className="focus-ring" aria-label="Capes">
+              <Layers aria-hidden="true" size={18} />
             </button>
           </div>
 
-          <p className="mt-4 text-[14px] leading-6 text-[var(--foreground)]">{selectedPlace.description}</p>
+          {places.map((place, index) => {
+            const active = place.id === selectedPlaceId;
+            const position = pinPositions[index % pinPositions.length];
+            return (
+              <button
+                key={place.id}
+                className={`focus-ring map-pin ${active ? "map-pin-active" : ""}`}
+                style={position}
+                onClick={() => onSelectPlace(place.id)}
+                title={place.name}
+                aria-pressed={active}
+              >
+                <MapPin aria-hidden="true" size={19} />
+                <span className="sr-only">{place.name}</span>
+              </button>
+            );
+          })}
 
-          <div className="mt-5 grid grid-cols-3 border-y border-[var(--line)] py-4">
-            <Metric label={c.score} value={selectedPlace.averageScore.toFixed(1)} />
-            <Metric label={c.reviews} value={String(selectedPlace.ratingCount)} />
-            <Metric label={c.images} value={String(selectedPlace.imageCount)} />
+          <div className="map-scale">200 m</div>
+        </div>
+
+      </section>
+
+      <PlaceDetailsPanel locale={locale} selectedPlace={selectedPlace} />
+
+      <ExperienceDock
+        locale={locale}
+        open={experienceOpen}
+        files={files}
+        comment={comment}
+        rating={rating}
+        anonymous={anonymous}
+        onToggle={onToggleExperience}
+        onFiles={onFiles}
+        onComment={onComment}
+        onRating={onRating}
+        onAnonymous={onAnonymous}
+        onOpenVerified={onOpenVerified}
+      />
+    </div>
+  );
+}
+
+function PlaceDetailsPanel({ locale, selectedPlace }: { locale: Locale; selectedPlace: Place }) {
+  const c = copy[locale];
+
+  return (
+    <aside className="place-detail-panel surface-panel overflow-hidden">
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-4">
+          <div className="flex min-w-0 gap-4">
+            <div className="detail-place-icon">
+              <BookOpen aria-hidden="true" size={28} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-[27px] font-semibold leading-tight">{selectedPlace.name}</h2>
+              <p className="mt-1 text-[13px] leading-5 text-[var(--muted)]">
+                Carrer del Comte Borrell, 44 · {selectedPlace.city}
+              </p>
+              <p className="mt-2 inline-flex items-center gap-2 rounded-md bg-[var(--teal-tint)] px-2 py-1 text-[12px] font-semibold text-[var(--teal-strong)]">
+                <CheckCircle2 aria-hidden="true" size={14} />
+                {c.openNow} · {c.until}
+              </p>
+            </div>
           </div>
+        </div>
 
-          <div className="mt-5">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h4 className="text-[15px] font-semibold">{c.sensoryReading}</h4>
-              <button className="focus-ring inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 py-2 text-[12px] font-semibold text-[var(--muted)]">
-                <Flag aria-hidden="true" size={14} />
-                {c.report}
+        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[32px] font-semibold leading-none">{selectedPlace.averageScore.toFixed(1)}</span>
+              <RatingStars value={4} />
+            </div>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">({selectedPlace.ratingCount} {c.reviews.toLowerCase()})</p>
+          </div>
+          <div className="flex gap-2">
+            <button className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-[13px] font-semibold">
+              <Heart aria-hidden="true" size={17} />
+              {c.favorite}
+            </button>
+            <button className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-[13px] font-semibold">
+              <Flag aria-hidden="true" size={17} />
+              {c.report}
+            </button>
+          </div>
+        </div>
+
+        <div className="place-gallery mt-4">
+          <img src="/media/calm-place-preview.png" alt="" className="place-gallery-main" loading="eager" />
+          <img src="/media/calm-place-preview.png" alt="" className="place-gallery-side" loading="eager" />
+          <div className="place-gallery-more">+ 5 fotos</div>
+        </div>
+
+        <div className="mt-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-[16px] font-semibold">{c.sensoryReading}</h3>
+            <button className="focus-ring inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--teal-strong)]">
+              <CircleHelp aria-hidden="true" size={15} />
+              Què signifiquen?
+            </button>
+          </div>
+          <div className="space-y-3.5">
+            {sensoryScores.map((score) => (
+              <DetailedSensoryIndicator
+                key={score.key}
+                label={sensoryLabels[score.key][locale]}
+                value={score.value}
+                tone={score.tone}
+                Icon={score.Icon}
+                level={score.level[locale]}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="detail-tabs mt-6">
+          <button className="detail-tab-active">{c.aboutPlace}</button>
+          <button>
+            {c.reviewsTab} ({selectedPlace.ratingCount})
+          </button>
+        </div>
+
+        <p className="mt-4 text-[14px] leading-6 text-[var(--foreground)]">
+          Biblioteca pública amb espais d'estudi, zona infantil i activitats culturals. {selectedPlace.description}
+        </p>
+
+        <div className="amenity-grid mt-5">
+          <Amenity icon={Accessibility} label={c.rampAccess} />
+          <Amenity icon={Wifi} label={c.wifi} />
+          <Amenity icon={SquareStack} label={c.adaptedBathroom} />
+          <Amenity icon={Navigation} label={c.quietZone} />
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function ExperienceDock({
+  locale,
+  open,
+  files,
+  comment,
+  rating,
+  anonymous,
+  onToggle,
+  onFiles,
+  onComment,
+  onRating,
+  onAnonymous,
+  onOpenVerified
+}: {
+  locale: Locale;
+  open: boolean;
+  files: string[];
+  comment: string;
+  rating: number;
+  anonymous: boolean;
+  onToggle: () => void;
+  onFiles: (files: string[]) => void;
+  onComment: (comment: string) => void;
+  onRating: (rating: number) => void;
+  onAnonymous: (anonymous: boolean) => void;
+  onOpenVerified: () => void;
+}) {
+  const c = copy[locale];
+  const verifiedCards = [
+    {
+      id: professionals[0]?.id ?? "professional",
+      name: professionals[0]?.professionalName ?? "Clara Ferrer",
+      kind: locale === "ca" ? "Psicòloga verificada" : locale === "es" ? "Psicóloga verificada" : "Verified psychologist",
+      image: professionals[0]?.photoPath,
+      detail: `${c.license}: ${professionals[0]?.licenseNumber ?? "24678"}`
+    },
+    {
+      id: organizations[0]?.id ?? "organization",
+      name: organizations[0]?.name ?? "Centre TEA Catalunya",
+      kind: locale === "ca" ? "Entitat verificada" : locale === "es" ? "Entidad verificada" : "Verified organization",
+      image: organizations[0]?.logoPath,
+      detail: `${c.registry}: ${organizations[0]?.registryNumber ?? "AS-0312/2018"}`
+    }
+  ];
+
+  return (
+    <section className="experience-dock surface-panel">
+      <button className="focus-ring experience-toggle" onClick={onToggle} aria-expanded={open}>
+        <div className="experience-toggle-icon">
+          <Plus aria-hidden="true" size={19} />
+        </div>
+        <div className="min-w-0 text-left">
+          <h3>{c.experienceTitle}</h3>
+          <p>{c.experienceSubtitle}</p>
+        </div>
+        <ChevronRight aria-hidden="true" size={18} className={open ? "rotate-90" : ""} />
+      </button>
+
+      {open && (
+        <div className="experience-content">
+          <div className="experience-form">
+            <label className="focus-within-ring upload-mini">
+              <ImageIcon aria-hidden="true" size={28} />
+              <span>{c.uploadDrop}</span>
+              <small>{c.uploadHint}</small>
+              <input
+                className="sr-only"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(event) => onFiles(Array.from(event.target.files ?? []).map((file) => file.name))}
+              />
+            </label>
+
+            <div className="experience-comment">
+              <p className="text-[12px] font-semibold text-[var(--muted)]">{c.shareExperience}</p>
+              <textarea
+                className="focus-ring mt-2 min-h-[104px] w-full resize-y rounded-md border border-[var(--line)] bg-white p-3 text-[13px] leading-5 outline-none placeholder:text-[var(--muted)]"
+                value={comment}
+                placeholder={c.commentPlaceholder}
+                onChange={(event) => onComment(event.target.value)}
+              />
+              <p className="mt-1 text-right text-[11px] text-[var(--muted)]">{comment.length}/600</p>
+            </div>
+
+            <div className="experience-actions">
+              <p className="text-[12px] font-semibold text-[var(--muted)]">{c.starRating}</p>
+              <div className="mt-2 flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    className={`focus-ring rating-button ${rating >= star ? "rating-button-active" : ""}`}
+                    onClick={() => onRating(star)}
+                    aria-pressed={rating >= star}
+                    aria-label={`${star}/5`}
+                  >
+                    <Star aria-hidden="true" size={18} />
+                  </button>
+                ))}
+              </div>
+              <label className="mt-4 flex items-center gap-2 text-[12px] font-medium text-[var(--muted)]">
+                <input
+                  className="accent-[var(--teal)]"
+                  type="checkbox"
+                  checked={anonymous}
+                  onChange={(event) => onAnonymous(event.target.checked)}
+                />
+                {c.anonymous}
+              </label>
+              <button className="focus-ring mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--teal-strong)] px-4 py-3 text-[13px] font-semibold text-white">
+                <Send aria-hidden="true" size={16} />
+                {c.publish}
               </button>
             </div>
-            <div className="space-y-3">
-              {sensoryScores.map((score) => (
-                <SensoryBar
-                  key={score.key}
-                  label={sensoryLabels[score.key][locale]}
-                  value={score.value}
-                  tone={score.tone}
-                />
+          </div>
+
+          <div className="verified-strip">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3>{c.verifiedProfessionals}</h3>
+              <button className="focus-ring text-link" onClick={onOpenVerified}>
+                {c.seeAll}
+              </button>
+            </div>
+            <div className="verified-strip-grid">
+              {verifiedCards.map((card) => (
+                <article key={card.id} className="verified-card">
+                  <img src={card.image} alt="" className="h-14 w-14 rounded-md object-cover" />
+                  <h4>{card.name}</h4>
+                  <p className="verified-kind">
+                    <ShieldCheck aria-hidden="true" size={13} />
+                    {card.kind}
+                  </p>
+                  <p>{card.detail}</p>
+                  <button className="focus-ring">{c.contact}</button>
+                </article>
               ))}
             </div>
           </div>
 
-          <div className="mt-6 rounded-md border border-[var(--teal-soft)] bg-[var(--teal-tint)] p-4">
-            <div className="flex items-center gap-2 text-[var(--teal-strong)]">
-              <ImageIcon aria-hidden="true" size={17} />
-              <p className="text-[13px] font-semibold">{c.placeQueue}</p>
-            </div>
-            <p className="mt-2 text-[13px] leading-5 text-[var(--muted)]">{dictionary[locale].pendingModeration}</p>
-          </div>
+          {files.length > 0 && (
+            <ul className="experience-files">
+              {files.map((file) => (
+                <li key={file}>
+                  <ImageIcon aria-hidden="true" size={15} />
+                  {file}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      </aside>
-    </div>
+      )}
+    </section>
   );
 }
 
@@ -613,7 +918,6 @@ function Contributions({
             <p className="mt-2 text-[14px] text-[var(--muted)]">{labels.pendingModeration}</p>
           </div>
           <span className="inline-flex items-center gap-2 rounded-md bg-[var(--clay-tint)] px-3 py-2 text-[13px] font-semibold text-[var(--clay)]">
-            <Clock3 aria-hidden="true" size={16} />
             {labels.savedDraft}
           </span>
         </div>
@@ -777,7 +1081,14 @@ function VerifiedDirectory({
   labels
 }: {
   labels: Record<
-    "professionalTrust" | "verified" | "verifiedStrip" | "license" | "registry" | "privacy" | "verificationQueue",
+    | "professionalTrust"
+    | "verified"
+    | "verifiedStrip"
+    | "license"
+    | "registry"
+    | "privacy"
+    | "verificationQueue"
+    | "contact",
     string
   >;
 }) {
@@ -807,6 +1118,9 @@ function VerifiedDirectory({
                 {labels.license}: {professional.licenseNumber}
               </p>
               <p className="mt-1 text-[12px] text-[var(--muted)]">{professional.professionalCollege}</p>
+              <button className="focus-ring mt-3 rounded-md border border-[var(--teal-soft)] px-3 py-2 text-[13px] font-semibold text-[var(--teal-strong)]">
+                {labels.contact}
+              </button>
             </div>
           </article>
         ))}
@@ -840,11 +1154,64 @@ function VerifiedDirectory({
                 {labels.registry}: {organization.registryNumber}
               </p>
               <p className="mt-1 text-[12px] text-[var(--muted)]">{organization.city}</p>
+              <button className="focus-ring mt-3 rounded-md border border-[var(--line)] px-3 py-2 text-[13px] font-semibold text-[var(--foreground)]">
+                {labels.contact}
+              </button>
             </div>
           </article>
         ))}
       </div>
     </section>
+  );
+}
+
+function Amenity({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <div className="flex items-center gap-3 text-[13px] font-medium text-[var(--muted)]">
+      <Icon aria-hidden="true" size={20} className="text-[var(--blue)]" />
+      {label}
+    </div>
+  );
+}
+
+function RatingStars({ value }: { value: number }) {
+  return (
+    <div className="flex gap-0.5 text-[var(--amber)]">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          aria-hidden="true"
+          size={18}
+          fill={star <= value ? "currentColor" : "transparent"}
+          className={star <= value ? "" : "text-[var(--line-strong)]"}
+        />
+      ))}
+    </div>
+  );
+}
+
+function DetailedSensoryIndicator({
+  label,
+  value,
+  tone,
+  Icon,
+  level
+}: {
+  label: string;
+  value: number;
+  tone: "teal" | "sage" | "clay" | "blue" | "amber";
+  Icon: LucideIcon;
+  level: string;
+}) {
+  return (
+    <div className="sensory-indicator">
+      <Icon aria-hidden="true" size={18} />
+      <span>{label}</span>
+      <div className="sensory-spectrum" aria-hidden="true">
+        <div className={`sensory-marker sensory-marker-${tone}`} style={{ left: `${value * 20}%` }} />
+      </div>
+      <strong>{level}</strong>
+    </div>
   );
 }
 
