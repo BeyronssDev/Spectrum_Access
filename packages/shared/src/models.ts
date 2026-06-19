@@ -60,6 +60,22 @@ export const sensoryCriteria = [
 ] as const;
 export type SensoryCriterion = (typeof sensoryCriteria)[number];
 
+export const commentTargetTypes = ["place", "review"] as const;
+export type CommentTargetType = (typeof commentTargetTypes)[number];
+
+export const reportTargetTypes = [
+  "place",
+  "review",
+  "comment",
+  "image",
+  "professional",
+  "organization"
+] as const;
+export type ReportTargetType = (typeof reportTargetTypes)[number];
+
+export const verificationRequestTypes = ["professional", "organization"] as const;
+export type VerificationRequestType = (typeof verificationRequestTypes)[number];
+
 export type SensoryRating = Record<SensoryCriterion, number>;
 
 export interface AppUser {
@@ -114,6 +130,18 @@ export interface Review {
   createdAt: string;
 }
 
+export interface Comment {
+  id: string;
+  targetType: CommentTargetType;
+  targetId: string;
+  placeId?: string;
+  authorUid: string;
+  body: string;
+  status: ModerationStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PlaceImage {
   id: string;
   placeId: string;
@@ -152,10 +180,22 @@ export interface OrganizationProfile {
 
 export interface Report {
   id: string;
-  targetType: "place" | "review" | "comment" | "image" | "professional" | "organization";
+  targetType: ReportTargetType;
   targetId: string;
   reporterUid: string;
   reason: string;
   status: "open" | "reviewing" | "resolved" | "dismissed";
   createdAt: string;
+}
+
+export interface VerificationRequest {
+  id: string;
+  ownerUid: string;
+  profileType: VerificationRequestType;
+  profileId: string;
+  evidencePath?: string;
+  note?: string;
+  status: "open" | "reviewing" | "approved" | "rejected";
+  createdAt: string;
+  updatedAt: string;
 }
