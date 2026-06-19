@@ -12,8 +12,8 @@
     "build": "pnpm --filter @accessibilitat/shared build && pnpm --filter @accessibilitat/functions build && pnpm --filter @accessibilitat/web build",
     "typecheck": "pnpm --filter @accessibilitat/shared build && pnpm --filter @accessibilitat/functions typecheck && pnpm --filter @accessibilitat/web typecheck",
     "test": "pnpm --filter @accessibilitat/shared test && pnpm --filter @accessibilitat/functions test",
-    "firebase:emulators": "firebase emulators:start --project demo-accessibilitat-sensorial",
-    "rules:test": "firebase emulators:exec --project demo-accessibilitat-sensorial --only firestore,storage \"pnpm --filter @accessibilitat/functions test:rules\"",
+    "firebase:emulators": "firebase emulators:start --project spectrum-access-499918",
+    "rules:test": "firebase emulators:exec --project spectrum-access-499918 --only firestore,storage \"pnpm --filter @accessibilitat/functions test:rules\"",
     "mobile:test": "cd apps/mobile && flutter test",
     "mobile:analyze": "cd apps/mobile && flutter analyze"
   },

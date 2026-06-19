@@ -12,7 +12,7 @@ let testEnv: RulesTestEnvironment;
 
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
-    projectId: "demo-accessibilitat-sensorial",
+    projectId: "spectrum-access-499918",
     firestore: {
       rules: readFileSync(resolve(process.cwd(), "../../firebase/firestore.rules"), "utf8")
     }
