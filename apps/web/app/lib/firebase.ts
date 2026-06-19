@@ -1,4 +1,5 @@
 import { getApps, initializeApp } from "firebase/app";
+import type { FirebaseApp } from "firebase/app";
 
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -15,4 +16,13 @@ export function getFirebaseApp() {
   }
 
   return getApps()[0] ?? initializeApp(firebaseConfig);
+}
+
+export function requireFirebaseApp(): FirebaseApp {
+  const app = getFirebaseApp();
+  if (!app) {
+    throw new Error("firebase-not-configured");
+  }
+
+  return app;
 }

@@ -39,7 +39,10 @@ import {
   Volume2
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Place as FirebasePlace } from "@accessibilitat/shared";
+import { listActivePlaces } from "./lib/firebase-actions";
+import { loadGoogleMaps, type GoogleMarkerInstance } from "./lib/google-maps";
 
 type Locale = "ca" | "es" | "en";
 type ViewId = "home" | "consult" | "contribute" | "support" | "profiles" | "verified";
@@ -55,6 +58,10 @@ type Place = {
   distance: string;
   description: string;
   quietDb: string;
+  position: {
+    lat: number;
+    lng: number;
+  };
 };
 
 type Professional = {
@@ -372,6 +379,7 @@ const places: Place[] = [
     score: 9.8,
     distance: "0.4 km",
     quietDb: "34dB",
+    position: { lat: 41.3867, lng: 2.1699 },
     description:
       "Biblioteca amb llum difusa, plantes baixes tranquil·les i sortida principal visible des de la sala de lectura."
   },
@@ -384,6 +392,7 @@ const places: Place[] = [
     score: 9.5,
     distance: "0.8 km",
     quietDb: "38dB",
+    position: { lat: 41.3921, lng: 2.1636 },
     description:
       "Pati obert amb recorregut senzill, bancs separats i zones d'ombra. Recomanat en hores de baixa afluència."
   },
@@ -396,10 +405,42 @@ const places: Place[] = [
     score: 8.9,
     distance: "1.2 km",
     quietDb: "42dB",
+    position: { lat: 41.3815, lng: 2.1871 },
     description:
       "Interior petit amb música baixa al matí, personal amable i una taula lateral amb menys estímuls visuals."
   }
 ];
+
+const googleMapStyles: Array<Record<string, unknown>> = [
+  { elementType: "geometry", stylers: [{ color: "#f6f3f2" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#44474a" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#fcf8f8" }] },
+  { featureType: "administrative", elementType: "geometry.stroke", stylers: [{ color: "#c5c6ca" }] },
+  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#e5e2e1" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#d5e0f7" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#ddd9d9" }] },
+  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#ebe7e7" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#bcc7dd" }] }
+];
+
+function toUiPlace(place: FirebasePlace): Place {
+  return {
+    id: place.id,
+    name: place.name,
+    area: place.addressOrArea || place.category,
+    city: place.city,
+    category: place.category,
+    score: place.averageScore || 0,
+    distance: "Live",
+    quietDb: place.ratingCount > 0 ? `${place.ratingCount} reviews` : "New",
+    description: place.description,
+    position: {
+      lat: place.position.latitude,
+      lng: place.position.longitude
+    }
+  };
+}
 
 const professionals: Professional[] = [
   {
@@ -485,6 +526,7 @@ export function PlatformApp() {
   const [activeView, setActiveView] = useState<ViewId>("home");
   const [darkMode, setDarkMode] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [availablePlaces, setAvailablePlaces] = useState<Place[]>(places);
   const [query, setQuery] = useState("");
   const [selectedPlaceId, setSelectedPlaceId] = useState(places[0].id);
   const [selectedFilter, setSelectedFilter] = useState(0);
@@ -498,22 +540,48 @@ export function PlatformApp() {
     wait: 1
   });
 
+  useEffect(() => {
+    let active = true;
+
+    listActivePlaces()
+      .then((firebasePlaces) => {
+        if (!active || firebasePlaces.length === 0) {
+          return;
+        }
+
+        const mappedPlaces = firebasePlaces.map(toUiPlace);
+        setAvailablePlaces(mappedPlaces);
+        setSelectedPlaceId((current) =>
+          mappedPlaces.some((place) => place.id === current) ? current : mappedPlaces[0].id
+        );
+      })
+      .catch(() => {
+        if (active) {
+          setAvailablePlaces(places);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const c = copy[locale];
   const filteredPlaces = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
-      return places;
+      return availablePlaces;
     }
 
-    return places.filter((place) =>
+    return availablePlaces.filter((place) =>
       [place.name, place.area, place.city, place.category]
         .join(" ")
         .toLowerCase()
         .includes(normalized)
     );
-  }, [query]);
+  }, [availablePlaces, query]);
 
-  const selectedPlace = places.find((place) => place.id === selectedPlaceId) ?? places[0];
+  const selectedPlace = availablePlaces.find((place) => place.id === selectedPlaceId) ?? availablePlaces[0];
 
   const updateRating = (key: SensoryKey, value: number) => {
     setRatings((current) => ({ ...current, [key]: value }));
@@ -626,6 +694,7 @@ export function PlatformApp() {
             <HomeView
               copy={c}
               locale={locale}
+              places={availablePlaces}
               selectedPlace={selectedPlace}
               onNavigate={setActiveView}
               onSelectPlace={setSelectedPlaceId}
@@ -730,12 +799,14 @@ function FocusNotice({ copy: c, onOpenSupport }: { copy: (typeof copy)[Locale]; 
 function HomeView({
   copy: c,
   locale,
+  places: availablePlaces,
   selectedPlace,
   onNavigate,
   onSelectPlace
 }: {
   copy: (typeof copy)[Locale];
   locale: Locale;
+  places: Place[];
   selectedPlace: Place;
   onNavigate: (view: ViewId) => void;
   onSelectPlace: (id: string) => void;
@@ -750,6 +821,7 @@ function HomeView({
       <MapPanel
         title={c.sensoryMap}
         subtitle={c.mapArea}
+        places={availablePlaces}
         selectedPlace={selectedPlace}
         onSelectPlace={onSelectPlace}
         onOpen={() => onNavigate("consult")}
@@ -758,7 +830,7 @@ function HomeView({
       <section className="panel saved-panel">
         <PanelHeading title={c.savedPlaces} action={c.viewAll} onAction={() => onNavigate("consult")} />
         <div className="saved-list">
-          {places.map((place) => (
+          {availablePlaces.map((place) => (
             <button key={place.id} type="button" className="saved-row" onClick={() => onNavigate("consult")}>
               <PlaceSymbol />
               <span>
@@ -891,6 +963,7 @@ function ConsultView({
       <MapPanel
         title={c.sensoryMap}
         subtitle={c.mapArea}
+        places={visiblePlaces}
         selectedPlace={selectedPlace}
         onSelectPlace={onSelectPlace}
         tall
@@ -1221,6 +1294,7 @@ function PanelHeading({
 function MapPanel({
   title,
   subtitle,
+  places: visiblePlaces,
   selectedPlace,
   tall = false,
   onSelectPlace,
@@ -1228,16 +1302,13 @@ function MapPanel({
 }: {
   title: string;
   subtitle: string;
+  places: Place[];
   selectedPlace: Place;
   tall?: boolean;
   onSelectPlace: (id: string) => void;
   onOpen?: () => void;
 }) {
-  const pinLayout = [
-    { left: "38%", top: "42%" },
-    { left: "58%", top: "31%" },
-    { left: "67%", top: "62%" }
-  ];
+  const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
 
   return (
     <section className="panel map-panel" data-tall={tall}>
@@ -1259,25 +1330,16 @@ function MapPanel({
         </div>
       </div>
       <div className="map-canvas" role="img" aria-label={title}>
-        <span className="map-region map-region-a" />
-        <span className="map-region map-region-b" />
-        <span className="map-region map-region-c" />
-        <span className="map-road map-road-a" />
-        <span className="map-road map-road-b" />
-        <span className="map-road map-road-c" />
-        <span className="map-water" />
-        {places.map((place, index) => (
-          <button
-            key={place.id}
-            type="button"
-            className="map-pin"
-            data-active={selectedPlace.id === place.id}
-            style={pinLayout[index]}
-            aria-label={place.name}
-            aria-pressed={selectedPlace.id === place.id}
-            onClick={() => onSelectPlace(place.id)}
+        {googleMapsKey ? (
+          <GoogleMapCanvas
+            apiKey={googleMapsKey}
+            places={visiblePlaces}
+            selectedPlace={selectedPlace}
+            onSelectPlace={onSelectPlace}
           />
-        ))}
+        ) : (
+          <FallbackMapCanvas places={visiblePlaces} selectedPlace={selectedPlace} onSelectPlace={onSelectPlace} />
+        )}
         <div className="current-status">
           <span />
           <div>
@@ -1294,6 +1356,133 @@ function MapPanel({
         </button>
       ) : null}
     </section>
+  );
+}
+
+function GoogleMapCanvas({
+  apiKey,
+  places: visiblePlaces,
+  selectedPlace,
+  onSelectPlace
+}: {
+  apiKey: string;
+  places: Place[];
+  selectedPlace: Place;
+  onSelectPlace: (id: string) => void;
+}) {
+  const mapElementRef = useRef<HTMLDivElement | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const markers: GoogleMarkerInstance[] = [];
+
+    loadGoogleMaps(apiKey)
+      .then((google) => {
+        if (cancelled || !mapElementRef.current) {
+          return;
+        }
+
+        const map = new google.maps.Map(mapElementRef.current, {
+          center: selectedPlace.position,
+          zoom: 13,
+          disableDefaultUI: true,
+          zoomControl: true,
+          clickableIcons: false,
+          styles: googleMapStyles
+        });
+        const bounds = new google.maps.LatLngBounds();
+
+        visiblePlaces.forEach((place) => {
+          bounds.extend(place.position);
+          const active = selectedPlace.id === place.id;
+          const marker = new google.maps.Marker({
+            map,
+            position: place.position,
+            title: place.name,
+            icon: {
+              path: "M 0,0 m -8,0 a 8,8 0 1,0 16,0 a 8,8 0 1,0 -16,0",
+              fillColor: active ? "#cca730" : "#545f72",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 3,
+              scale: active ? 1.35 : 1
+            }
+          });
+          marker.addListener("click", () => onSelectPlace(place.id));
+          markers.push(marker);
+        });
+
+        if (visiblePlaces.length > 1) {
+          map.fitBounds(bounds);
+        } else {
+          map.panTo(selectedPlace.position);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadFailed(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      markers.forEach((marker) => marker.setMap(null));
+    };
+  }, [apiKey, visiblePlaces, selectedPlace, onSelectPlace]);
+
+  if (loadFailed) {
+    return <FallbackMapCanvas places={visiblePlaces} selectedPlace={selectedPlace} onSelectPlace={onSelectPlace} />;
+  }
+
+  return (
+    <>
+      <div ref={mapElementRef} className="google-map-layer" />
+      <span className="map-provider-note">Google Maps</span>
+    </>
+  );
+}
+
+function FallbackMapCanvas({
+  places: visiblePlaces,
+  selectedPlace,
+  onSelectPlace
+}: {
+  places: Place[];
+  selectedPlace: Place;
+  onSelectPlace: (id: string) => void;
+}) {
+  const pinLayout = [
+    { left: "38%", top: "42%" },
+    { left: "58%", top: "31%" },
+    { left: "67%", top: "62%" },
+    { left: "29%", top: "65%" },
+    { left: "72%", top: "36%" }
+  ];
+
+  return (
+    <>
+      <span className="map-region map-region-a" />
+      <span className="map-region map-region-b" />
+      <span className="map-region map-region-c" />
+      <span className="map-road map-road-a" />
+      <span className="map-road map-road-b" />
+      <span className="map-road map-road-c" />
+      <span className="map-water" />
+      {visiblePlaces.map((place, index) => (
+        <button
+          key={place.id}
+          type="button"
+          className="map-pin"
+          data-active={selectedPlace.id === place.id}
+          style={pinLayout[index % pinLayout.length]}
+          aria-label={place.name}
+          aria-pressed={selectedPlace.id === place.id}
+          onClick={() => onSelectPlace(place.id)}
+        />
+      ))}
+      <span className="map-provider-note">Fallback map</span>
+    </>
   );
 }
 
