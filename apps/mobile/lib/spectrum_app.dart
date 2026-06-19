@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'spectrum_content.dart';
 import 'spectrum_theme.dart';
+
+const googleMapsEnabled = bool.fromEnvironment('SPECTRUM_GOOGLE_MAPS_ENABLED');
 
 class SpectrumAccessApp extends StatefulWidget {
   const SpectrumAccessApp({super.key});
@@ -839,30 +842,22 @@ class SensoryMapPanel extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: PremiumMapPainter(
-                        isDark: Theme.of(context).brightness == Brightness.dark,
-                      ),
+                  if (googleMapsEnabled)
+                    _GoogleMapLayer(
+                      selectedPlace: selectedPlace,
+                      onPlaceSelected: onPlaceSelected,
+                    )
+                  else
+                    _FallbackMapLayer(
+                      selectedPlace: selectedPlace,
+                      onPlaceSelected: onPlaceSelected,
                     ),
-                  ),
-                  _MapPin(
-                    left: .38,
-                    top: .45,
-                    active: selectedPlace == samplePlaces[0],
-                    onTap: () => onPlaceSelected(0),
-                  ),
-                  _MapPin(
-                    left: .59,
-                    top: .28,
-                    active: selectedPlace == samplePlaces[1],
-                    onTap: () => onPlaceSelected(1),
-                  ),
-                  _MapPin(
-                    left: .68,
-                    top: .64,
-                    active: selectedPlace == samplePlaces[2],
-                    onTap: () => onPlaceSelected(2),
+                  Positioned(
+                    left: 14,
+                    top: 14,
+                    child: _MapProviderBadge(
+                      label: googleMapsEnabled ? 'Google Maps' : 'Fallback map',
+                    ),
                   ),
                   Positioned(
                     left: 18,
@@ -919,6 +914,114 @@ class SensoryMapPanel extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _GoogleMapLayer extends StatelessWidget {
+  const _GoogleMapLayer({
+    required this.selectedPlace,
+    required this.onPlaceSelected,
+  });
+
+  final PlaceSummary selectedPlace;
+  final ValueChanged<int> onPlaceSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedIndex = samplePlaces.indexOf(selectedPlace);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: GoogleMap(
+        initialCameraPosition: CameraPosition(
+          target: LatLng(selectedPlace.latitude, selectedPlace.longitude),
+          zoom: 13,
+        ),
+        markers: {
+          for (final entry in samplePlaces.indexed)
+            Marker(
+              markerId: MarkerId(entry.$2.name),
+              position: LatLng(entry.$2.latitude, entry.$2.longitude),
+              onTap: () => onPlaceSelected(entry.$1),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                entry.$1 == selectedIndex
+                    ? BitmapDescriptor.hueYellow
+                    : BitmapDescriptor.hueAzure,
+              ),
+            ),
+        },
+        compassEnabled: false,
+        mapToolbarEnabled: false,
+        myLocationButtonEnabled: false,
+        zoomControlsEnabled: false,
+      ),
+    );
+  }
+}
+
+class _FallbackMapLayer extends StatelessWidget {
+  const _FallbackMapLayer({
+    required this.selectedPlace,
+    required this.onPlaceSelected,
+  });
+
+  final PlaceSummary selectedPlace;
+  final ValueChanged<int> onPlaceSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: CustomPaint(
+            painter: PremiumMapPainter(
+              isDark: Theme.of(context).brightness == Brightness.dark,
+            ),
+          ),
+        ),
+        _MapPin(
+          left: .38,
+          top: .45,
+          active: selectedPlace == samplePlaces[0],
+          onTap: () => onPlaceSelected(0),
+        ),
+        _MapPin(
+          left: .59,
+          top: .28,
+          active: selectedPlace == samplePlaces[1],
+          onTap: () => onPlaceSelected(1),
+        ),
+        _MapPin(
+          left: .68,
+          top: .64,
+          active: selectedPlace == samplePlaces[2],
+          onTap: () => onPlaceSelected(2),
+        ),
+      ],
+    );
+  }
+}
+
+class _MapProviderBadge extends StatelessWidget {
+  const _MapProviderBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: panelColor(context).withValues(alpha: 0.86),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        child: Text(
+          label.toUpperCase(),
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
       ),
     );
   }

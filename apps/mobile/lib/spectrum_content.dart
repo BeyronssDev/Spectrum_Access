@@ -23,6 +23,8 @@ class PlaceSummary {
     required this.distance,
     required this.quietDb,
     required this.description,
+    required this.latitude,
+    required this.longitude,
   });
 
   final String name;
@@ -33,6 +35,8 @@ class PlaceSummary {
   final String distance;
   final String quietDb;
   final String description;
+  final double latitude;
+  final double longitude;
 }
 
 class VerifiedProfile {
@@ -357,6 +361,8 @@ const places = [
     score: 9.8,
     distance: '0.4 km',
     quietDb: '34dB',
+    latitude: 41.3867,
+    longitude: 2.1699,
     description:
         'Biblioteca amb llum difusa, plantes baixes tranquil·les i sortida visible.',
   ),
@@ -368,6 +374,8 @@ const places = [
     score: 9.5,
     distance: '0.8 km',
     quietDb: '38dB',
+    latitude: 41.3921,
+    longitude: 2.1636,
     description:
         'Pati obert amb recorregut senzill, bancs separats i zones d’ombra.',
   ),
@@ -379,6 +387,8 @@ const places = [
     score: 8.9,
     distance: '1.2 km',
     quietDb: '42dB',
+    latitude: 41.3815,
+    longitude: 2.1871,
     description:
         'Interior petit amb música baixa al matí i una taula lateral amb menys estímuls.',
   ),
