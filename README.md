@@ -1,127 +1,1090 @@
 # Spectrum Access
 
-Plataforma abierta de accesibilidad sensorial para consultar, valorar y documentar espacios desde una perspectiva sensorial, con especial atención a personas autistas, familias, tutores, asociaciones y profesionales verificados.
+Open sensory accessibility platform for consulting, reviewing and documenting places from a functional sensory perspective.
 
-El objetivo del proyecto es construir un MVP real, seguro y escalable que combine aplicación web, aplicación móvil iOS/Android y backend Firebase. La plataforma permite que una persona registrada pueda consultar lugares, revisar información sensorial, aportar valoraciones, subir imágenes, guardar espacios y reportar contenido tanto desde el móvil como desde la web.
+Spectrum Access combines a web application, an iOS/Android mobile application and a Firebase backend. The project is designed for autistic people, families, tutors, verified professionals, associations and moderators who need practical information about sensory conditions before visiting a place.
 
-> Estado del proyecto: MVP en desarrollo. El despliegue público, la URL definitiva y los usuarios de prueba se documentarán cuando el sistema de autenticación y publicación esté cerrado.
+> Project status: MVP in development. Public deployment, final domain and production test users will be documented when the authentication, publication and moderation flows are closed.
 
-## Índice
+**Languages:** [English](#english) · [Català](#catala) · [Castellano](#castellano)
 
-- [A. Descripción general del proyecto](#a-descripción-general-del-proyecto)
-- [B. Stack tecnológico utilizado](#b-stack-tecnológico-utilizado)
-- [C. Instalación y ejecución](#c-instalación-y-ejecución)
-- [D. Estructura del proyecto](#d-estructura-del-proyecto)
-- [E. Funcionalidades principales](#e-funcionalidades-principales)
-- [Consideraciones de privacidad y seguridad](#consideraciones-de-privacidad-y-seguridad)
-- [Estado actual y próximos pasos](#estado-actual-y-proximos-pasos)
-- [Licencia](#licencia)
+<a id="english"></a>
+## English
 
-## A. Descripción general del proyecto
+<a id="en-index"></a>
+### Index
 
-Spectrum Access nace como una plataforma web y móvil para mejorar la accesibilidad sensorial de espacios públicos y privados. La idea principal es que la comunidad pueda documentar cómo se perciben determinados lugares en aspectos como ruido, iluminación, densidad de personas, tiempo de espera, facilidad de salida, existencia de zonas tranquilas o trato del personal.
+- [A. Project Overview](#en-a-project-overview)
+- [B. Technology Stack](#en-technology-stack)
+- [C. Installation and Running Locally](#en-installation-and-running-locally)
+- [D. Project Structure](#en-project-structure)
+- [E. Main Features](#en-main-features)
+- [Privacy and Security Considerations](#en-privacy-and-security-considerations)
+- [Current Status and Next Steps](#en-current-status-and-next-steps)
+- [License](#en-license)
 
-El proyecto se dirige principalmente a:
+<a id="en-a-project-overview"></a>
+### A. Project Overview
+
+Spectrum Access is a web and mobile platform for improving sensory accessibility information about public and private spaces. The main goal is to let the community document how places are experienced in terms of noise, lighting, crowd density, waiting time, exit clarity, quiet areas and staff support.
+
+The project is intended for:
+
+- Autistic adults or identified people who want to consult and contribute sensory information.
+- Tutors managing child profiles inside their own account.
+- Families who need practical information before visiting a place.
+- Verified psychologists and professionals.
+- Verified autism associations and centres.
+- Moderators and administrators who review content, images and verification requests.
+
+The platform does not provide diagnoses, medical recommendations or clinical advice. Sensory information is treated as functional and community-based information, not as medical history.
+
+#### Problem Addressed
+
+Many autistic people or people with sensory sensitivity need to anticipate what an environment will be like before visiting it. Standard information such as opening hours, addresses or general reviews often does not explain whether a place is noisy, visually intense, crowded, easy to leave or suitable for a quiet pause.
+
+Spectrum Access addresses that gap by allowing users to:
+
+- Consult places on a map.
+- Filter spaces by sensory needs.
+- Review place pages with scores and comments.
+- Save useful places.
+- Prepare contributions calmly.
+- Upload supporting images.
+- Report incorrect or sensitive content.
+- Consult verified professional and organization profiles.
+
+#### Web and Mobile Approach
+
+The project aims for functional parity between web and mobile, while adapting each interface to its context:
+
+- The mobile app is designed for quick use in the street: checking nearby places, contributing short reports, accessing help and completing simple actions.
+- The web app is designed as a calmer desktop environment: reviewing information with more space, completing contributions, managing profiles, consulting verification information and using the map on a larger screen.
+
+<a id="en-technology-stack"></a>
+### B. Technology Stack
+
+The repository is organized as a monorepo using `pnpm` for JavaScript/TypeScript and Flutter for the mobile application.
+
+> Important: this project does not use `npm`. All JavaScript/TypeScript operations must use `pnpm`.
+
+#### Web Frontend
+
+- **Next.js 16.2.9**: web application and administration area.
+- **React 19.2.7**: main web interface.
+- **TypeScript 5.9.3**: static typing.
+- **Tailwind CSS 4.3.1**: styling foundation.
+- **Lucide React**: interface icons.
+- **Google Maps JavaScript API**: interactive web map.
+- **Firebase Web SDK 12.15.0**: Auth, Firestore, Storage and Functions integration.
+
+#### Mobile Application
+
+- **Flutter**: iOS and Android application.
+- **Dart SDK `^3.11.4`**.
+- **firebase_core**, **firebase_auth**, **cloud_firestore**, **firebase_storage**, **firebase_app_check** and **cloud_functions**.
+- **google_sign_in** and **sign_in_with_apple** for authentication.
+- **google_maps_flutter** for native maps.
+- **image_picker** for selecting images.
+- **flutter_svg** and **google_fonts** for visual identity.
+
+#### Backend and Cloud Services
+
+- **Firebase Auth**: authentication.
+- **Cloud Firestore**: main database.
+- **Firebase Storage**: place images, professional photos, organization logos and private evidence files.
+- **Cloud Functions for Firebase**: backend logic, moderation, aggregates, verification and notifications.
+- **Firebase App Check**: protection against unauthorized clients.
+- **Firebase Emulator Suite**: local rule and service testing.
+
+#### Infrastructure
+
+- **pnpm 11.1.2** as the JavaScript/TypeScript package manager.
+- **Node.js `>=20.9`**.
+- **Cloud Functions runtime `nodejs22`**.
+- **Firestore region `eur3`**.
+- **Functions region `europe-west1`**.
+- **Firebase Hosting** prepared for the static Next.js export, but not required during local development.
+
+#### Design and Brand
+
+- Project name: **Spectrum Access**.
+- Shared official logo between web and mobile.
+- Visual support for light mode, dark mode and focus mode.
+- Interface languages: Catalan, Spanish and English.
+
+<a id="en-installation-and-running-locally"></a>
+### C. Installation and Running Locally
+
+#### Requirements
+
+- Node.js `>=20.9`.
+- `pnpm` `11.1.2` or newer.
+- Flutter stable compatible with Dart `^3.11.4`.
+- Firebase CLI.
+- Java Runtime for Firebase Emulator Suite and Firebase Rules tests.
+- Xcode for iOS.
+- Android Studio or Android SDK for Android.
+
+#### Install JavaScript/TypeScript Dependencies
+
+From the repository root:
+
+```bash
+pnpm install
+```
+
+#### Environment Variables and Secrets
+
+The repository must not contain real secrets, service accounts or private native configuration files. Local `.env` files, signing keys and native Firebase files must stay outside Git.
+
+Reference files included in the repository:
+
+- `.env.example`
+- `apps/web/.env.example`
+- `packages/functions/.env.example`
+- `apps/mobile/android/local.properties.example`
+- `apps/mobile/ios/Flutter/Secrets.xcconfig.example`
+
+Local files to create manually when needed:
+
+- `apps/web/.env`
+- `apps/mobile/android/app/google-services.json`
+- `apps/mobile/ios/Runner/GoogleService-Info.plist`
+- `apps/mobile/android/local.properties`
+- `apps/mobile/ios/Flutter/Secrets.xcconfig`
+
+#### Web Setup
+
+Create `apps/web/.env` from `apps/web/.env.example` and define the public Firebase and Google Maps values:
+
+```bash
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+```
+
+For local development:
+
+```bash
+pnpm dev:web
+```
+
+The web application normally runs at:
+
+```text
+http://localhost:3000
+```
+
+Useful web checks:
+
+```bash
+pnpm --filter @accessibilitat/web typecheck
+pnpm --filter @accessibilitat/web build
+```
+
+#### Mobile Setup
+
+Enter the mobile application directory:
+
+```bash
+cd apps/mobile
+flutter pub get
+```
+
+Run on Android:
+
+```bash
+flutter run -d android
+```
+
+Run on iOS:
+
+```bash
+flutter run -d ios
+```
+
+Enable native Google Maps during development:
+
+```bash
+flutter run --dart-define=SPECTRUM_GOOGLE_MAPS_ENABLED=true
+```
+
+Without this `dart-define`, the app can keep the visual fallback map to avoid local errors when native keys are not configured.
+
+Mobile checks from the repository root:
+
+```bash
+pnpm mobile:analyze
+pnpm mobile:test
+```
+
+#### Global Checks
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+#### Firebase Emulators and Rules
+
+Start emulators:
+
+```bash
+pnpm firebase:emulators
+```
+
+Run rules tests:
+
+```bash
+pnpm rules:test
+```
+
+These tests require Java and Firebase Emulator Suite.
+
+<a id="en-project-structure"></a>
+### D. Project Structure
+
+Main monorepo structure:
+
+```text
+.
+├── apps
+│   ├── mobile
+│   │   ├── android
+│   │   ├── ios
+│   │   ├── lib
+│   │   └── test
+│   └── web
+│       ├── app
+│       └── public
+├── firebase
+│   ├── firestore.indexes.json
+│   ├── firestore.rules
+│   └── storage.rules
+├── packages
+│   ├── functions
+│   │   ├── src
+│   │   └── tests
+│   └── shared
+│       └── src
+├── .github
+│   └── workflows
+├── AGENTS.md
+├── README.md
+├── firebase.json
+├── package.json
+├── pnpm-lock.yaml
+└── pnpm-workspace.yaml
+```
+
+#### `apps/web`
+
+Next.js, React and TypeScript web application.
+
+Relevant files:
+
+- `apps/web/app/page.tsx`: main web entry.
+- `apps/web/app/platform-app.tsx`: main Spectrum Access interface.
+- `apps/web/app/admin/page.tsx`: administration area.
+- `apps/web/app/lib/firebase.ts`: Firebase web initialization.
+- `apps/web/app/lib/firebase-actions.ts`: web actions connected to Firestore, Storage and Cloud Functions.
+- `apps/web/app/lib/google-maps.ts`: Google Maps JavaScript API loader.
+- `apps/web/public/brand/accessibilitat-logo.svg`: official web logo.
+
+#### `apps/mobile`
+
+Flutter application for iOS and Android.
+
+Relevant files:
+
+- `apps/mobile/lib/main.dart`: Flutter entry point.
+- `apps/mobile/lib/spectrum_app.dart`: main mobile UI.
+- `apps/mobile/lib/spectrum_theme.dart`: theme, colors and components.
+- `apps/mobile/lib/spectrum_content.dart`: texts, mock data and UI content.
+- `apps/mobile/lib/firebase_services.dart`: Firebase service layer for Flutter.
+- `apps/mobile/lib/firebase_options.dart`: generated Firebase options.
+- `apps/mobile/assets/brand/accessibilitat-logo.svg`: official mobile logo.
+
+#### `packages/shared`
+
+Shared domain models, constants and validations.
+
+Includes:
+
+- User roles.
+- Moderation statuses.
+- Verification statuses.
+- Place categories.
+- Sensory criteria.
+- Comment, report and verification types.
+- Main data interfaces.
+- Shared validations.
+
+#### `packages/functions`
+
+Firebase Cloud Functions backend.
+
+Main responsibilities:
+
+- Creating places.
+- Submitting reviews.
+- Creating comments.
+- Registering uploaded images.
+- Creating reports.
+- Creating tutored child profiles.
+- Requesting professional verification.
+- Requesting organization verification.
+- Moderating content.
+- Updating verification status.
+- Recalculating place aggregates.
+- Notifying rejected images.
+- Auditing verification changes.
+
+#### `firebase`
+
+Firebase security configuration:
+
+- `firestore.rules`: Firestore access rules.
+- `storage.rules`: Firebase Storage access rules.
+- `firestore.indexes.json`: required Firestore indexes.
+
+<a id="en-main-features"></a>
+### E. Main Features
+
+#### 1. Sensory Map
+
+The platform lets users consult places on a map with sensory information. The web app uses Google Maps when a valid key is configured and a visual fallback when it is not available.
+
+Associated features:
+
+- Place visualization.
+- Search by name, city or category.
+- Sensory filters.
+- Map layers.
+- Browser location with permission.
+- Selected place panel.
+
+#### 2. Place Details
+
+Each place can include name, category, city, address or area, description, coordinates, moderation status, average score, review count and image count.
+
+#### 3. Sensory Reviews
+
+Users can contribute scores from 1 to 5 for criteria such as noise, crowd density, lighting, waiting time, staff treatment, quiet space, exit ease and perceived safety. Reviews initially enter `pending` status.
+
+#### 4. Comments
+
+Registered users can create comments about places or reviews. Comments are moderated content.
+
+#### 5. Image Uploads
+
+Registered users can upload images of places from the web or mobile app. Images belong to the authenticated user, are stored under controlled paths and enter `pending` moderation status.
+
+#### 6. Favorites and Saved Places
+
+The user experience includes saved places for quick access to relevant spaces.
+
+#### 7. Reports
+
+Users can report places, reviews, comments, images, professionals and organizations. Reports are created as `open` and reviewed by moderators.
+
+#### 8. User Profiles
+
+The platform supports standard users, trusted users, tutors, professionals, organizations, moderators and administrators. Standard public identity is based on pseudonyms to reduce unnecessary exposure.
+
+#### 9. Tutors and Child Profiles
+
+Child profiles do not have their own login or email in the MVP. They live inside the tutor account. Contributions linked to a child profile require tutor review before moderation or publication.
+
+#### 10. Verified Professionals
+
+Professionals can request verification. Public profile information is separated from private documentary evidence.
+
+#### 11. Verified Associations and Centres
+
+Organizations can request verification and show public information such as name, city, description, website and registry identifier when available.
+
+#### 12. Moderation and Administration
+
+The administration area and Cloud Functions support reviewing pending content, changing moderation states, approving or rejecting verifications and recording sensitive administrative actions.
+
+#### 13. Focus Mode
+
+The web app includes a focus mode designed to reduce visual load and make map-based consultation calmer.
+
+#### 14. Help Card
+
+The support section includes a communication card for moments of overload or communication difficulty.
+
+#### 15. Multilingual Interface
+
+The interface is designed for Catalan, Spanish and English.
+
+<a id="en-privacy-and-security-considerations"></a>
+### Privacy and Security Considerations
+
+Spectrum Access may handle sensitive contextual information even though it does not store medical diagnoses.
+
+Applied principles:
+
+- Data minimization.
+- No medical reports requested.
+- No diagnosis or clinical recommendations.
+- Separation between public profile and private verification evidence.
+- Moderation of public content.
+- Child profiles protected inside tutor accounts.
+- Restrictive Firestore and Storage Rules.
+- App Check planned as an abuse-reduction layer.
+- Secrets kept outside the repository.
+
+Data that must not be committed:
+
+- Real `.env` files.
+- Service accounts.
+- Private keys.
+- Real `google-services.json` files.
+- Real `GoogleService-Info.plist` files.
+- Signing keys.
+- Private native configuration files.
+- Internal documents, screenshots, PDFs, concept images or work artifacts.
+
+<a id="en-current-status-and-next-steps"></a>
+### Current Status and Next Steps
+
+Current status:
+
+- Initial monorepo created.
+- Next.js web app running locally.
+- Flutter app prepared for iOS and Android.
+- Shared models defined.
+- Main Cloud Functions implemented.
+- Firestore and Storage Rules defined.
+- Google Maps integrated in the web app.
+- Spectrum Access visual identity started.
+- Public repository documentation limited to `README.md` and `AGENTS.md`.
+
+Pending:
+
+- Close final Firebase Auth configuration.
+- Create test users when login is closed.
+- Complete the internal testing flow for real devices.
+- Finish moderation and publication workflow validation.
+- Prepare the public deployment only when the domain and release criteria are ready.
+- Prepare final presentation material outside the repository.
+- Extend visual and functional tests.
+
+<a id="en-license"></a>
+### License
+
+This project is distributed under the **GPL-3.0-only** license.
+
+[Back to languages](#spectrum-access)
+
+<a id="catala"></a>
+## Català
+
+<a id="ca-index"></a>
+### Índex
+
+- [A. Descripció General del Projecte](#ca-a-descripcio-general-del-projecte)
+- [B. Stack Tecnològic](#ca-stack-tecnologic)
+- [C. Instal·lació i Execució Local](#ca-installacio-i-execucio-local)
+- [D. Estructura del Projecte](#ca-estructura-del-projecte)
+- [E. Funcionalitats Principals](#ca-funcionalitats-principals)
+- [Consideracions de Privacitat i Seguretat](#ca-consideracions-de-privacitat-i-seguretat)
+- [Estat Actual i Propers Passos](#ca-estat-actual-i-propers-passos)
+- [Llicència](#ca-llicencia)
+
+<a id="ca-a-descripcio-general-del-projecte"></a>
+### A. Descripció General del Projecte
+
+Spectrum Access és una plataforma web i mòbil per millorar la informació sobre accessibilitat sensorial en espais públics i privats. L'objectiu principal és permetre que la comunitat documenti com es perceben determinats llocs en aspectes com el soroll, la llum, l'afluència, el temps d'espera, la facilitat de sortida, l'existència d'espais tranquils i el tracte del personal.
+
+El projecte s'adreça a:
+
+- Persones autistes adultes o persones identificades que volen consultar i aportar informació sensorial.
+- Tutors que gestionen perfils infantils dins del seu propi compte.
+- Famílies que necessiten informació pràctica abans de visitar un lloc.
+- Psicòlegs i professionals verificats.
+- Associacions i centres d'autisme verificats.
+- Moderadors i administradors responsables de revisar contingut, imatges i verificacions.
+
+La plataforma no ofereix diagnòstics, recomanacions mèdiques ni consells clínics. La informació sensorial es tracta com a informació funcional i comunitària, no com a historial mèdic.
+
+#### Problema Que Resol
+
+Moltes persones autistes o amb sensibilitat sensorial necessiten anticipar com serà un entorn abans de visitar-lo. La informació habitual, com horaris, adreces o ressenyes generals, sovint no explica si un espai és sorollós, visualment intens, concorregut, fàcil d'abandonar o adequat per fer una pausa tranquil·la.
+
+Spectrum Access cobreix aquest buit permetent:
+
+- Consultar llocs en un mapa.
+- Filtrar espais segons necessitats sensorials.
+- Revisar fitxes amb puntuacions i comentaris.
+- Guardar llocs útils.
+- Preparar aportacions amb calma.
+- Pujar imatges de suport.
+- Reportar contingut incorrecte o sensible.
+- Consultar perfils professionals i entitats verificades.
+
+#### Enfocament Web i Mòbil
+
+El projecte busca paritat funcional entre web i mòbil, adaptant cada interfície al seu context:
+
+- L'app mòbil està pensada per a ús ràpid al carrer: consultar llocs propers, fer aportacions breus, accedir a ajuda i completar accions simples.
+- La web està pensada com un entorn d'escriptori més tranquil: revisar informació amb més espai, completar aportacions, gestionar perfils, consultar verificacions i usar el mapa en pantalla gran.
+
+<a id="ca-stack-tecnologic"></a>
+### B. Stack Tecnològic
+
+El repositori està organitzat com un monorepo amb `pnpm` per JavaScript/TypeScript i Flutter per a l'aplicació mòbil.
+
+> Important: aquest projecte no utilitza `npm`. Totes les operacions JavaScript/TypeScript s'han de fer amb `pnpm`.
+
+#### Frontend Web
+
+- **Next.js 16.2.9**: aplicació web i zona d'administració.
+- **React 19.2.7**: interfície principal de la web.
+- **TypeScript 5.9.3**: tipatge estàtic.
+- **Tailwind CSS 4.3.1**: base d'estils.
+- **Lucide React**: icones de la interfície.
+- **Google Maps JavaScript API**: mapa web interactiu.
+- **Firebase Web SDK 12.15.0**: integració amb Auth, Firestore, Storage i Functions.
+
+#### Aplicació Mòbil
+
+- **Flutter**: aplicació iOS i Android.
+- **Dart SDK `^3.11.4`**.
+- **firebase_core**, **firebase_auth**, **cloud_firestore**, **firebase_storage**, **firebase_app_check** i **cloud_functions**.
+- **google_sign_in** i **sign_in_with_apple** per a autenticació.
+- **google_maps_flutter** per a mapes natius.
+- **image_picker** per seleccionar imatges.
+- **flutter_svg** i **google_fonts** per a identitat visual.
+
+#### Backend i Serveis Cloud
+
+- **Firebase Auth**: autenticació.
+- **Cloud Firestore**: base de dades principal.
+- **Firebase Storage**: imatges de llocs, fotos professionals, logos d'entitats i evidències privades.
+- **Cloud Functions for Firebase**: lògica backend, moderació, agregats, verificacions i notificacions.
+- **Firebase App Check**: protecció contra clients no autoritzats.
+- **Firebase Emulator Suite**: proves locals de regles i serveis.
+
+#### Infraestructura
+
+- **pnpm 11.1.2** com a gestor de paquets JavaScript/TypeScript.
+- **Node.js `>=20.9`**.
+- **Cloud Functions runtime `nodejs22`**.
+- **Firestore a `eur3`**.
+- **Functions a `europe-west1`**.
+- **Firebase Hosting** preparat per l'export estàtic de Next.js, però no necessari durant el desenvolupament local.
+
+#### Disseny i Marca
+
+- Nom del projecte: **Spectrum Access**.
+- Logo oficial compartit entre web i mòbil.
+- Suport visual per a mode clar, mode fosc i mode focus.
+- Idiomes de la interfície: català, castellà i anglès.
+
+<a id="ca-installacio-i-execucio-local"></a>
+### C. Instal·lació i Execució Local
+
+#### Requisits
+
+- Node.js `>=20.9`.
+- `pnpm` `11.1.2` o superior.
+- Flutter stable compatible amb Dart `^3.11.4`.
+- Firebase CLI.
+- Java Runtime per a Firebase Emulator Suite i tests de regles Firebase.
+- Xcode per a iOS.
+- Android Studio o Android SDK per a Android.
+
+#### Instal·lar Dependències JavaScript/TypeScript
+
+Des de l'arrel del repositori:
+
+```bash
+pnpm install
+```
+
+#### Variables d'Entorn i Secrets
+
+El repositori no ha de contenir secrets reals, comptes de servei ni fitxers natius privats. Els `.env` locals, claus de signing i fitxers Firebase natius han de quedar fora de Git.
+
+Fitxers de referència inclosos:
+
+- `.env.example`
+- `apps/web/.env.example`
+- `packages/functions/.env.example`
+- `apps/mobile/android/local.properties.example`
+- `apps/mobile/ios/Flutter/Secrets.xcconfig.example`
+
+Fitxers locals que cal crear manualment quan sigui necessari:
+
+- `apps/web/.env`
+- `apps/mobile/android/app/google-services.json`
+- `apps/mobile/ios/Runner/GoogleService-Info.plist`
+- `apps/mobile/android/local.properties`
+- `apps/mobile/ios/Flutter/Secrets.xcconfig`
+
+#### Configuració Web
+
+Crea `apps/web/.env` a partir de `apps/web/.env.example` i defineix els valors públics de Firebase i Google Maps:
+
+```bash
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+```
+
+Per al desenvolupament local:
+
+```bash
+pnpm dev:web
+```
+
+La web normalment s'executa a:
+
+```text
+http://localhost:3000
+```
+
+Checks útils de web:
+
+```bash
+pnpm --filter @accessibilitat/web typecheck
+pnpm --filter @accessibilitat/web build
+```
+
+#### Configuració Mòbil
+
+Entra al directori de l'app mòbil:
+
+```bash
+cd apps/mobile
+flutter pub get
+```
+
+Executar a Android:
+
+```bash
+flutter run -d android
+```
+
+Executar a iOS:
+
+```bash
+flutter run -d ios
+```
+
+Activar Google Maps natiu durant el desenvolupament:
+
+```bash
+flutter run --dart-define=SPECTRUM_GOOGLE_MAPS_ENABLED=true
+```
+
+Sense aquest `dart-define`, l'app pot mantenir el mapa visual fallback per evitar errors locals quan no hi ha claus natives configurades.
+
+Checks mòbils des de l'arrel:
+
+```bash
+pnpm mobile:analyze
+pnpm mobile:test
+```
+
+#### Checks Globals
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+#### Firebase Emulators i Regles
+
+Arrencar emuladors:
+
+```bash
+pnpm firebase:emulators
+```
+
+Executar tests de regles:
+
+```bash
+pnpm rules:test
+```
+
+Aquests tests requereixen Java i Firebase Emulator Suite.
+
+<a id="ca-estructura-del-projecte"></a>
+### D. Estructura del Projecte
+
+Estructura principal del monorepo:
+
+```text
+.
+├── apps
+│   ├── mobile
+│   │   ├── android
+│   │   ├── ios
+│   │   ├── lib
+│   │   └── test
+│   └── web
+│       ├── app
+│       └── public
+├── firebase
+│   ├── firestore.indexes.json
+│   ├── firestore.rules
+│   └── storage.rules
+├── packages
+│   ├── functions
+│   │   ├── src
+│   │   └── tests
+│   └── shared
+│       └── src
+├── .github
+│   └── workflows
+├── AGENTS.md
+├── README.md
+├── firebase.json
+├── package.json
+├── pnpm-lock.yaml
+└── pnpm-workspace.yaml
+```
+
+#### `apps/web`
+
+Aplicació web Next.js, React i TypeScript.
+
+Fitxers rellevants:
+
+- `apps/web/app/page.tsx`: entrada principal de la web.
+- `apps/web/app/platform-app.tsx`: interfície principal de Spectrum Access.
+- `apps/web/app/admin/page.tsx`: zona d'administració.
+- `apps/web/app/lib/firebase.ts`: inicialització Firebase web.
+- `apps/web/app/lib/firebase-actions.ts`: accions web connectades a Firestore, Storage i Cloud Functions.
+- `apps/web/app/lib/google-maps.ts`: carregador de Google Maps JavaScript API.
+- `apps/web/public/brand/accessibilitat-logo.svg`: logo oficial web.
+
+#### `apps/mobile`
+
+Aplicació Flutter per iOS i Android.
+
+Fitxers rellevants:
+
+- `apps/mobile/lib/main.dart`: punt d'entrada de Flutter.
+- `apps/mobile/lib/spectrum_app.dart`: UI mòbil principal.
+- `apps/mobile/lib/spectrum_theme.dart`: tema, colors i components.
+- `apps/mobile/lib/spectrum_content.dart`: textos, dades mock i contingut de UI.
+- `apps/mobile/lib/firebase_services.dart`: capa de serveis Firebase per Flutter.
+- `apps/mobile/lib/firebase_options.dart`: opcions Firebase generades.
+- `apps/mobile/assets/brand/accessibilitat-logo.svg`: logo oficial mòbil.
+
+#### `packages/shared`
+
+Models, constants i validacions compartides de domini.
+
+Inclou:
+
+- Rols d'usuari.
+- Estats de moderació.
+- Estats de verificació.
+- Categories de llocs.
+- Criteris sensorials.
+- Tipus de comentaris, reports i verificacions.
+- Interfícies principals de dades.
+- Validacions compartides.
+
+#### `packages/functions`
+
+Backend Firebase Cloud Functions.
+
+Responsabilitats principals:
+
+- Crear llocs.
+- Enviar valoracions.
+- Crear comentaris.
+- Registrar imatges pujades.
+- Crear reports.
+- Crear perfils infantils tutelats.
+- Sol·licitar verificació professional.
+- Sol·licitar verificació d'entitat.
+- Moderar contingut.
+- Actualitzar estat de verificació.
+- Recalcular agregats de llocs.
+- Notificar imatges rebutjades.
+- Auditar canvis de verificació.
+
+#### `firebase`
+
+Configuració de seguretat Firebase:
+
+- `firestore.rules`: regles d'accés a Firestore.
+- `storage.rules`: regles d'accés a Firebase Storage.
+- `firestore.indexes.json`: índexs necessaris de Firestore.
+
+<a id="ca-funcionalitats-principals"></a>
+### E. Funcionalitats Principals
+
+#### 1. Mapa Sensorial
+
+La plataforma permet consultar llocs en un mapa amb informació sensorial. La web utilitza Google Maps quan hi ha una clau vàlida configurada i un fallback visual quan no està disponible.
+
+Funcionalitats associades:
+
+- Visualització de llocs.
+- Cerca per nom, ciutat o categoria.
+- Filtres sensorials.
+- Capes de mapa.
+- Ubicació del navegador amb permís.
+- Panell del lloc seleccionat.
+
+#### 2. Fitxa de Lloc
+
+Cada lloc pot incloure nom, categoria, ciutat, adreça o zona, descripció, coordenades, estat de moderació, puntuació mitjana, nombre de valoracions i nombre d'imatges.
+
+#### 3. Valoracions Sensorials
+
+Els usuaris poden aportar puntuacions de l'1 al 5 per criteris com soroll, afluència, llum, espera, tracte del personal, espai tranquil, facilitat de sortida i seguretat percebuda. Les valoracions entren inicialment en estat `pending`.
+
+#### 4. Comentaris
+
+Els usuaris registrats poden crear comentaris sobre llocs o valoracions. Els comentaris són contingut moderable.
+
+#### 5. Pujada d'Imatges
+
+Els usuaris registrats poden pujar imatges de llocs des de la web o l'app. Les imatges pertanyen a l'usuari autenticat, es guarden en rutes controlades i entren en estat `pending`.
+
+#### 6. Favorits i Llocs Guardats
+
+L'experiència d'usuari inclou llocs guardats per accedir ràpidament a espais rellevants.
+
+#### 7. Reports
+
+Els usuaris poden reportar llocs, valoracions, comentaris, imatges, professionals i organitzacions. Els reports es creen com `open` i són revisats per moderadors.
+
+#### 8. Perfils d'Usuari
+
+La plataforma contempla usuaris estàndard, usuaris de confiança, tutors, professionals, organitzacions, moderadors i administradors. La identitat pública estàndard es basa en pseudònim per reduir exposició innecessària.
+
+#### 9. Tutors i Perfils Infantils
+
+Els perfils infantils no tenen login propi ni email independent en l'MVP. Viuen dins del compte del tutor. Les aportacions vinculades a un perfil infantil requereixen revisió del tutor abans de la moderació o publicació.
+
+#### 10. Professionals Verificats
+
+Els professionals poden sol·licitar verificació. La informació pública del perfil se separa de l'evidència documental privada.
+
+#### 11. Associacions i Centres Verificats
+
+Les entitats poden sol·licitar verificació i mostrar informació pública com nom, ciutat, descripció, web i identificador registral quan estigui disponible.
+
+#### 12. Moderació i Administració
+
+La zona d'administració i les Cloud Functions permeten revisar contingut pendent, canviar estats de moderació, aprovar o rebutjar verificacions i registrar accions administratives sensibles.
+
+#### 13. Mode Focus
+
+La web inclou un mode focus pensat per reduir càrrega visual i fer més tranquil·la la consulta amb mapa.
+
+#### 14. Targeta d'Ajuda
+
+La secció d'ajuda inclou una targeta de comunicació per a moments de sobrecàrrega o dificultat comunicativa.
+
+#### 15. Interfície Multidioma
+
+La interfície està plantejada en català, castellà i anglès.
+
+<a id="ca-consideracions-de-privacitat-i-seguretat"></a>
+### Consideracions de Privacitat i Seguretat
+
+Spectrum Access pot tractar informació contextual sensible encara que no emmagatzemi diagnòstics mèdics.
+
+Principis aplicats:
+
+- Minimització de dades.
+- No sol·licitar informes mèdics.
+- No oferir diagnòstics ni recomanacions clíniques.
+- Separació entre perfil públic i evidència privada de verificació.
+- Moderació de contingut públic.
+- Perfils infantils protegits dins comptes de tutor.
+- Firestore Rules i Storage Rules restrictives.
+- App Check previst com a capa de reducció d'abús.
+- Secrets fora del repositori.
+
+Dades que no s'han de commitejar:
+
+- `.env` reals.
+- Comptes de servei.
+- Claus privades.
+- `google-services.json` reals.
+- `GoogleService-Info.plist` reals.
+- Claus de signing.
+- Configuracions natives privades.
+- Documents interns, captures, PDFs, imatges de concepte o artefactes de treball.
+
+<a id="ca-estat-actual-i-propers-passos"></a>
+### Estat Actual i Propers Passos
+
+Estat actual:
+
+- Monorepo inicial creat.
+- Web Next.js operativa en local.
+- App Flutter preparada per iOS i Android.
+- Models compartits definits.
+- Cloud Functions principals implementades.
+- Firestore Rules i Storage Rules definides.
+- Google Maps integrat a la web.
+- Identitat visual de Spectrum Access iniciada.
+- Documentació pública limitada a `README.md` i `AGENTS.md`.
+
+Pendent:
+
+- Tancar configuració final de Firebase Auth.
+- Crear usuaris de prova quan el login estigui tancat.
+- Completar el flux intern de proves amb dispositius reals.
+- Validar completament moderació i publicació.
+- Preparar el desplegament públic només quan domini i criteris de publicació estiguin definits.
+- Preparar material final de presentació fora del repositori.
+- Ampliar tests visuals i funcionals.
+
+<a id="ca-llicencia"></a>
+### Llicència
+
+Aquest projecte es distribueix sota la llicència **GPL-3.0-only**.
+
+[Torna als idiomes](#spectrum-access)
+
+<a id="castellano"></a>
+## Castellano
+
+<a id="es-index"></a>
+### Índice
+
+- [A. Descripción General del Proyecto](#es-a-descripcion-general-del-proyecto)
+- [B. Stack Tecnológico](#es-stack-tecnologico)
+- [C. Instalación y Ejecución Local](#es-instalacion-y-ejecucion-local)
+- [D. Estructura del Proyecto](#es-estructura-del-proyecto)
+- [E. Funcionalidades Principales](#es-funcionalidades-principales)
+- [Consideraciones de Privacidad y Seguridad](#es-consideraciones-de-privacidad-y-seguridad)
+- [Estado Actual y Próximos Pasos](#es-estado-actual-y-proximos-pasos)
+- [Licencia](#es-licencia)
+
+<a id="es-a-descripcion-general-del-proyecto"></a>
+### A. Descripción General del Proyecto
+
+Spectrum Access es una plataforma web y móvil para mejorar la información sobre accesibilidad sensorial en espacios públicos y privados. El objetivo principal es permitir que la comunidad documente cómo se perciben determinados lugares en aspectos como ruido, iluminación, afluencia, tiempo de espera, facilidad de salida, existencia de espacios tranquilos y trato del personal.
+
+El proyecto se dirige a:
 
 - Personas autistas adultas o personas identificadas que quieran consultar y aportar información sensorial.
-- Tutores que gestionan perfiles infantiles tutelados dentro de su propia cuenta.
+- Tutores que gestionan perfiles infantiles dentro de su propia cuenta.
 - Familias que necesitan información práctica antes de visitar un lugar.
 - Psicólogos y profesionales verificados.
 - Asociaciones y centros de autismo verificados.
 - Moderadores y administradores encargados de revisar contenido, imágenes y verificaciones.
 
-La plataforma no pretende emitir diagnósticos, sustituir a profesionales sanitarios ni realizar recomendaciones clínicas. Los datos sensoriales se tratan como información funcional y comunitaria para ayudar a preparar visitas, reducir incertidumbre y facilitar decisiones personales.
+La plataforma no ofrece diagnósticos, recomendaciones médicas ni consejos clínicos. La información sensorial se trata como información funcional y comunitaria, no como historial médico.
 
-### Problema que resuelve
+#### Problema Que Resuelve
 
-Muchas personas autistas o con sensibilidad sensorial necesitan anticipar cómo será un entorno antes de visitarlo. Información habitual como horarios, dirección o reseñas generales no suele explicar si un espacio es ruidoso, si la luz es intensa, si hay aglomeraciones, si existen salidas claras o si hay zonas tranquilas.
+Muchas personas autistas o con sensibilidad sensorial necesitan anticipar cómo será un entorno antes de visitarlo. La información habitual, como horarios, direcciones o reseñas generales, no suele explicar si un espacio es ruidoso, visualmente intenso, concurrido, fácil de abandonar o adecuado para una pausa tranquila.
 
-Spectrum Access busca cubrir ese vacío mediante una plataforma donde los usuarios puedan:
+Spectrum Access cubre ese vacío permitiendo:
 
 - Consultar lugares en un mapa.
-- Filtrar espacios por necesidades sensoriales.
+- Filtrar espacios según necesidades sensoriales.
 - Revisar fichas con puntuaciones y comentarios.
 - Guardar lugares útiles.
-- Preparar aportaciones con calma desde casa.
+- Preparar aportaciones con calma.
 - Subir imágenes de apoyo.
 - Reportar contenido incorrecto o sensible.
 - Consultar perfiles profesionales y entidades verificadas.
 
-### Enfoque web y móvil
+#### Enfoque Web y Móvil
 
-El proyecto está diseñado con paridad funcional entre web y móvil, pero sin copiar exactamente la misma interfaz:
+El proyecto busca paridad funcional entre web y móvil, adaptando cada interfaz a su contexto:
 
-- La aplicación móvil está pensada para uso rápido en la calle: consultar el mapa cercano, aportar información breve, acceder a ayuda inmediata y gestionar acciones simples.
-- La web está pensada como un entorno tranquilo de escritorio: revisar información con más espacio, completar aportaciones con calma, gestionar perfiles, consultar verificaciones y usar el mapa en pantalla grande.
+- La app móvil está pensada para uso rápido en la calle: consultar lugares cercanos, hacer aportaciones breves, acceder a ayuda y completar acciones simples.
+- La web está pensada como un entorno de escritorio más tranquilo: revisar información con más espacio, completar aportaciones, gestionar perfiles, consultar verificaciones y usar el mapa en pantalla grande.
 
-## B. Stack tecnológico utilizado
+<a id="es-stack-tecnologico"></a>
+### B. Stack Tecnológico
 
 El repositorio está organizado como un monorepo con `pnpm` para JavaScript/TypeScript y Flutter para la aplicación móvil.
 
-> Importante: este proyecto no utiliza `npm`. Todas las operaciones JavaScript/TypeScript se ejecutan con `pnpm`.
+> Importante: este proyecto no utiliza `npm`. Todas las operaciones JavaScript/TypeScript se deben ejecutar con `pnpm`.
 
-### Frontend web
+#### Frontend Web
 
-- **Next.js 16.2.9**: aplicación web de usuario y zona de administración.
+- **Next.js 16.2.9**: aplicación web y zona de administración.
 - **React 19.2.7**: interfaz principal de la web.
 - **TypeScript 5.9.3**: tipado estático.
 - **Tailwind CSS 4.3.1**: base de estilos.
-- **Lucide React**: iconografía de la interfaz.
+- **Lucide React**: iconos de interfaz.
 - **Google Maps JavaScript API**: mapa web interactivo.
-- **Firebase Web SDK 12.15.0**: conexión web con Auth, Firestore, Storage y Functions.
+- **Firebase Web SDK 12.15.0**: integración con Auth, Firestore, Storage y Functions.
 
-### Aplicación móvil
+#### Aplicación Móvil
 
-- **Flutter**: aplicación móvil para iOS y Android.
+- **Flutter**: aplicación iOS y Android.
 - **Dart SDK `^3.11.4`**.
-- **firebase_core**, **firebase_auth**, **cloud_firestore**, **firebase_storage**, **firebase_app_check** y **cloud_functions** para integración con Firebase.
+- **firebase_core**, **firebase_auth**, **cloud_firestore**, **firebase_storage**, **firebase_app_check** y **cloud_functions**.
 - **google_sign_in** y **sign_in_with_apple** para autenticación.
 - **google_maps_flutter** para mapas nativos.
-- **image_picker** para selección de imágenes.
+- **image_picker** para seleccionar imágenes.
 - **flutter_svg** y **google_fonts** para identidad visual.
 
-### Backend y servicios cloud
+#### Backend y Servicios Cloud
 
-- **Firebase Auth**: autenticación con Apple y Google.
+- **Firebase Auth**: autenticación.
 - **Cloud Firestore**: base de datos principal.
-- **Firebase Storage**: almacenamiento de imágenes de lugares, fotos profesionales, logos y evidencias privadas.
+- **Firebase Storage**: imágenes de lugares, fotos profesionales, logos de entidades y evidencias privadas.
 - **Cloud Functions for Firebase**: lógica backend, moderación, agregados, verificaciones y notificaciones.
-- **Firebase App Check**: protección frente a clientes no autorizados.
-- **Firebase Emulator Suite**: entorno local para pruebas de reglas y servicios.
+- **Firebase App Check**: protección contra clientes no autorizados.
+- **Firebase Emulator Suite**: pruebas locales de reglas y servicios.
 
-### Infraestructura y configuración
+#### Infraestructura
 
 - **pnpm 11.1.2** como gestor de paquetes JavaScript/TypeScript.
-- **Node.js `>=20.9`** como versión mínima.
-- **Cloud Functions runtime `nodejs22`** configurado en Firebase.
-- **Firestore en Europa `eur3`** como decisión de ubicación de datos.
-- **Functions region `europe-west1`**.
-- **Firebase Hosting** preparado para la web mediante export estático de Next.js.
-- **GitHub Actions** preparado para CI y staging web.
+- **Node.js `>=20.9`**.
+- **Cloud Functions runtime `nodejs22`**.
+- **Firestore en `eur3`**.
+- **Functions en `europe-west1`**.
+- **Firebase Hosting** preparado para el export estático de Next.js, pero no necesario durante el desarrollo local.
 
-### Diseño y marca
+#### Diseño y Marca
 
 - Nombre del proyecto: **Spectrum Access**.
 - Logo oficial compartido entre web y móvil.
-- Paleta visual premium definida en `docs/design/brand.md`.
-- Soporte de idioma para catalán, castellano e inglés.
-- Modo claro, modo oscuro y modo focus.
+- Soporte visual para modo claro, modo oscuro y modo focus.
+- Idiomas de la interfaz: catalán, castellano e inglés.
 
-## C. Instalación y ejecución
+<a id="es-instalacion-y-ejecucion-local"></a>
+### C. Instalación y Ejecución Local
 
-### Requisitos previos
-
-Antes de ejecutar el proyecto en local, es necesario tener instalado:
+#### Requisitos
 
 - Node.js `>=20.9`.
 - `pnpm` `11.1.2` o superior.
 - Flutter stable compatible con Dart `^3.11.4`.
 - Firebase CLI.
-- Java Runtime si se quieren ejecutar emuladores y tests de reglas Firebase.
-- Xcode para ejecutar la app en iOS.
-- Android Studio o Android SDK para ejecutar la app en Android.
+- Java Runtime para Firebase Emulator Suite y tests de reglas Firebase.
+- Xcode para iOS.
+- Android Studio o Android SDK para Android.
 
-### Instalación de dependencias JavaScript/TypeScript
+#### Instalar Dependencias JavaScript/TypeScript
 
 Desde la raíz del repositorio:
 
@@ -129,9 +1092,9 @@ Desde la raíz del repositorio:
 pnpm install
 ```
 
-### Variables de entorno y secretos
+#### Variables de Entorno y Secretos
 
-El repositorio no debe incluir claves reales, cuentas de servicio ni archivos nativos privados. Los archivos `.env`, configuraciones nativas de Firebase y claves de mapas se mantienen fuera de Git.
+El repositorio no debe contener secretos reales, cuentas de servicio ni archivos nativos privados. Los `.env` locales, claves de signing y archivos Firebase nativos deben quedar fuera de Git.
 
 Archivos de referencia incluidos:
 
@@ -141,7 +1104,7 @@ Archivos de referencia incluidos:
 - `apps/mobile/android/local.properties.example`
 - `apps/mobile/ios/Flutter/Secrets.xcconfig.example`
 
-Archivos locales que se deben crear manualmente cuando se configure el proyecto real:
+Archivos locales que deben crearse manualmente cuando sea necesario:
 
 - `apps/web/.env`
 - `apps/mobile/android/app/google-services.json`
@@ -149,9 +1112,9 @@ Archivos locales que se deben crear manualmente cuando se configure el proyecto 
 - `apps/mobile/android/local.properties`
 - `apps/mobile/ios/Flutter/Secrets.xcconfig`
 
-### Configuración mínima de la web
+#### Configuración Web
 
-Crear `apps/web/.env` a partir de `apps/web/.env.example` y definir las variables públicas de Firebase y Google Maps:
+Crea `apps/web/.env` a partir de `apps/web/.env.example` y define los valores públicos de Firebase y Google Maps:
 
 ```bash
 NEXT_PUBLIC_FIREBASE_API_KEY=
@@ -160,42 +1123,32 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 ```
 
-La clave `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` debe permitir la **Google Maps JavaScript API**. Para desarrollo local se recomienda restringirla a:
-
-```text
-http://localhost:3000/*
-http://127.0.0.1:3000/*
-```
-
-Si no se define esta clave, la web mantiene un mapa visual fallback para evitar romper la experiencia local.
-
-### Ejecutar la web en local
-
-Desde la raíz del repositorio:
+Para desarrollo local:
 
 ```bash
 pnpm dev:web
 ```
 
-La web se ejecuta normalmente en:
+La web normalmente se ejecuta en:
 
 ```text
 http://localhost:3000
 ```
 
-Comandos útiles para la web:
+Checks útiles de web:
 
 ```bash
 pnpm --filter @accessibilitat/web typecheck
 pnpm --filter @accessibilitat/web build
 ```
 
-### Ejecutar la aplicación móvil
+#### Configuración Móvil
 
-Entrar en la carpeta móvil:
+Entra en el directorio de la app móvil:
 
 ```bash
 cd apps/mobile
@@ -214,24 +1167,22 @@ Ejecutar en iOS:
 flutter run -d ios
 ```
 
-Para activar Google Maps nativo durante el desarrollo móvil:
+Activar Google Maps nativo durante el desarrollo:
 
 ```bash
 flutter run --dart-define=SPECTRUM_GOOGLE_MAPS_ENABLED=true
 ```
 
-Sin ese `dart-define`, la aplicación puede mantener el mapa visual fallback para evitar errores cuando todavía no se han configurado las claves nativas.
+Sin este `dart-define`, la app puede mantener el mapa visual fallback para evitar errores locales cuando no hay claves nativas configuradas.
 
-Comandos desde la raíz del repositorio:
+Checks móviles desde la raíz:
 
 ```bash
 pnpm mobile:analyze
 pnpm mobile:test
 ```
 
-### Ejecutar checks globales
-
-Desde la raíz:
+#### Checks Globales
 
 ```bash
 pnpm typecheck
@@ -239,9 +1190,9 @@ pnpm test
 pnpm build
 ```
 
-### Firebase Emulators y reglas
+#### Firebase Emulators y Reglas
 
-Ejecutar los emuladores:
+Arrancar emuladores:
 
 ```bash
 pnpm firebase:emulators
@@ -253,9 +1204,10 @@ Ejecutar tests de reglas:
 pnpm rules:test
 ```
 
-Estos tests requieren Java y Firebase Emulator Suite correctamente configurados.
+Estos tests requieren Java y Firebase Emulator Suite.
 
-## D. Estructura del proyecto
+<a id="es-estructura-del-proyecto"></a>
+### D. Estructura del Proyecto
 
 Estructura principal del monorepo:
 
@@ -270,13 +1222,6 @@ Estructura principal del monorepo:
 │   └── web
 │       ├── app
 │       └── public
-├── docs
-│   ├── design
-│   ├── adr-0001-stack.md
-│   ├── architecture.md
-│   ├── privacy.md
-│   ├── product-spec.md
-│   └── setup-local.md
 ├── firebase
 │   ├── firestore.indexes.json
 │   ├── firestore.rules
@@ -289,15 +1234,17 @@ Estructura principal del monorepo:
 │       └── src
 ├── .github
 │   └── workflows
+├── AGENTS.md
+├── README.md
 ├── firebase.json
 ├── package.json
 ├── pnpm-lock.yaml
 └── pnpm-workspace.yaml
 ```
 
-### `apps/web`
+#### `apps/web`
 
-Contiene la aplicación web construida con Next.js, React y TypeScript.
+Aplicación web Next.js, React y TypeScript.
 
 Archivos relevantes:
 
@@ -305,27 +1252,27 @@ Archivos relevantes:
 - `apps/web/app/platform-app.tsx`: interfaz principal de Spectrum Access.
 - `apps/web/app/admin/page.tsx`: zona de administración.
 - `apps/web/app/lib/firebase.ts`: inicialización Firebase web.
-- `apps/web/app/lib/firebase-actions.ts`: acciones web conectadas con Firestore, Storage y Cloud Functions.
-- `apps/web/app/lib/google-maps.ts`: carga de Google Maps JavaScript API.
-- `apps/web/public/brand/accessibilitat-logo.svg`: logo oficial en web.
+- `apps/web/app/lib/firebase-actions.ts`: acciones web conectadas a Firestore, Storage y Cloud Functions.
+- `apps/web/app/lib/google-maps.ts`: cargador de Google Maps JavaScript API.
+- `apps/web/public/brand/accessibilitat-logo.svg`: logo oficial web.
 
-### `apps/mobile`
+#### `apps/mobile`
 
-Contiene la aplicación Flutter para iOS y Android.
+Aplicación Flutter para iOS y Android.
 
 Archivos relevantes:
 
 - `apps/mobile/lib/main.dart`: punto de entrada de Flutter.
-- `apps/mobile/lib/spectrum_app.dart`: interfaz principal de la app móvil.
-- `apps/mobile/lib/spectrum_theme.dart`: tema visual, colores y componentes.
-- `apps/mobile/lib/spectrum_content.dart`: textos, datos mock y contenido compartido de la UI.
-- `apps/mobile/lib/firebase_services.dart`: conexión con Firebase desde Flutter.
-- `apps/mobile/lib/firebase_options.dart`: configuración Firebase generada.
-- `apps/mobile/assets/brand/accessibilitat-logo.svg`: logo oficial en móvil.
+- `apps/mobile/lib/spectrum_app.dart`: UI móvil principal.
+- `apps/mobile/lib/spectrum_theme.dart`: tema, colores y componentes.
+- `apps/mobile/lib/spectrum_content.dart`: textos, datos mock y contenido de UI.
+- `apps/mobile/lib/firebase_services.dart`: capa de servicios Firebase para Flutter.
+- `apps/mobile/lib/firebase_options.dart`: opciones Firebase generadas.
+- `apps/mobile/assets/brand/accessibilitat-logo.svg`: logo oficial móvil.
 
-### `packages/shared`
+#### `packages/shared`
 
-Paquete compartido de modelos, constantes y validaciones de dominio.
+Modelos, constantes y validaciones compartidas de dominio.
 
 Incluye:
 
@@ -335,16 +1282,14 @@ Incluye:
 - Categorías de lugares.
 - Criterios sensoriales.
 - Tipos de comentarios, reportes y verificaciones.
-- Interfaces de datos principales.
+- Interfaces principales de datos.
 - Validaciones compartidas.
 
-Este paquete actúa como fuente de verdad para evitar duplicar reglas de negocio entre web, móvil y backend.
+#### `packages/functions`
 
-### `packages/functions`
+Backend Firebase Cloud Functions.
 
-Contiene las Cloud Functions de Firebase.
-
-Funciones principales:
+Responsabilidades principales:
 
 - Crear lugares.
 - Enviar valoraciones.
@@ -353,37 +1298,27 @@ Funciones principales:
 - Crear reportes.
 - Crear perfiles infantiles tutelados.
 - Solicitar verificación profesional.
-- Solicitar verificación de asociación o centro.
+- Solicitar verificación de entidad.
 - Moderar contenido.
-- Cambiar estado de verificación.
-- Recalcular estadísticas agregadas de lugares.
+- Actualizar estado de verificación.
+- Recalcular agregados de lugares.
 - Notificar imágenes rechazadas.
 - Auditar cambios de verificación.
 
-### `firebase`
+#### `firebase`
 
-Contiene la configuración de seguridad de Firebase:
+Configuración de seguridad Firebase:
 
 - `firestore.rules`: reglas de acceso a Firestore.
 - `storage.rules`: reglas de acceso a Firebase Storage.
-- `firestore.indexes.json`: índices necesarios para consultas.
+- `firestore.indexes.json`: índices necesarios de Firestore.
 
-### `docs`
+<a id="es-funcionalidades-principales"></a>
+### E. Funcionalidades Principales
 
-Documentación interna del proyecto:
+#### 1. Mapa Sensorial
 
-- `product-spec.md`: especificación funcional del MVP.
-- `architecture.md`: arquitectura inicial.
-- `privacy.md`: principios de privacidad y confianza.
-- `setup-local.md`: configuración local.
-- `adr-0001-stack.md`: decisión técnica del stack.
-- `design/brand.md`: identidad visual y reglas de marca.
-
-## E. Funcionalidades principales
-
-### 1. Mapa sensorial
-
-La plataforma permite consultar lugares en un mapa con información sensorial. En la web se utiliza Google Maps cuando existe una clave configurada y un fallback visual cuando no está disponible.
+La plataforma permite consultar lugares en un mapa con información sensorial. La web utiliza Google Maps cuando hay una clave válida configurada y un fallback visual cuando no está disponible.
 
 Funcionalidades asociadas:
 
@@ -391,194 +1326,95 @@ Funcionalidades asociadas:
 - Búsqueda por nombre, ciudad o categoría.
 - Filtros sensoriales.
 - Capas de mapa.
-- Localización del usuario con permiso del navegador.
-- Ficha de lugar seleccionada.
+- Ubicación del navegador con permiso.
+- Panel del lugar seleccionado.
 
-### 2. Consulta y ficha de lugares
+#### 2. Ficha de Lugar
 
-Cada lugar puede incluir:
+Cada lugar puede incluir nombre, categoría, ciudad, dirección o zona, descripción, coordenadas, estado de moderación, puntuación media, número de valoraciones y número de imágenes.
 
-- Nombre.
-- Categoría.
-- Ciudad.
-- Dirección o área.
-- Descripción.
-- Coordenadas.
-- Estado de moderación.
-- Puntuación media.
-- Número de valoraciones.
-- Número de imágenes.
+#### 3. Valoraciones Sensoriales
 
-La ficha permite revisar el estado sensorial del lugar antes de visitarlo.
+Los usuarios pueden aportar puntuaciones del 1 al 5 para criterios como ruido, afluencia, luz, espera, trato del personal, espacio tranquilo, facilidad de salida y seguridad percibida. Las valoraciones entran inicialmente en estado `pending`.
 
-### 3. Valoraciones sensoriales
+#### 4. Comentarios
 
-Los usuarios pueden aportar valoraciones basadas en criterios sensoriales.
+Los usuarios registrados pueden crear comentarios sobre lugares o valoraciones. Los comentarios son contenido moderable.
 
-Criterios contemplados:
+#### 5. Subida de Imágenes
 
-- Ruido.
-- Afluencia o densidad de personas.
-- Iluminación.
-- Temperatura.
-- Tiempo de espera.
-- Trato del personal.
-- Espacio tranquilo.
-- Facilidad de salida.
-- Seguridad percibida.
-- Recomendación general.
+Los usuarios registrados pueden subir imágenes de lugares desde la web o la app. Las imágenes pertenecen al usuario autenticado, se guardan en rutas controladas y entran en estado `pending`.
 
-Las puntuaciones se registran como valores del 1 al 5. Las valoraciones entran inicialmente en estado `pending` para permitir moderación.
+#### 6. Favoritos y Lugares Guardados
 
-### 4. Comentarios
+La experiencia de usuario incluye lugares guardados para acceder rápidamente a espacios relevantes.
 
-Los usuarios registrados pueden crear comentarios sobre lugares o valoraciones. Los comentarios también se tratan como contenido moderable.
+#### 7. Reportes
 
-### 5. Subida de imágenes
+Los usuarios pueden reportar lugares, valoraciones, comentarios, imágenes, profesionales y organizaciones. Los reportes se crean como `open` y son revisados por moderadores.
 
-Los usuarios registrados pueden subir imágenes de lugares desde la web o desde la app. El objetivo es permitir que una persona pueda capturar información en un momento concreto y subirla más tarde con calma.
+#### 8. Perfiles de Usuario
 
-En el MVP:
+La plataforma contempla usuarios estándar, usuarios de confianza, tutores, profesionales, organizaciones, moderadores y administradores. La identidad pública estándar se basa en pseudónimo para reducir exposición innecesaria.
 
-- Las imágenes quedan en estado `pending`.
-- Las imágenes deben pertenecer al usuario autenticado.
-- Storage valida tipo de archivo `image/*`.
-- Storage limita el tamaño de imagen.
-- La publicación depende de moderación.
-- Si una imagen se rechaza o elimina, se puede notificar de forma privada al usuario.
+#### 9. Tutores y Perfiles Infantiles
 
-### 6. Favoritos y lugares guardados
+Los perfiles infantiles no tienen login propio ni email independiente en el MVP. Viven dentro de la cuenta del tutor. Las aportaciones vinculadas a un perfil infantil requieren revisión del tutor antes de la moderación o publicación.
 
-La experiencia de usuario incluye lugares guardados para facilitar el acceso rápido a espacios relevantes.
+#### 10. Profesionales Verificados
 
-### 7. Reportes
+Los profesionales pueden solicitar verificación. La información pública del perfil se separa de la evidencia documental privada.
 
-Los usuarios pueden reportar contenido relacionado con:
+#### 11. Asociaciones y Centros Verificados
 
-- Lugares.
-- Valoraciones.
-- Comentarios.
-- Imágenes.
-- Profesionales.
-- Organizaciones.
+Las entidades pueden solicitar verificación y mostrar información pública como nombre, ciudad, descripción, web e identificador registral cuando esté disponible.
 
-Los reportes se crean en estado `open` y pueden ser revisados por moderadores.
+#### 12. Moderación y Administración
 
-### 8. Perfiles de usuario
+La zona de administración y las Cloud Functions permiten revisar contenido pendiente, cambiar estados de moderación, aprobar o rechazar verificaciones y registrar acciones administrativas sensibles.
 
-La plataforma contempla varios tipos de perfiles:
+#### 13. Modo Focus
 
-- Usuario estándar.
-- Usuario de confianza.
-- Tutor.
-- Profesional.
-- Organización.
-- Moderador.
-- Administrador.
+La web incluye un modo focus pensado para reducir carga visual y hacer más tranquila la consulta con mapa.
 
-La identidad pública de usuarios estándar se basa en pseudónimo para reducir exposición innecesaria.
+#### 14. Tarjeta de Ayuda
 
-### 9. Tutores y perfiles infantiles tutelados
+La sección de ayuda incluye una tarjeta de comunicación para momentos de sobrecarga o dificultad comunicativa.
 
-Los perfiles infantiles no tienen login propio ni email independiente en el MVP. Viven dentro de la cuenta del tutor.
+#### 15. Interfaz Multidioma
 
-Un tutor puede gestionar:
+La interfaz está planteada en catalán, castellano e inglés.
 
-- Alias del menor.
-- Franja de edad opcional.
-- Preferencias sensoriales.
-- Aportaciones preparadas por el menor.
+<a id="es-consideraciones-de-privacidad-y-seguridad"></a>
+### Consideraciones de Privacidad y Seguridad
 
-Las aportaciones asociadas a un perfil infantil requieren revisión y aprobación del tutor antes de enviarse a moderación o publicación.
-
-### 10. Profesionales verificados
-
-Los psicólogos y otros profesionales pueden solicitar verificación.
-
-El perfil profesional contempla:
-
-- Foto profesional.
-- Nombre profesional.
-- Número de colegiado/a.
-- Colegio profesional.
-- Especialidad.
-- Estado de verificación.
-
-La evidencia documental de verificación queda privada para administración.
-
-### 11. Asociaciones y centros de autismo verificados
-
-Las asociaciones y centros pueden solicitar verificación.
-
-El perfil de entidad contempla:
-
-- Logo.
-- Nombre.
-- Descripción.
-- Ciudad.
-- Web o contacto.
-- Número de inscripción o identificador registral.
-- Estado de verificación.
-
-El número registral puede mostrarse públicamente cuando la entidad lo facilite.
-
-### 12. Moderación y administración
-
-La zona de administración y las Cloud Functions permiten:
-
-- Revisar contenido pendiente.
-- Cambiar estados de moderación.
-- Aprobar o rechazar verificaciones.
-- Registrar acciones administrativas.
-- Mantener trazabilidad de cambios sensibles.
-
-Las claims `admin` y `moderator` gobiernan los permisos elevados. El sistema no confía en roles editables desde cliente para acciones críticas.
-
-### 13. Modo focus
-
-La web incluye un modo focus pensado para reducir carga visual y facilitar la concentración. En pantallas de consulta, el modo focus compacta navegación y paneles secundarios para dar más protagonismo al mapa.
-
-### 14. Tarjeta de ayuda
-
-La sección de ayuda incluye una tarjeta de comunicación pensada para momentos de sobrecarga o dificultad comunicativa. Su objetivo es permitir expresar necesidades básicas de forma rápida y clara.
-
-### 15. Multidioma
-
-La interfaz está planteada en:
-
-- Catalán.
-- Castellano.
-- Inglés.
-
-El README se mantiene en castellano para facilitar la corrección del trabajo final de máster.
-
-## Consideraciones de privacidad y seguridad
-
-Spectrum Access trabaja con información potencialmente sensible por el contexto de uso, aunque no almacene diagnósticos médicos.
+Spectrum Access puede tratar información contextual sensible aunque no almacene diagnósticos médicos.
 
 Principios aplicados:
 
 - Minimización de datos.
 - No solicitar informes médicos.
-- No ofrecer diagnóstico ni recomendaciones clínicas.
-- Separación entre perfil público y evidencia privada.
+- No ofrecer diagnósticos ni recomendaciones clínicas.
+- Separación entre perfil público y evidencia privada de verificación.
 - Moderación de contenido público.
-- Protección de perfiles infantiles dentro de cuentas de tutor.
-- Reglas Firestore y Storage restrictivas.
-- Uso de App Check previsto para reducir abuso.
-- Gestión de secretos fuera del repositorio.
+- Perfiles infantiles protegidos dentro de cuentas de tutor.
+- Firestore Rules y Storage Rules restrictivas.
+- App Check previsto como capa de reducción de abuso.
+- Secretos fuera del repositorio.
 
-Datos que no deben subirse al repositorio:
+Datos que no deben commitearse:
 
 - `.env` reales.
-- Service accounts.
+- Cuentas de servicio.
 - Claves privadas.
-- Archivos `google-services.json` reales.
-- Archivos `GoogleService-Info.plist` reales.
+- `google-services.json` reales.
+- `GoogleService-Info.plist` reales.
 - Claves de signing.
 - Configuraciones nativas privadas.
+- Documentos internos, capturas, PDFs, imágenes de concepto o artefactos de trabajo.
 
-## Estado actual y próximos pasos
+<a id="es-estado-actual-y-proximos-pasos"></a>
+### Estado Actual y Próximos Pasos
 
 Estado actual:
 
@@ -587,21 +1423,24 @@ Estado actual:
 - App Flutter preparada para iOS y Android.
 - Modelos compartidos definidos.
 - Cloud Functions principales implementadas.
-- Reglas Firestore y Storage definidas.
-- Google Maps integrado en web.
-- Identidad visual de Spectrum Access definida.
-- Documentación interna inicial disponible en `docs`.
+- Firestore Rules y Storage Rules definidas.
+- Google Maps integrado en la web.
+- Identidad visual de Spectrum Access iniciada.
+- Documentación pública limitada a `README.md` y `AGENTS.md`.
 
-Pendiente para fases posteriores:
+Pendiente:
 
 - Cerrar configuración final de Firebase Auth.
 - Crear usuarios de prueba cuando el login esté cerrado.
-- Completar despliegue público.
-- Documentar URL real del proyecto.
-- Preparar slides de presentación.
-- Preparar vídeo explicativo del TFM.
-- Ampliar tests visuales y funcionales sobre web y móvil.
+- Completar el flujo interno de pruebas con dispositivos reales.
+- Validar completamente moderación y publicación.
+- Preparar el despliegue público solo cuando dominio y criterios de publicación estén definidos.
+- Preparar material final de presentación fuera del repositorio.
+- Ampliar tests visuales y funcionales.
 
-## Licencia
+<a id="es-licencia"></a>
+### Licencia
 
-Este proyecto se distribuye bajo licencia **GPL-3.0-only**.
+Este proyecto se distribuye bajo la licencia **GPL-3.0-only**.
+
+[Volver a los idiomas](#spectrum-access)
