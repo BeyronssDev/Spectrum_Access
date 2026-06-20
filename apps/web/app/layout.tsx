@@ -4,7 +4,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Spectrum Access",
-  description: "Spectrum Access: plataforma oberta per a persones autistes."
+  description: "Spectrum Access: plataforma oberta per a persones autistes.",
+  icons: {
+    icon: [{ url: "/brand/accessibilitat-logo.svg", type: "image/svg+xml" }]
+  }
 };
 
 export const viewport: Viewport = {
