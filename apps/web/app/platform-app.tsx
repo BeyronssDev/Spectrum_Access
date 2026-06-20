@@ -79,6 +79,8 @@ type ContributionDraft = {
   description: string;
 };
 
+const authRequiredViews = new Set<ViewId>(["contribute", "profiles", "verified"]);
+
 type Place = {
   id: string;
   name: string;
@@ -475,6 +477,12 @@ const authCopy: Record<
     emailRegister: string;
     logout: string;
     loadingSession: string;
+    guestName: string;
+    guestRole: string;
+    publicMode: string;
+    signInRequiredTitle: string;
+    signInRequiredIntro: string;
+    signInToContinue: string;
     passwordsMismatch: string;
     authFailed: string;
     emailVerificationSent: string;
@@ -501,7 +509,7 @@ const authCopy: Record<
   ca: {
     signedOutTitle: "Entra a Spectrum Access",
     signedOutIntro:
-      "Registra't per consultar, aportar imatges, crear perfils tutelats i sol·licitar verificació professional.",
+      "Consulta el mapa sense compte. Registra't només quan vulguis aportar imatges, crear perfils tutelats o sol·licitar verificació professional.",
     login: "Iniciar sessió",
     register: "Crear compte",
     email: "Email",
@@ -515,6 +523,13 @@ const authCopy: Record<
     emailRegister: "Registrar amb email",
     logout: "Tancar sessió",
     loadingSession: "Comprovant sessió segura...",
+    guestName: "Visitant",
+    guestRole: "Consulta pública",
+    publicMode: "Mode consulta",
+    signInRequiredTitle: "Inicia sessió per continuar",
+    signInRequiredIntro:
+      "Pots consultar el mapa i la informació bàsica sense compte. Per aportar contingut, veure perfils verificats o gestionar dades personals cal registrar-se.",
+    signInToContinue: "Iniciar sessió",
     passwordsMismatch: "Les contrasenyes no coincideixen.",
     authFailed: "No s'ha pogut completar l'autenticació. Revisa Firebase Auth i torna-ho a provar.",
     emailVerificationSent: "Compte creat. T'hem enviat un correu de verificació.",
@@ -540,7 +555,7 @@ const authCopy: Record<
   es: {
     signedOutTitle: "Entra en Spectrum Access",
     signedOutIntro:
-      "Regístrate para consultar, aportar imágenes, crear perfiles tutelados y solicitar verificación profesional.",
+      "Consulta el mapa sin cuenta. Regístrate solo cuando quieras aportar imágenes, crear perfiles tutelados o solicitar verificación profesional.",
     login: "Iniciar sesión",
     register: "Crear cuenta",
     email: "Email",
@@ -554,6 +569,13 @@ const authCopy: Record<
     emailRegister: "Registrar con email",
     logout: "Cerrar sesión",
     loadingSession: "Comprobando sesión segura...",
+    guestName: "Visitante",
+    guestRole: "Consulta pública",
+    publicMode: "Modo consulta",
+    signInRequiredTitle: "Inicia sesión para continuar",
+    signInRequiredIntro:
+      "Puedes consultar el mapa y la información básica sin cuenta. Para aportar contenido, ver perfiles verificados o gestionar datos personales hay que registrarse.",
+    signInToContinue: "Iniciar sesión",
     passwordsMismatch: "Las contraseñas no coinciden.",
     authFailed: "No se ha podido completar la autenticación. Revisa Firebase Auth e inténtalo de nuevo.",
     emailVerificationSent: "Cuenta creada. Te hemos enviado un correo de verificación.",
@@ -579,7 +601,7 @@ const authCopy: Record<
   en: {
     signedOutTitle: "Enter Spectrum Access",
     signedOutIntro:
-      "Register to discover places, upload images, create tutored profiles and request professional verification.",
+      "Browse the map without an account. Register only when you want to upload images, create tutored profiles or request professional verification.",
     login: "Sign in",
     register: "Create account",
     email: "Email",
@@ -593,6 +615,13 @@ const authCopy: Record<
     emailRegister: "Register with email",
     logout: "Sign out",
     loadingSession: "Checking secure session...",
+    guestName: "Guest",
+    guestRole: "Public browsing",
+    publicMode: "Browse mode",
+    signInRequiredTitle: "Sign in to continue",
+    signInRequiredIntro:
+      "You can browse the map and basic place information without an account. To contribute content, view verified profiles or manage personal data, registration is required.",
+    signInToContinue: "Sign in",
     passwordsMismatch: "Passwords do not match.",
     authFailed: "Authentication could not be completed. Check Firebase Auth and try again.",
     emailVerificationSent: "Account created. We sent you a verification email.",
@@ -809,6 +838,7 @@ export function PlatformApp() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [authPanelOpen, setAuthPanelOpen] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [isSubmittingContribution, setIsSubmittingContribution] = useState(false);
   const [contributionMessage, setContributionMessage] = useState<string | null>(null);
@@ -952,6 +982,13 @@ export function PlatformApp() {
     setAppUser(profile);
   };
 
+  const navigateToView = (view: ViewId) => {
+    setActiveView(view);
+    if (authRequiredViews.has(view)) {
+      setAuthPanelOpen(false);
+    }
+  };
+
   const handleEmailRegister = async (input: {
     email: string;
     password: string;
@@ -960,28 +997,35 @@ export function PlatformApp() {
   }) => {
     await registerWithEmailPassword({ ...input, locale });
     await refreshAppProfile();
+    setAuthPanelOpen(false);
     setAuthMessage(authCopy[locale].emailVerificationSent);
   };
 
   const handleEmailLogin = async (input: { email: string; password: string }) => {
     await loginWithEmailPassword({ ...input, locale });
     await refreshAppProfile();
+    setAuthPanelOpen(false);
   };
 
   const handleGoogleLogin = async () => {
     await loginWithGoogle(locale);
     await refreshAppProfile();
+    setAuthPanelOpen(false);
   };
 
   const handleAppleLogin = async () => {
     await loginWithApple(locale);
     await refreshAppProfile();
+    setAuthPanelOpen(false);
   };
 
   const handleLogout = async () => {
     await logout();
     setAuthUser(null);
     setAppUser(null);
+    if (authRequiredViews.has(activeView)) {
+      setActiveView("home");
+    }
   };
 
   const updateContributionDraft = (patch: Partial<ContributionDraft>) => {
@@ -990,6 +1034,12 @@ export function PlatformApp() {
 
   const submitContribution = async () => {
     if (isSubmittingContribution) {
+      return;
+    }
+
+    if (!authUser) {
+      setActiveView("contribute");
+      setContributionMessage(authCopy[locale].signInRequiredIntro);
       return;
     }
 
@@ -1038,32 +1088,13 @@ export function PlatformApp() {
     }
   };
 
-  if (!authChecked) {
-    return (
-      <main className="spectrum-app" data-theme={darkMode ? "dark" : "light"} data-focus="false">
-        <AuthLoading copy={authCopy[locale]} />
-      </main>
-    );
-  }
-
-  if (!authUser) {
-    return (
-      <main className="spectrum-app" data-theme={darkMode ? "dark" : "light"} data-focus="false">
-        <AuthGate
-          copy={authCopy[locale]}
-          locale={locale}
-          darkMode={darkMode}
-          message={authMessage}
-          onLocale={setLocale}
-          onDarkMode={setDarkMode}
-          onEmailLogin={handleEmailLogin}
-          onEmailRegister={handleEmailRegister}
-          onGoogle={handleGoogleLogin}
-          onApple={handleAppleLogin}
-        />
-      </main>
-    );
-  }
+  const isAuthenticated = Boolean(authUser);
+  const sessionStatusLabel = !authChecked
+    ? authCopy[locale].loadingSession
+    : authUser
+      ? c.status
+      : authCopy[locale].publicMode;
+  const gatedViewNeedsAuth = !isAuthenticated && authRequiredViews.has(activeView);
 
   return (
     <main
@@ -1092,7 +1123,7 @@ export function PlatformApp() {
                   className="nav-button"
                   data-active={selected}
                   aria-pressed={selected}
-                  onClick={() => setActiveView(item.id)}
+                  onClick={() => navigateToView(item.id)}
                 >
                   <Icon aria-hidden="true" size={21} />
                   <span>{c.nav[item.id]}</span>
@@ -1104,17 +1135,17 @@ export function PlatformApp() {
 
           <div className="side-footer">
             <div className="member-card">
-              <span className="avatar avatar-small">{(appUser?.publicName ?? authUser.displayName ?? "SA").slice(0, 2).toUpperCase()}</span>
+              <span className="avatar avatar-small">{(appUser?.publicName ?? authUser?.displayName ?? authCopy[locale].guestName).slice(0, 2).toUpperCase()}</span>
               <div>
-                <strong>{appUser?.publicName ?? authUser.displayName ?? authUser.email ?? "Spectrum Access"}</strong>
-                <span>{appUser?.roles.includes("tutor") ? "Tutor" : "Usuari"}</span>
+                <strong>{appUser?.publicName ?? authUser?.displayName ?? authUser?.email ?? authCopy[locale].guestName}</strong>
+                <span>{authUser ? (appUser?.roles.includes("tutor") ? "Tutor" : "Usuari") : authCopy[locale].guestRole}</span>
               </div>
             </div>
             <div className="security-card">
               <ShieldCheck aria-hidden="true" size={22} />
               <div>
                 <span>{c.status}</span>
-                <strong>{authUser.emailVerified ? c.verified : "Email pendent"}</strong>
+                <strong>{authUser ? (authUser.emailVerified ? c.verified : "Email pendent") : sessionStatusLabel}</strong>
               </div>
             </div>
           </div>
@@ -1130,7 +1161,7 @@ export function PlatformApp() {
             <div className="top-actions">
               <span className="health-pill">
                 <Check aria-hidden="true" size={15} />
-                {c.status}
+                {sessionStatusLabel}
               </span>
               <label className="select-control">
                 <Globe2 aria-hidden="true" size={17} />
@@ -1163,42 +1194,69 @@ export function PlatformApp() {
               <button type="button" className="icon-button" aria-label="Notificacions">
                 <Bell aria-hidden="true" size={22} />
               </button>
-              <button type="button" className="icon-button" aria-label={authCopy[locale].logout} onClick={handleLogout}>
-                <LogOut aria-hidden="true" size={20} />
-              </button>
+              {authUser ? (
+                <button type="button" className="icon-button" aria-label={authCopy[locale].logout} onClick={handleLogout}>
+                  <LogOut aria-hidden="true" size={20} />
+                </button>
+              ) : (
+                <button type="button" className="secondary-action top-login-action" onClick={() => setAuthPanelOpen(true)}>
+                  <KeyRound aria-hidden="true" size={17} />
+                  {authCopy[locale].signInToContinue}
+                </button>
+              )}
             </div>
           </header>
 
-          {activeView === "home" ? (
+          {gatedViewNeedsAuth ? (
+            <AuthRequiredView
+              copy={authCopy[locale]}
+              locale={locale}
+              darkMode={darkMode}
+              message={authMessage}
+              onLocale={setLocale}
+              onDarkMode={setDarkMode}
+              onEmailLogin={handleEmailLogin}
+              onEmailRegister={handleEmailRegister}
+              onGoogle={handleGoogleLogin}
+              onApple={handleAppleLogin}
+            />
+          ) : null}
+
+          {!gatedViewNeedsAuth && activeView === "home" ? (
             <HomeView
               copy={c}
+              authLabels={authCopy[locale]}
               locale={locale}
               places={filteredPlaces}
               selectedFilter={selectedFilter}
               selectedPlace={visibleSelectedPlace}
-              onNavigate={setActiveView}
+              isAuthenticated={isAuthenticated}
+              onNavigate={navigateToView}
               onSelectPlace={setSelectedPlaceId}
               onCycleFilter={cycleFilter}
             />
           ) : null}
 
-          {activeView === "consult" ? (
+          {!gatedViewNeedsAuth && activeView === "consult" ? (
             <ConsultView
               copy={c}
+              authLabels={authCopy[locale]}
               locale={locale}
               query={query}
               selectedFilter={selectedFilter}
               selectedPlace={visibleSelectedPlace}
               places={filteredPlaces}
+              isAuthenticated={isAuthenticated}
               onQuery={setQuery}
               onFilter={toggleFilter}
               onSelectPlace={setSelectedPlaceId}
-              onNavigate={setActiveView}
+              onNavigate={navigateToView}
               onCycleFilter={cycleFilter}
+              onRequireAuth={() => setAuthPanelOpen(true)}
             />
           ) : null}
 
-          {activeView === "contribute" ? (
+          {!gatedViewNeedsAuth && activeView === "contribute" ? (
             <ContributeView
               copy={c}
               locale={locale}
@@ -1219,15 +1277,38 @@ export function PlatformApp() {
             />
           ) : null}
 
-          {activeView === "support" ? (
+          {!gatedViewNeedsAuth && activeView === "support" ? (
             <SupportView copy={c} focusMode={focusMode} onFocus={() => setFocusMode(true)} />
           ) : null}
 
-          {activeView === "profiles" ? <ProfilesView copy={c} authCopy={authCopy[locale]} locale={locale} appUser={appUser} onRefreshProfile={refreshAppProfile} /> : null}
+          {!gatedViewNeedsAuth && activeView === "profiles" ? <ProfilesView copy={c} authCopy={authCopy[locale]} locale={locale} appUser={appUser} onRefreshProfile={refreshAppProfile} /> : null}
 
-          {activeView === "verified" ? <VerifiedView copy={c} /> : null}
+          {!gatedViewNeedsAuth && activeView === "verified" ? <VerifiedView copy={c} /> : null}
         </section>
       </div>
+
+      {!authUser && authPanelOpen ? (
+        <div className="auth-modal-backdrop" role="dialog" aria-modal="true" aria-label={authCopy[locale].signInRequiredTitle}>
+          <div className="auth-modal">
+            <button type="button" className="auth-modal-close" aria-label="Tancar" onClick={() => setAuthPanelOpen(false)}>
+              <Minus aria-hidden="true" size={20} />
+            </button>
+            <AuthGate
+              copy={authCopy[locale]}
+              locale={locale}
+              darkMode={darkMode}
+              message={authMessage}
+              variant="inline"
+              onLocale={setLocale}
+              onDarkMode={setDarkMode}
+              onEmailLogin={handleEmailLogin}
+              onEmailRegister={handleEmailRegister}
+              onGoogle={handleGoogleLogin}
+              onApple={handleAppleLogin}
+            />
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -1309,6 +1390,7 @@ function AuthGate({
   locale,
   darkMode,
   message,
+  variant = "full",
   onLocale,
   onDarkMode,
   onEmailLogin,
@@ -1320,6 +1402,7 @@ function AuthGate({
   locale: Locale;
   darkMode: boolean;
   message: string | null;
+  variant?: "full" | "inline";
   onLocale: (locale: Locale) => void;
   onDarkMode: (enabled: boolean) => void;
   onEmailLogin: (input: { email: string; password: string }) => Promise<void>;
@@ -1369,7 +1452,7 @@ function AuthGate({
   };
 
   return (
-    <section className="auth-shell">
+    <section className={`auth-shell ${variant === "inline" ? "auth-shell-inline" : ""}`}>
       <div className="auth-card panel">
         <div className="auth-toolbar">
           <OfficialLogo size={58} />
@@ -1455,21 +1538,72 @@ function AuthGate({
   );
 }
 
+function AuthRequiredView({
+  copy: c,
+  locale,
+  darkMode,
+  message,
+  onLocale,
+  onDarkMode,
+  onEmailLogin,
+  onEmailRegister,
+  onGoogle,
+  onApple
+}: {
+  copy: (typeof authCopy)[Locale];
+  locale: Locale;
+  darkMode: boolean;
+  message: string | null;
+  onLocale: (locale: Locale) => void;
+  onDarkMode: (enabled: boolean) => void;
+  onEmailLogin: (input: { email: string; password: string }) => Promise<void>;
+  onEmailRegister: (input: { email: string; password: string; publicName: string; city?: string }) => Promise<void>;
+  onGoogle: () => Promise<void>;
+  onApple: () => Promise<void>;
+}) {
+  return (
+    <div className="protected-view">
+      <section className="panel protected-copy">
+        <Lock aria-hidden="true" size={30} />
+        <h2>{c.signInRequiredTitle}</h2>
+        <p>{c.signInRequiredIntro}</p>
+      </section>
+      <AuthGate
+        copy={c}
+        locale={locale}
+        darkMode={darkMode}
+        message={message}
+        variant="inline"
+        onLocale={onLocale}
+        onDarkMode={onDarkMode}
+        onEmailLogin={onEmailLogin}
+        onEmailRegister={onEmailRegister}
+        onGoogle={onGoogle}
+        onApple={onApple}
+      />
+    </div>
+  );
+}
+
 function HomeView({
   copy: c,
+  authLabels,
   locale,
   places: availablePlaces,
   selectedFilter,
   selectedPlace,
+  isAuthenticated,
   onNavigate,
   onSelectPlace,
   onCycleFilter
 }: {
   copy: (typeof copy)[Locale];
+  authLabels: (typeof authCopy)[Locale];
   locale: Locale;
   places: Place[];
   selectedFilter: number | null;
   selectedPlace: Place;
+  isAuthenticated: boolean;
   onNavigate: (view: ViewId) => void;
   onSelectPlace: (id: string) => void;
   onCycleFilter: () => void;
@@ -1513,39 +1647,53 @@ function HomeView({
         </div>
       </section>
 
-      <section className="panel draft-panel">
-        <PanelHeading title={c.pendingDraft} action={c.continueDraft} onAction={() => onNavigate("contribute")} />
-        <div className="draft-layout">
-          <PlaceSymbol large />
-          <div>
-            <h3>Esbeteria Mar Blau</h3>
-            <p>Avinguda del Mar, 25 · Barcelona</p>
-            <span>
-              <CalendarCheck aria-hidden="true" size={15} />
-              Creat: 18/06/2026
-            </span>
-            <span>
-              <Lock aria-hidden="true" size={15} />
-              {c.tutorReview}
-            </span>
-          </div>
-        </div>
-        <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
-          {c.continueDraft}
-        </button>
-      </section>
+      {isAuthenticated ? (
+        <>
+          <section className="panel draft-panel">
+            <PanelHeading title={c.pendingDraft} action={c.continueDraft} onAction={() => onNavigate("contribute")} />
+            <div className="draft-layout">
+              <PlaceSymbol large />
+              <div>
+                <h3>Esbeteria Mar Blau</h3>
+                <p>Avinguda del Mar, 25 · Barcelona</p>
+                <span>
+                  <CalendarCheck aria-hidden="true" size={15} />
+                  Creat: 18/06/2026
+                </span>
+                <span>
+                  <Lock aria-hidden="true" size={15} />
+                  {c.tutorReview}
+                </span>
+              </div>
+            </div>
+            <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
+              {c.continueDraft}
+            </button>
+          </section>
 
-      <section className="panel trust-panel">
-        <PanelHeading title={`${c.trust} · ${c.professionalsAndEntities}`} action={c.viewAll} onAction={() => onNavigate("verified")} />
-        <div className="trust-strip">
-          {professionals.slice(0, 1).map((professional) => (
-            <VerifiedMiniCard key={professional.id} title={professional.name} meta={professional.license} initials={professional.initials} />
-          ))}
-          {organizations.map((organization) => (
-            <VerifiedMiniCard key={organization.id} title={organization.name} meta={organization.registry} initials={organization.initials} />
-          ))}
-        </div>
-      </section>
+          <section className="panel trust-panel">
+            <PanelHeading title={`${c.trust} · ${c.professionalsAndEntities}`} action={c.viewAll} onAction={() => onNavigate("verified")} />
+            <div className="trust-strip">
+              {professionals.slice(0, 1).map((professional) => (
+                <VerifiedMiniCard key={professional.id} title={professional.name} meta={professional.license} initials={professional.initials} />
+              ))}
+              {organizations.map((organization) => (
+                <VerifiedMiniCard key={organization.id} title={organization.name} meta={organization.registry} initials={organization.initials} />
+              ))}
+            </div>
+          </section>
+        </>
+      ) : (
+        <section className="panel public-access-panel">
+          <Lock aria-hidden="true" size={24} />
+          <h3>{authLabels.publicMode}</h3>
+          <p>{authLabels.signInRequiredIntro}</p>
+          <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
+            <UserPlus aria-hidden="true" size={17} />
+            {authLabels.signInToContinue}
+          </button>
+        </section>
+      )}
 
       <section className="panel support-panel">
         <div>
@@ -1557,51 +1705,59 @@ function HomeView({
         </button>
       </section>
 
-      <section className="panel profile-panel">
-        <PanelHeading title={c.profilesTitle} action={c.nav.profiles} onAction={() => onNavigate("profiles")} />
-        <div className="child-list">
-          {childProfiles.map((profile) => (
-            <div key={profile.alias} className="child-chip">
-              <span className="avatar">{profile.alias.slice(0, 1)}</span>
-              <div>
-                <strong>{profile.alias}</strong>
-                <small>
-                  {profile.age} · {profile.state}
-                </small>
+      {isAuthenticated ? (
+        <section className="panel profile-panel">
+          <PanelHeading title={c.profilesTitle} action={c.nav.profiles} onAction={() => onNavigate("profiles")} />
+          <div className="child-list">
+            {childProfiles.map((profile) => (
+              <div key={profile.alias} className="child-chip">
+                <span className="avatar">{profile.alias.slice(0, 1)}</span>
+                <div>
+                  <strong>{profile.alias}</strong>
+                  <small>
+                    {profile.age} · {profile.state}
+                  </small>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-        <p className="fineprint">{locale === "en" ? c.childApproval : c.childApproval}</p>
-      </section>
+            ))}
+          </div>
+          <p className="fineprint">{locale === "en" ? c.childApproval : c.childApproval}</p>
+        </section>
+      ) : null}
     </div>
   );
 }
 
 function ConsultView({
   copy: c,
+  authLabels,
   locale,
   query,
   selectedFilter,
   selectedPlace,
   places: visiblePlaces,
+  isAuthenticated,
   onQuery,
   onFilter,
   onSelectPlace,
   onNavigate,
-  onCycleFilter
+  onCycleFilter,
+  onRequireAuth
 }: {
   copy: (typeof copy)[Locale];
+  authLabels: (typeof authCopy)[Locale];
   locale: Locale;
   query: string;
   selectedFilter: number | null;
   selectedPlace: Place;
   places: Place[];
+  isAuthenticated: boolean;
   onQuery: (query: string) => void;
   onFilter: (index: number) => void;
   onSelectPlace: (id: string) => void;
   onNavigate: (view: ViewId) => void;
   onCycleFilter: () => void;
+  onRequireAuth: () => void;
 }) {
   return (
     <div className="consult-grid">
@@ -1644,8 +1800,11 @@ function ConsultView({
 
       <PlaceDetailCard
         copy={c}
+        authLabels={authLabels}
         locale={locale}
         place={selectedPlace}
+        isAuthenticated={isAuthenticated}
+        onRequireAuth={onRequireAuth}
         onContribute={() => onNavigate("contribute")}
       />
 
@@ -2500,13 +2659,19 @@ function FallbackMapCanvas({
 
 function PlaceDetailCard({
   copy: c,
+  authLabels,
   locale,
   place,
+  isAuthenticated,
+  onRequireAuth,
   onContribute
 }: {
   copy: (typeof copy)[Locale];
+  authLabels: (typeof authCopy)[Locale];
   locale: Locale;
   place: Place;
+  isAuthenticated: boolean;
+  onRequireAuth: () => void;
   onContribute: () => void;
 }) {
   return (
@@ -2521,28 +2686,41 @@ function PlaceDetailCard({
         <RatingStars value={5} />
       </div>
       <p>{place.description}</p>
-      <div className="metric-list">
-        {sensoryKeys.map((item, index) => (
-          <div key={item.key}>
-            <span>{sensoryLabels[locale][item.key]}</span>
-            <strong>{sensoryWords[locale][item.key][index]}</strong>
+      {isAuthenticated ? (
+        <>
+          <div className="metric-list">
+            {sensoryKeys.map((item, index) => (
+              <div key={item.key}>
+                <span>{sensoryLabels[locale][item.key]}</span>
+                <strong>{sensoryWords[locale][item.key][index]}</strong>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="detail-actions">
-        <button type="button" className="secondary-action">
-          <Bookmark aria-hidden="true" size={17} />
-          {c.favorite}
-        </button>
-        <button type="button" className="secondary-action">
-          <Flag aria-hidden="true" size={17} />
-          {c.reportPlace}
-        </button>
-      </div>
-      <button type="button" className="primary-action" onClick={onContribute}>
-        <Plus aria-hidden="true" size={17} />
-        {c.nav.contribute}
-      </button>
+          <div className="detail-actions">
+            <button type="button" className="secondary-action">
+              <Bookmark aria-hidden="true" size={17} />
+              {c.favorite}
+            </button>
+            <button type="button" className="secondary-action">
+              <Flag aria-hidden="true" size={17} />
+              {c.reportPlace}
+            </button>
+          </div>
+          <button type="button" className="primary-action" onClick={onContribute}>
+            <Plus aria-hidden="true" size={17} />
+            {c.nav.contribute}
+          </button>
+        </>
+      ) : (
+        <div className="locked-detail">
+          <Lock aria-hidden="true" size={18} />
+          <p>{authLabels.signInRequiredIntro}</p>
+          <button type="button" className="secondary-action" onClick={onRequireAuth}>
+            <KeyRound aria-hidden="true" size={17} />
+            {authLabels.signInToContinue}
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

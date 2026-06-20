@@ -1337,9 +1337,18 @@ svg {
   padding: 40px 20px;
 }
 
+.auth-shell-inline {
+  min-height: auto;
+  padding: 0;
+}
+
 .auth-card {
   width: min(720px, 100%);
   padding: 38px;
+}
+
+.auth-shell-inline .auth-card {
+  width: 100%;
 }
 
 .auth-toolbar {
@@ -1461,6 +1470,73 @@ svg {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.45;
+}
+
+.auth-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--primary) 40%, transparent);
+  padding: 24px;
+}
+
+.auth-modal {
+  position: relative;
+  width: min(760px, 100%);
+  max-height: min(90vh, 820px);
+  overflow: auto;
+}
+
+.auth-modal-close {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  z-index: 1;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-container-low);
+  color: var(--primary);
+}
+
+.protected-view {
+  display: grid;
+  gap: 18px;
+}
+
+.protected-copy,
+.public-access-panel,
+.locked-detail {
+  display: grid;
+  gap: 12px;
+}
+
+.protected-copy h2,
+.public-access-panel h3 {
+  color: var(--primary);
+  font-family: "Playfair Display", Georgia, serif;
+}
+
+.protected-copy p,
+.public-access-panel p,
+.locked-detail p {
+  color: var(--on-surface-variant);
+  line-height: 1.55;
+}
+
+.locked-detail {
+  border-top: 1px solid var(--surface-container-high);
+  margin-top: 6px;
+  padding-top: 16px;
+}
+
+.top-login-action {
+  min-height: 42px;
+  padding: 0 16px;
 }
 
 .support-grid {

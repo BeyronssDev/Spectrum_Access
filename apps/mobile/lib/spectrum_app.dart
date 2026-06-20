@@ -63,7 +63,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _focusMode = false;
   bool _anonymous = false;
   bool _googleMapsAvailable = false;
-  bool _authReady = false;
   bool _authUnavailable = false;
   bool _authSubmitting = false;
   bool _profileSubmitting = false;
@@ -142,7 +141,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
         }
         setState(() {
           _authUser = user;
-          _authReady = true;
           _authUnavailable = false;
         });
         if (user != null) {
@@ -153,7 +151,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
       });
     } catch (_) {
       setState(() {
-        _authReady = true;
         _authUnavailable = true;
       });
     }
@@ -459,41 +456,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
     final isDark = widget.themeMode == ThemeMode.dark;
     final selectedPlace = samplePlaces[_selectedPlace];
 
-    if (!_authReady) {
-      return Scaffold(
-        body: Center(
-          child: Text(
-            authLabels.authTitle,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-      );
-    }
-
-    if (_authUser == null) {
-      return AuthScreen(
-        labels: labels,
-        authLabels: authLabels,
-        locale: _locale,
-        isDark: isDark,
-        showRegister: _showRegister,
-        isSubmitting: _authSubmitting,
-        authUnavailable: _authUnavailable,
-        message: _authMessage,
-        emailController: _authEmailController,
-        passwordController: _authPasswordController,
-        passwordRepeatController: _authPasswordRepeatController,
-        publicNameController: _authPublicNameController,
-        cityController: _authCityController,
-        onToggleMode: () => setState(() => _showRegister = !_showRegister),
-        onLocaleChanged: (locale) => setState(() => _locale = locale),
-        onThemeModeChanged: widget.onThemeModeChanged,
-        onEmailSubmit: _showRegister ? _registerWithEmail : _signInWithEmail,
-        onGoogle: _signInWithGoogle,
-        onApple: _signInWithApple,
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
@@ -506,24 +468,16 @@ class _SpectrumShellState extends State<SpectrumShell> {
               const BrandLogo(size: 38),
               const SizedBox(width: 12),
               Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      labels.appName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleLarge?.copyWith(fontSize: 22),
-                    ),
-                    Text(
-                      labels.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
-                  ],
+                child: FittedBox(
+                  alignment: Alignment.centerLeft,
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    labels.appName,
+                    maxLines: 1,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(fontSize: 18),
+                  ),
                 ),
               ),
             ],
@@ -564,9 +518,15 @@ class _SpectrumShellState extends State<SpectrumShell> {
                 .toList(),
           ),
           IconButton(
-            tooltip: authLabels.signOut,
-            onPressed: _signOut,
-            icon: const Icon(Icons.logout_outlined),
+            tooltip: _authUser == null
+                ? authLabels.signInToContinue
+                : authLabels.signOut,
+            onPressed: _authUser == null
+                ? () => _openTab(MobileTab.profiles)
+                : _signOut,
+            icon: Icon(
+              _authUser == null ? Icons.login_outlined : Icons.logout_outlined,
+            ),
           ),
           const SizedBox(width: 8),
         ],
@@ -578,6 +538,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
               ? HomeScreen(
                   key: const ValueKey('home'),
                   labels: labels,
+                  authLabels: authLabels,
+                  isAuthenticated: _authUser != null,
                   focusMode: _focusMode,
                   googleMapsAvailable: _googleMapsAvailable,
                   selectedPlace: selectedPlace,
@@ -600,19 +562,27 @@ class _SpectrumShellState extends State<SpectrumShell> {
   }
 
   Widget _screenForTab(AppCopy labels, PlaceSummary selectedPlace) {
+    final authLabels = authCopies[_locale]!;
+    final isAuthenticated = _authUser != null;
+
     switch (_selectedTab) {
       case MobileTab.consult:
         return ConsultScreen(
           key: const ValueKey('consult'),
           labels: labels,
+          authLabels: authLabels,
           selectedPlace: _selectedPlace,
           selectedFilter: _selectedFilter,
           googleMapsAvailable: _googleMapsAvailable,
+          isAuthenticated: isAuthenticated,
           onFilterChanged: (index) => setState(() => _selectedFilter = index),
           onPlaceChanged: (index) => setState(() => _selectedPlace = index),
           onContribute: () => _openTab(MobileTab.contribute),
         );
       case MobileTab.contribute:
+        if (!isAuthenticated) {
+          return _protectedAuthScreen(labels, authLabels);
+        }
         return ReportScreen(
           key: const ValueKey('contribute'),
           labels: labels,
@@ -641,6 +611,9 @@ class _SpectrumShellState extends State<SpectrumShell> {
           onEnableFocus: () => setState(() => _focusMode = true),
         );
       case MobileTab.profiles:
+        if (!isAuthenticated) {
+          return _protectedAuthScreen(labels, authLabels);
+        }
         return ProfilesScreen(
           key: const ValueKey('profiles'),
           labels: labels,
@@ -661,6 +634,32 @@ class _SpectrumShellState extends State<SpectrumShell> {
           onRequestProfessionalVerification: _requestProfessionalVerification,
         );
     }
+  }
+
+  Widget _protectedAuthScreen(AppCopy labels, AuthCopy authLabels) {
+    return AuthScreen(
+      key: const ValueKey('protected-auth'),
+      labels: labels,
+      authLabels: authLabels,
+      locale: _locale,
+      isDark: widget.themeMode == ThemeMode.dark,
+      showRegister: _showRegister,
+      isSubmitting: _authSubmitting,
+      authUnavailable: _authUnavailable,
+      message: _authMessage,
+      emailController: _authEmailController,
+      passwordController: _authPasswordController,
+      passwordRepeatController: _authPasswordRepeatController,
+      publicNameController: _authPublicNameController,
+      cityController: _authCityController,
+      standalone: false,
+      onToggleMode: () => setState(() => _showRegister = !_showRegister),
+      onLocaleChanged: (locale) => setState(() => _locale = locale),
+      onThemeModeChanged: widget.onThemeModeChanged,
+      onEmailSubmit: _showRegister ? _registerWithEmail : _signInWithEmail,
+      onGoogle: _signInWithGoogle,
+      onApple: _signInWithApple,
+    );
   }
 }
 
@@ -685,6 +684,7 @@ class AuthScreen extends StatelessWidget {
     required this.onEmailSubmit,
     required this.onGoogle,
     required this.onApple,
+    this.standalone = true,
     super.key,
   });
 
@@ -707,179 +707,175 @@ class AuthScreen extends StatelessWidget {
   final VoidCallback onEmailSubmit;
   final VoidCallback onGoogle;
   final VoidCallback onApple;
+  final bool standalone;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
-          children: [
-            Row(
-              children: [
-                const BrandLogo(size: 46),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    labels.appName,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+    final content = SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
+        children: [
+          Row(
+            children: [
+              const BrandLogo(size: 46),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  labels.appName,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-                PopupMenuButton<LocaleOption>(
-                  tooltip: 'Idioma',
-                  initialValue: locale,
-                  icon: Text(
-                    locale.label,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  onSelected: onLocaleChanged,
-                  itemBuilder: (context) => LocaleOption.values
-                      .map(
-                        (locale) => PopupMenuItem(
-                          value: locale,
-                          child: Text(locale.label),
-                        ),
-                      )
-                      .toList(),
-                ),
-                IconButton(
-                  tooltip: isDark ? labels.lightMode : labels.darkMode,
-                  onPressed: () => onThemeModeChanged(
-                    isDark ? ThemeMode.light : ThemeMode.dark,
-                  ),
-                  icon: Icon(
-                    isDark
-                        ? Icons.light_mode_outlined
-                        : Icons.dark_mode_outlined,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 34),
-            Text(
-              authLabels.authTitle,
-              style: Theme.of(context).textTheme.displayLarge,
-            ),
-            const SizedBox(height: 14),
-            Text(
-              authLabels.authIntro,
-              style: TextStyle(
-                color: mutedColor(context),
-                fontSize: 16,
-                height: 1.55,
               ),
+              PopupMenuButton<LocaleOption>(
+                tooltip: 'Idioma',
+                initialValue: locale,
+                icon: Text(
+                  locale.label,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                onSelected: onLocaleChanged,
+                itemBuilder: (context) => LocaleOption.values
+                    .map(
+                      (locale) => PopupMenuItem(
+                        value: locale,
+                        child: Text(locale.label),
+                      ),
+                    )
+                    .toList(),
+              ),
+              IconButton(
+                tooltip: isDark ? labels.lightMode : labels.darkMode,
+                onPressed: () => onThemeModeChanged(
+                  isDark ? ThemeMode.light : ThemeMode.dark,
+                ),
+                icon: Icon(
+                  isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 34),
+          Text(
+            authLabels.authTitle,
+            style: Theme.of(context).textTheme.displayLarge,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            authLabels.authIntro,
+            style: TextStyle(
+              color: mutedColor(context),
+              fontSize: 16,
+              height: 1.55,
             ),
-            const SizedBox(height: 24),
-            SpectrumPanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SegmentedButton<bool>(
-                    segments: [
-                      ButtonSegment(
-                        value: true,
-                        label: Text(authLabels.register),
-                        icon: const Icon(Icons.person_add_alt_1_outlined),
-                      ),
-                      ButtonSegment(
-                        value: false,
-                        label: Text(authLabels.login),
-                        icon: const Icon(Icons.login_outlined),
-                      ),
-                    ],
-                    selected: {showRegister},
-                    onSelectionChanged: (_) => onToggleMode(),
-                  ),
-                  const SizedBox(height: 18),
-                  OutlinedButton.icon(
-                    onPressed: isSubmitting || authUnavailable
-                        ? null
-                        : onGoogle,
-                    icon: const GoogleLogo(size: 18),
-                    label: Text(authLabels.continueWithGoogle),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: isSubmitting || authUnavailable ? null : onApple,
-                    icon: const Icon(Icons.apple),
-                    label: Text(authLabels.continueWithApple),
-                  ),
-                  const SizedBox(height: 18),
-                  if (showRegister) ...[
-                    TextField(
-                      controller: publicNameController,
-                      decoration: InputDecoration(
-                        labelText: authLabels.publicName,
-                      ),
+          ),
+          const SizedBox(height: 24),
+          SpectrumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SegmentedButton<bool>(
+                  segments: [
+                    ButtonSegment(
+                      value: true,
+                      label: Text(authLabels.register),
+                      icon: const Icon(Icons.person_add_alt_1_outlined),
                     ),
-                    const SizedBox(height: 12),
+                    ButtonSegment(
+                      value: false,
+                      label: Text(authLabels.login),
+                      icon: const Icon(Icons.login_outlined),
+                    ),
                   ],
+                  selected: {showRegister},
+                  onSelectionChanged: (_) => onToggleMode(),
+                ),
+                const SizedBox(height: 18),
+                OutlinedButton.icon(
+                  onPressed: isSubmitting || authUnavailable ? null : onGoogle,
+                  icon: const GoogleLogo(size: 18),
+                  label: Text(authLabels.continueWithGoogle),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: isSubmitting || authUnavailable ? null : onApple,
+                  icon: const Icon(Icons.apple),
+                  label: Text(authLabels.continueWithApple),
+                ),
+                const SizedBox(height: 18),
+                if (showRegister) ...[
                   TextField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(labelText: authLabels.email),
+                    controller: publicNameController,
+                    decoration: InputDecoration(
+                      labelText: authLabels.publicName,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(labelText: authLabels.email),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(labelText: authLabels.password),
+                ),
+                if (showRegister) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordRepeatController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: authLabels.confirmPassword,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(labelText: authLabels.password),
-                  ),
-                  if (showRegister) ...[
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: passwordRepeatController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: authLabels.confirmPassword,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: cityController,
-                      decoration: InputDecoration(
-                        labelText: authLabels.cityOptional,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: isSubmitting || authUnavailable
-                        ? null
-                        : onEmailSubmit,
-                    icon: isSubmitting
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.mail_outline),
-                    label: Text(
-                      showRegister
-                          ? authLabels.emailRegister
-                          : authLabels.emailLogin,
+                    controller: cityController,
+                    decoration: InputDecoration(
+                      labelText: authLabels.cityOptional,
                     ),
                   ),
-                  if (message != null || authUnavailable) ...[
-                    const SizedBox(height: 14),
-                    StatusMessage(
-                      message: authUnavailable
-                          ? authLabels.authFailed
-                          : message!,
-                    ),
-                  ],
                 ],
-              ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: isSubmitting || authUnavailable
+                      ? null
+                      : onEmailSubmit,
+                  icon: isSubmitting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.mail_outline),
+                  label: Text(
+                    showRegister
+                        ? authLabels.emailRegister
+                        : authLabels.emailLogin,
+                  ),
+                ),
+                if (message != null || authUnavailable) ...[
+                  const SizedBox(height: 14),
+                  StatusMessage(
+                    message: authUnavailable ? authLabels.authFailed : message!,
+                  ),
+                ],
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+    return standalone ? Scaffold(body: content) : content;
   }
 }
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     required this.labels,
+    required this.authLabels,
+    required this.isAuthenticated,
     required this.focusMode,
     required this.googleMapsAvailable,
     required this.selectedPlace,
@@ -889,6 +885,8 @@ class HomeScreen extends StatelessWidget {
   });
 
   final AppCopy labels;
+  final AuthCopy authLabels;
+  final bool isAuthenticated;
   final bool focusMode;
   final bool googleMapsAvailable;
   final PlaceSummary selectedPlace;
@@ -904,10 +902,13 @@ class HomeScreen extends StatelessWidget {
           FocusBanner(labels: labels),
           const SizedBox(height: 18),
         ],
-        Text(labels.greeting, style: Theme.of(context).textTheme.displayLarge),
+        Text(
+          isAuthenticated ? labels.greeting : authLabels.publicMode,
+          style: Theme.of(context).textTheme.displayLarge,
+        ),
         const SizedBox(height: 14),
         Text(
-          labels.homeIntro,
+          isAuthenticated ? labels.homeIntro : authLabels.signInRequiredIntro,
           style: TextStyle(
             color: mutedColor(context),
             fontSize: 17,
@@ -939,34 +940,61 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
-        SpectrumPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeading(
-                title: labels.pendingDraft,
-                action: labels.continueDraft,
-              ),
-              const SizedBox(height: 12),
-              DraftPreview(labels: labels),
-            ],
+        if (isAuthenticated) ...[
+          SpectrumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeading(
+                  title: labels.pendingDraft,
+                  action: labels.continueDraft,
+                ),
+                const SizedBox(height: 12),
+                DraftPreview(labels: labels),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 18),
-        SpectrumPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeading(
-                title: labels.verifiedProfessionals,
-                action: labels.viewAll,
-              ),
-              const SizedBox(height: 12),
-              for (final profile in sampleVerifiedProfiles)
-                VerifiedRow(profile: profile, labels: labels),
-            ],
+          const SizedBox(height: 18),
+          SpectrumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeading(
+                  title: labels.verifiedProfessionals,
+                  action: labels.viewAll,
+                ),
+                const SizedBox(height: 12),
+                for (final profile in sampleVerifiedProfiles)
+                  VerifiedRow(profile: profile, labels: labels),
+              ],
+            ),
           ),
-        ),
+        ] else ...[
+          SpectrumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.lock_outline, color: SpectrumColors.tertiary),
+                const SizedBox(height: 12),
+                Text(
+                  authLabels.signInRequiredTitle,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  authLabels.signInRequiredIntro,
+                  style: TextStyle(color: mutedColor(context), height: 1.45),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: () => onOpenTab(MobileTab.contribute),
+                  icon: const Icon(Icons.login_outlined),
+                  label: Text(authLabels.signInToContinue),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 18),
         SpectrumPanel(
           child: Row(
@@ -1005,9 +1033,11 @@ class HomeScreen extends StatelessWidget {
 class ConsultScreen extends StatelessWidget {
   const ConsultScreen({
     required this.labels,
+    required this.authLabels,
     required this.selectedPlace,
     required this.selectedFilter,
     required this.googleMapsAvailable,
+    required this.isAuthenticated,
     required this.onFilterChanged,
     required this.onPlaceChanged,
     required this.onContribute,
@@ -1015,9 +1045,11 @@ class ConsultScreen extends StatelessWidget {
   });
 
   final AppCopy labels;
+  final AuthCopy authLabels;
   final int selectedPlace;
   final int selectedFilter;
   final bool googleMapsAvailable;
+  final bool isAuthenticated;
   final ValueChanged<int> onFilterChanged;
   final ValueChanged<int> onPlaceChanged;
   final VoidCallback onContribute;
@@ -1062,7 +1094,9 @@ class ConsultScreen extends StatelessWidget {
         const SizedBox(height: 18),
         PlaceDetailsCard(
           labels: labels,
+          authLabels: authLabels,
           place: place,
+          isAuthenticated: isAuthenticated,
           onContribute: onContribute,
         ),
         const SizedBox(height: 18),
@@ -1935,13 +1969,17 @@ class DraftPreview extends StatelessWidget {
 class PlaceDetailsCard extends StatelessWidget {
   const PlaceDetailsCard({
     required this.labels,
+    required this.authLabels,
     required this.place,
+    required this.isAuthenticated,
     required this.onContribute,
     super.key,
   });
 
   final AppCopy labels;
+  final AuthCopy authLabels;
   final PlaceSummary place;
+  final bool isAuthenticated;
   final VoidCallback onContribute;
 
   @override
@@ -1972,29 +2010,63 @@ class PlaceDetailsCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(place.description, style: const TextStyle(height: 1.45)),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  child: Text(labels.save),
+          if (isAuthenticated) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {},
+                    child: Text(labels.save),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {},
+                    child: Text(labels.report),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: onContribute,
+              icon: const Icon(Icons.add),
+              label: Text(labels.contribute),
+            ),
+          ] else ...[
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: softPanelColor(context),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.lock_outline),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        authLabels.signInRequiredIntro,
+                        style: TextStyle(
+                          color: mutedColor(context),
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  child: Text(labels.report),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          FilledButton.icon(
-            onPressed: onContribute,
-            icon: const Icon(Icons.add),
-            label: Text(labels.contribute),
-          ),
+            ),
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: onContribute,
+              icon: const Icon(Icons.login_outlined),
+              label: Text(authLabels.signInToContinue),
+            ),
+          ],
         ],
       ),
     );

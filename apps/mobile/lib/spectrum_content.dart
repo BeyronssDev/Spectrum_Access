@@ -213,6 +213,11 @@ class AuthCopy {
     required this.emailLogin,
     required this.emailRegister,
     required this.signOut,
+    required this.publicMode,
+    required this.guestName,
+    required this.signInRequiredTitle,
+    required this.signInRequiredIntro,
+    required this.signInToContinue,
     required this.passwordsMismatch,
     required this.authFailed,
     required this.verificationSent,
@@ -243,6 +248,11 @@ class AuthCopy {
   final String emailLogin;
   final String emailRegister;
   final String signOut;
+  final String publicMode;
+  final String guestName;
+  final String signInRequiredTitle;
+  final String signInRequiredIntro;
+  final String signInToContinue;
   final String passwordsMismatch;
   final String authFailed;
   final String verificationSent;
@@ -468,7 +478,7 @@ const authCopies = {
   LocaleOption.ca: AuthCopy(
     authTitle: 'Entra a Spectrum Access',
     authIntro:
-        'Registra’t per consultar, aportar imatges, crear perfils tutelats i sol·licitar verificació professional.',
+        'Consulta el mapa sense compte. Registra’t només quan vulguis aportar imatges, crear perfils tutelats o sol·licitar verificació professional.',
     login: 'Entrar',
     register: 'Crear compte',
     email: 'Email',
@@ -481,6 +491,12 @@ const authCopies = {
     emailLogin: 'Entrar amb email',
     emailRegister: 'Registrar amb email',
     signOut: 'Tancar sessió',
+    publicMode: 'Mode consulta',
+    guestName: 'Visitant',
+    signInRequiredTitle: 'Inicia sessió per continuar',
+    signInRequiredIntro:
+        'Pots consultar el mapa i la informació bàsica sense compte. Per aportar contingut, veure perfils verificats o gestionar dades personals cal registrar-se.',
+    signInToContinue: 'Iniciar sessió',
     passwordsMismatch: 'Les contrasenyes no coincideixen.',
     authFailed: 'No s’ha pogut completar l’autenticació.',
     verificationSent: 'Compte creat. Revisa el correu de verificació.',
@@ -499,7 +515,7 @@ const authCopies = {
   LocaleOption.es: AuthCopy(
     authTitle: 'Entra en Spectrum Access',
     authIntro:
-        'Regístrate para consultar, aportar imágenes, crear perfiles tutelados y solicitar verificación profesional.',
+        'Consulta el mapa sin cuenta. Regístrate solo cuando quieras aportar imágenes, crear perfiles tutelados o solicitar verificación profesional.',
     login: 'Entrar',
     register: 'Crear cuenta',
     email: 'Email',
@@ -512,6 +528,12 @@ const authCopies = {
     emailLogin: 'Entrar con email',
     emailRegister: 'Registrar con email',
     signOut: 'Cerrar sesión',
+    publicMode: 'Modo consulta',
+    guestName: 'Visitante',
+    signInRequiredTitle: 'Inicia sesión para continuar',
+    signInRequiredIntro:
+        'Puedes consultar el mapa y la información básica sin cuenta. Para aportar contenido, ver perfiles verificados o gestionar datos personales hay que registrarse.',
+    signInToContinue: 'Iniciar sesión',
     passwordsMismatch: 'Las contraseñas no coinciden.',
     authFailed: 'No se ha podido completar la autenticación.',
     verificationSent: 'Cuenta creada. Revisa el correo de verificación.',
@@ -530,7 +552,7 @@ const authCopies = {
   LocaleOption.en: AuthCopy(
     authTitle: 'Enter Spectrum Access',
     authIntro:
-        'Register to discover places, upload images, create tutored profiles and request professional verification.',
+        'Browse the map without an account. Register only when you want to upload images, create tutored profiles or request professional verification.',
     login: 'Sign in',
     register: 'Create account',
     email: 'Email',
@@ -543,6 +565,12 @@ const authCopies = {
     emailLogin: 'Sign in with email',
     emailRegister: 'Register with email',
     signOut: 'Sign out',
+    publicMode: 'Browse mode',
+    guestName: 'Guest',
+    signInRequiredTitle: 'Sign in to continue',
+    signInRequiredIntro:
+        'You can browse the map and basic place information without an account. To contribute content, view verified profiles or manage personal data, registration is required.',
+    signInToContinue: 'Sign in',
     passwordsMismatch: 'Passwords do not match.',
     authFailed: 'Authentication could not be completed.',
     verificationSent: 'Account created. Check the verification email.',
