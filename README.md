@@ -19,6 +19,7 @@ Spectrum Access combines a web application, an iOS/Android mobile application an
 - [C. Installation and Running Locally](#en-installation-and-running-locally)
 - [D. Project Structure](#en-project-structure)
 - [E. Main Features](#en-main-features)
+- [F. Test User and Password](#en-test-user-and-password)
 - [Privacy and Security Considerations](#en-privacy-and-security-considerations)
 - [Current State](#en-current-status-and-next-steps)
 - [License](#en-license)
@@ -427,6 +428,26 @@ The support section includes a communication card for moments of overload or com
 
 The interface is designed for Catalan, Spanish and English.
 
+<a id="en-test-user-and-password"></a>
+### F. Test User and Password
+
+The project is prepared to work with Firebase Auth. Real test credentials are not committed to the public repository and must be created in the Firebase project used for the deployed or demo environment.
+
+When the project is reviewed in an environment with login enabled, provide the credentials through a private channel using this format:
+
+```text
+Test user:
+Password:
+Role:
+Environment URL:
+```
+
+Recommended test roles:
+
+- Standard user: consult places, save places, submit reviews, comments, images and reports.
+- Tutor user: manage child profiles and review child-linked contributions.
+- Moderator or admin user: validate moderation, reports and verification flows when elevated claims are configured.
+
 <a id="en-privacy-and-security-considerations"></a>
 ### Privacy and Security Considerations
 
@@ -497,6 +518,7 @@ This project is distributed under the **GPL-3.0-only** license.
 - [C. Instal·lació i Execució Local](#ca-installacio-i-execucio-local)
 - [D. Estructura del Projecte](#ca-estructura-del-projecte)
 - [E. Funcionalitats Principals](#ca-funcionalitats-principals)
+- [F. Usuari i Contrasenya de Prova](#ca-usuari-i-contrasenya-de-prova)
 - [Consideracions de Privacitat i Seguretat](#ca-consideracions-de-privacitat-i-seguretat)
 - [Estat del Projecte](#ca-estat-actual-i-propers-passos)
 - [Llicència](#ca-llicencia)
@@ -905,6 +927,26 @@ La secció d'ajuda inclou una targeta de comunicació per a moments de sobrecàr
 
 La interfície està plantejada en català, castellà i anglès.
 
+<a id="ca-usuari-i-contrasenya-de-prova"></a>
+### F. Usuari i Contrasenya de Prova
+
+El projecte està preparat per treballar amb Firebase Auth. Les credencials reals de prova no s'inclouen al repositori públic i s'han de crear al projecte Firebase utilitzat per a l'entorn desplegat o de demo.
+
+Quan el projecte es revisi en un entorn amb login activat, proporciona les credencials per un canal privat amb aquest format:
+
+```text
+Usuari de prova:
+Contrasenya:
+Rol:
+URL de l'entorn:
+```
+
+Rols de prova recomanats:
+
+- Usuari estàndard: consultar llocs, guardar llocs, enviar valoracions, comentaris, imatges i reports.
+- Tutor: gestionar perfils infantils i revisar aportacions vinculades a menors.
+- Moderador o administrador: validar fluxos de moderació, reports i verificacions quan les claims elevades estiguin configurades.
+
 <a id="ca-consideracions-de-privacitat-i-seguretat"></a>
 ### Consideracions de Privacitat i Seguretat
 
@@ -922,7 +964,7 @@ Principis aplicats:
 - App Check previst com a capa de reducció d'abús.
 - Secrets fora del repositori.
 
-Dades que no s'han de commitejar:
+Dades que no s'han d'incloure al repositori:
 
 - `.env` reals.
 - Comptes de servei.
@@ -975,6 +1017,7 @@ Aquest projecte es distribueix sota la llicència **GPL-3.0-only**.
 - [C. Instalación y Ejecución Local](#es-instalacion-y-ejecucion-local)
 - [D. Estructura del Proyecto](#es-estructura-del-proyecto)
 - [E. Funcionalidades Principales](#es-funcionalidades-principales)
+- [F. Usuario y Contraseña de Prueba](#es-usuario-y-contrasena-de-prueba)
 - [Consideraciones de Privacidad y Seguridad](#es-consideraciones-de-privacidad-y-seguridad)
 - [Estado del Proyecto](#es-estado-actual-y-proximos-pasos)
 - [Licencia](#es-licencia)
@@ -1383,6 +1426,26 @@ La sección de ayuda incluye una tarjeta de comunicación para momentos de sobre
 
 La interfaz está planteada en catalán, castellano e inglés.
 
+<a id="es-usuario-y-contrasena-de-prueba"></a>
+### F. Usuario y Contraseña de Prueba
+
+El proyecto está preparado para trabajar con Firebase Auth. Las credenciales reales de prueba no se incluyen en el repositorio público y deben crearse en el proyecto Firebase utilizado para el entorno desplegado o de demo.
+
+Cuando el proyecto se revise en un entorno con login activado, proporciona las credenciales por un canal privado con este formato:
+
+```text
+Usuario de prueba:
+Contraseña:
+Rol:
+URL del entorno:
+```
+
+Roles de prueba recomendados:
+
+- Usuario estándar: consultar lugares, guardar lugares, enviar valoraciones, comentarios, imágenes y reportes.
+- Tutor: gestionar perfiles infantiles y revisar aportaciones vinculadas a menores.
+- Moderador o administrador: validar flujos de moderación, reportes y verificaciones cuando las claims elevadas estén configuradas.
+
 <a id="es-consideraciones-de-privacidad-y-seguridad"></a>
 ### Consideraciones de Privacidad y Seguridad
 
@@ -1400,7 +1463,7 @@ Principios aplicados:
 - App Check previsto como capa de reducción de abuso.
 - Secretos fuera del repositorio.
 
-Datos que no deben commitearse:
+Datos que no deben incluirse en el repositorio:
 
 - `.env` reales.
 - Cuentas de servicio.
