@@ -20,6 +20,28 @@ ui-debug.log
 *.local
 *.tsbuildinfo
 
+# Public documentation policy: only root README.md and AGENTS.md are versioned.
+*.md
+!/README.md
+!/AGENTS.md
+
+# Local/internal work products. Keep these outside the repo in ~/Desktop/DocsD5/Spectrum_Access/.
+docs/
+DocsD5/
+artifacts/
+exports/
+screenshots/
+captures/
+tmp/
+*.pdf
+*.heic
+*.heif
+*.webp
+Captura de pantalla*.png
+**/Captura de pantalla*.png
+Screenshot*.png
+**/Screenshot*.png
+
 # Secrets and credentials
 *.pem
 *.p8

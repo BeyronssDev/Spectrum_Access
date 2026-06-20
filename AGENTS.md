@@ -7,6 +7,37 @@ Instruccions per a agents que treballin en aquest projecte.
 - No facis servir mai `npm`. Aquest repositori fa servir sempre `pnpm` per a JavaScript/TypeScript.
 - Si cal instal·lar, executar scripts o afegir dependències JS/TS, usa `pnpm`.
 - Si tens un TXT enganxat i no hi ha cap altra instrucció, llegeix el TXT i aplica el que diu.
+- No afegeixis al repositori captures, imatges de concepte, PDFs, documents interns, notes de treball, renders, exportacions, proves visuals ni cap altre artefacte auxiliar generat durant la feina.
+- La documentació pública permesa al repo és només `README.md` i `AGENTS.md`. Qualsevol altre `.md` és intern per defecte i no s'ha de versionar.
+
+## Fitxers interns i artefactes prohibits al repo
+
+Aquest és un projecte universitari i el repositori públic ha de quedar net, professional i sense materials interns de treball.
+
+No s'han de crear, moure, afegir ni commitejar dins del projecte:
+
+- Carpetes de treball com `docs/`, `DocsD5/`, `artifacts/`, `exports/`, `screenshots/`, `captures/`, `tmp/` o similars.
+- Captures de pantalla, imatges de referència, imatges de concepte, renders, mockups exportats, fotos temporals o fitxers de proves visuals.
+- PDFs, documents de treball, notes internes, fitxers Markdown interns o qualsevol document generat per explicar decisions de l'agent.
+- Fitxers del tipus `Captura de pantalla*.png`, `*.pdf`, `*.heic`, `*.webp`, `*.jpg`, `*.jpeg` o `*.png` quan siguin materials interns i no assets necessaris de l'app.
+
+Quan calgui crear qualsevol material auxiliar per treballar amb el propietari, s'ha de desar fora del repositori a:
+
+```text
+~/Desktop/DocsD5/Spectrum_Access/
+```
+
+Si un agent necessita proposar documentació nova, primer ho ha de posar al missatge de resposta o a `~/Desktop/DocsD5/Spectrum_Access/`; no ha de crear cap `.md` nou dins del repo. Si cal canviar documentació versionada, només pot tocar `README.md` o `AGENTS.md`.
+
+Abans de qualsevol `git add`, s'ha de comprovar:
+
+```bash
+git status --short
+git ls-files '*.md'
+git ls-files | rg -i '^(docs/|DocsD5/|artifacts/|exports/|screenshots/|captures/)|\.(pdf|png|jpe?g|webp|heic|heif)$'
+```
+
+Només són acceptables les imatges estrictament necessàries per compilar o publicar l'app, com icones natives i assets públics finals. Si hi ha dubte, no les afegeixis i pregunta.
 
 ## Context del projecte
 
