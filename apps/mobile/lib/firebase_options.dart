@@ -15,6 +15,16 @@ import 'package:flutter/foundation.dart'
 /// );
 /// ```
 class DefaultFirebaseOptions {
+  static const _webApiKey = String.fromEnvironment(
+    'SPECTRUM_FIREBASE_WEB_API_KEY',
+  );
+  static const _androidApiKey = String.fromEnvironment(
+    'SPECTRUM_FIREBASE_ANDROID_API_KEY',
+  );
+  static const _iosApiKey = String.fromEnvironment(
+    'SPECTRUM_FIREBASE_IOS_API_KEY',
+  );
+
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       return web;
@@ -47,7 +57,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'FIREBASE_API_KEY_REMOVED',
+    apiKey: _webApiKey,
     appId: '1:992685844395:web:5b9a39c79f7f6d1f4554ee',
     messagingSenderId: '992685844395',
     projectId: 'spectrum-access-499918',
@@ -57,7 +67,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'FIREBASE_API_KEY_REMOVED',
+    apiKey: _androidApiKey,
     appId: '1:992685844395:android:529958f0da7204c04554ee',
     messagingSenderId: '992685844395',
     projectId: 'spectrum-access-499918',
@@ -65,7 +75,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'FIREBASE_API_KEY_REMOVED',
+    apiKey: _iosApiKey,
     appId: '1:992685844395:ios:65139c0cf127590a4554ee',
     messagingSenderId: '992685844395',
     projectId: 'spectrum-access-499918',
