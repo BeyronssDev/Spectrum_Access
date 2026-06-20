@@ -79,7 +79,7 @@ type ContributionDraft = {
   description: string;
 };
 
-const authRequiredViews = new Set<ViewId>(["contribute", "profiles", "verified"]);
+const authRequiredViews = new Set<ViewId>(["contribute"]);
 
 type Place = {
   id: string;
@@ -1281,7 +1281,17 @@ export function PlatformApp() {
             <SupportView copy={c} focusMode={focusMode} onFocus={() => setFocusMode(true)} />
           ) : null}
 
-          {!gatedViewNeedsAuth && activeView === "profiles" ? <ProfilesView copy={c} authCopy={authCopy[locale]} locale={locale} appUser={appUser} onRefreshProfile={refreshAppProfile} /> : null}
+          {!gatedViewNeedsAuth && activeView === "profiles" ? (
+            <ProfilesView
+              copy={c}
+              authCopy={authCopy[locale]}
+              locale={locale}
+              appUser={appUser}
+              isAuthenticated={isAuthenticated}
+              onRequireAuth={() => setAuthPanelOpen(true)}
+              onRefreshProfile={refreshAppProfile}
+            />
+          ) : null}
 
           {!gatedViewNeedsAuth && activeView === "verified" ? <VerifiedView copy={c} /> : null}
         </section>
@@ -1648,41 +1658,27 @@ function HomeView({
       </section>
 
       {isAuthenticated ? (
-        <>
-          <section className="panel draft-panel">
-            <PanelHeading title={c.pendingDraft} action={c.continueDraft} onAction={() => onNavigate("contribute")} />
-            <div className="draft-layout">
-              <PlaceSymbol large />
-              <div>
-                <h3>Esbeteria Mar Blau</h3>
-                <p>Avinguda del Mar, 25 · Barcelona</p>
-                <span>
-                  <CalendarCheck aria-hidden="true" size={15} />
-                  Creat: 18/06/2026
-                </span>
-                <span>
-                  <Lock aria-hidden="true" size={15} />
-                  {c.tutorReview}
-                </span>
-              </div>
+        <section className="panel draft-panel">
+          <PanelHeading title={c.pendingDraft} action={c.continueDraft} onAction={() => onNavigate("contribute")} />
+          <div className="draft-layout">
+            <PlaceSymbol large />
+            <div>
+              <h3>Esbeteria Mar Blau</h3>
+              <p>Avinguda del Mar, 25 · Barcelona</p>
+              <span>
+                <CalendarCheck aria-hidden="true" size={15} />
+                Creat: 18/06/2026
+              </span>
+              <span>
+                <Lock aria-hidden="true" size={15} />
+                {c.tutorReview}
+              </span>
             </div>
-            <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
-              {c.continueDraft}
-            </button>
-          </section>
-
-          <section className="panel trust-panel">
-            <PanelHeading title={`${c.trust} · ${c.professionalsAndEntities}`} action={c.viewAll} onAction={() => onNavigate("verified")} />
-            <div className="trust-strip">
-              {professionals.slice(0, 1).map((professional) => (
-                <VerifiedMiniCard key={professional.id} title={professional.name} meta={professional.license} initials={professional.initials} />
-              ))}
-              {organizations.map((organization) => (
-                <VerifiedMiniCard key={organization.id} title={organization.name} meta={organization.registry} initials={organization.initials} />
-              ))}
-            </div>
-          </section>
-        </>
+          </div>
+          <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
+            {c.continueDraft}
+          </button>
+        </section>
       ) : (
         <section className="panel public-access-panel">
           <Lock aria-hidden="true" size={24} />
@@ -1694,6 +1690,18 @@ function HomeView({
           </button>
         </section>
       )}
+
+      <section className="panel trust-panel">
+        <PanelHeading title={`${c.trust} · ${c.professionalsAndEntities}`} action={c.viewAll} onAction={() => onNavigate("verified")} />
+        <div className="trust-strip">
+          {professionals.slice(0, 1).map((professional) => (
+            <VerifiedMiniCard key={professional.id} title={professional.name} meta={professional.license} initials={professional.initials} />
+          ))}
+          {organizations.map((organization) => (
+            <VerifiedMiniCard key={organization.id} title={organization.name} meta={organization.registry} initials={organization.initials} />
+          ))}
+        </div>
+      </section>
 
       <section className="panel support-panel">
         <div>
@@ -2043,12 +2051,16 @@ function ProfilesView({
   authCopy: ac,
   locale,
   appUser,
+  isAuthenticated,
+  onRequireAuth,
   onRefreshProfile
 }: {
   copy: (typeof copy)[Locale];
   authCopy: (typeof authCopy)[Locale];
   locale: Locale;
   appUser: AppUser | null;
+  isAuthenticated: boolean;
+  onRequireAuth: () => void;
   onRefreshProfile: () => Promise<void>;
 }) {
   const [childAlias, setChildAlias] = useState("");
@@ -2119,6 +2131,32 @@ function ProfilesView({
         <p>{c.profilesIntro}</p>
       </section>
 
+      <section className="panel profiles-public-trust">
+        <PanelHeading title={c.verifiedTitle} action={c.viewAll} />
+        <div className="trust-strip">
+          {professionals.map((professional) => (
+            <VerifiedMiniCard key={professional.id} title={professional.name} meta={professional.license} initials={professional.initials} />
+          ))}
+          {organizations.map((organization) => (
+            <VerifiedMiniCard key={organization.id} title={organization.name} meta={organization.registry} initials={organization.initials} />
+          ))}
+        </div>
+      </section>
+
+      {!isAuthenticated ? (
+        <section className="panel public-access-panel">
+          <Lock aria-hidden="true" size={24} />
+          <h3>{ac.signInRequiredTitle}</h3>
+          <p>{ac.signInRequiredIntro}</p>
+          <button type="button" className="primary-action" onClick={onRequireAuth}>
+            <KeyRound aria-hidden="true" size={17} />
+            {ac.signInToContinue}
+          </button>
+        </section>
+      ) : null}
+
+      {isAuthenticated ? (
+        <>
       <ProfileCard icon={UserRound} title={c.adultProfile} meta={`${appUser?.publicName ?? "Spectrum user"} · ${appUser?.city ?? ac.cityOptional}`}>
         <p>{locale === "en" ? "Same account for web and mobile actions." : "Mateix compte per a accions web i mòbil."}</p>
       </ProfileCard>
@@ -2213,6 +2251,8 @@ function ProfilesView({
           <PreferenceBar label={sensoryLabels[locale].wait} value={25} />
         </div>
       </section>
+        </>
+      ) : null}
     </div>
   );
 }

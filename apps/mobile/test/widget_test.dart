@@ -14,6 +14,14 @@ void main() {
     expect(find.text('Mapa Sensorial'), findsOneWidget);
     expect(find.text('Entra a Spectrum Access'), findsNothing);
 
+    await tester.tap(find.text('Perfils'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Professionals verificats'), findsOneWidget);
+    expect(find.text('Marta Gómez'), findsOneWidget);
+    expect(find.text('Centre TEA Catalunya'), findsOneWidget);
+    expect(find.text('Entra a Spectrum Access'), findsNothing);
+
     await tester.tap(find.text('Aportacions'));
     await tester.pumpAndSettle();
 

@@ -14,6 +14,7 @@ import 'spectrum_theme.dart';
 
 const googleMapsRequested = bool.fromEnvironment(
   'SPECTRUM_GOOGLE_MAPS_ENABLED',
+  defaultValue: true,
 );
 const _nativeConfigChannel = MethodChannel('spectrum_access/native_config');
 
@@ -611,13 +612,11 @@ class _SpectrumShellState extends State<SpectrumShell> {
           onEnableFocus: () => setState(() => _focusMode = true),
         );
       case MobileTab.profiles:
-        if (!isAuthenticated) {
-          return _protectedAuthScreen(labels, authLabels);
-        }
         return ProfilesScreen(
           key: const ValueKey('profiles'),
           labels: labels,
-          authLabels: authCopies[_locale]!,
+          authLabels: authLabels,
+          isAuthenticated: isAuthenticated,
           userProfile: _userProfile,
           childAliasController: _childAliasController,
           childAgeRange: _childAgeRange,
@@ -954,21 +953,6 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          SpectrumPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionHeading(
-                  title: labels.verifiedProfessionals,
-                  action: labels.viewAll,
-                ),
-                const SizedBox(height: 12),
-                for (final profile in sampleVerifiedProfiles)
-                  VerifiedRow(profile: profile, labels: labels),
-              ],
-            ),
-          ),
         ] else ...[
           SpectrumPanel(
             child: Column(
@@ -995,6 +979,21 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ],
+        const SizedBox(height: 18),
+        SpectrumPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeading(
+                title: labels.verifiedProfessionals,
+                action: labels.viewAll,
+              ),
+              const SizedBox(height: 12),
+              for (final profile in sampleVerifiedProfiles)
+                VerifiedRow(profile: profile, labels: labels),
+            ],
+          ),
+        ),
         const SizedBox(height: 18),
         SpectrumPanel(
           child: Row(
@@ -1336,6 +1335,7 @@ class ProfilesScreen extends StatelessWidget {
   const ProfilesScreen({
     required this.labels,
     required this.authLabels,
+    required this.isAuthenticated,
     required this.userProfile,
     required this.childAliasController,
     required this.childAgeRange,
@@ -1355,6 +1355,7 @@ class ProfilesScreen extends StatelessWidget {
 
   final AppCopy labels;
   final AuthCopy authLabels;
+  final bool isAuthenticated;
   final SpectrumUserProfile? userProfile;
   final TextEditingController childAliasController;
   final String? childAgeRange;
@@ -1404,124 +1405,146 @@ class ProfilesScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        ProfilePanel(
-          icon: Icons.person_outline,
-          title: labels.adultProfile,
-          body:
-              '${userProfile?.publicName ?? 'Spectrum user'} · ${userProfile?.city ?? authLabels.cityOptional}',
-        ),
-        const SizedBox(height: 14),
-        ProfilePanel(
-          icon: Icons.supervisor_account_outlined,
-          title: labels.tutorProfile,
-          body:
-              'Compte principal que revisa aportacions dels perfils infantils.',
-        ),
-        const SizedBox(height: 14),
-        SpectrumPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeading(title: labels.childProfile),
-              const SizedBox(height: 10),
-              for (final child in sampleChildProfiles)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: ChildProfileTile(profile: child),
+        if (!isAuthenticated) ...[
+          SpectrumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.lock_outline, color: SpectrumColors.tertiary),
+                const SizedBox(height: 12),
+                Text(
+                  authLabels.signInRequiredTitle,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: childAliasController,
-                decoration: InputDecoration(labelText: authLabels.childAlias),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: childAgeRange,
-                decoration: InputDecoration(labelText: authLabels.childAge),
-                items: const [
-                  DropdownMenuItem(value: '0-5', child: Text('0-5')),
-                  DropdownMenuItem(value: '6-9', child: Text('6-9')),
-                  DropdownMenuItem(value: '10-13', child: Text('10-13')),
-                  DropdownMenuItem(value: '14-17', child: Text('14-17')),
+                const SizedBox(height: 8),
+                Text(
+                  authLabels.signInRequiredIntro,
+                  style: TextStyle(color: mutedColor(context), height: 1.45),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (isAuthenticated) ...[
+          ProfilePanel(
+            icon: Icons.person_outline,
+            title: labels.adultProfile,
+            body:
+                '${userProfile?.publicName ?? 'Spectrum user'} · ${userProfile?.city ?? authLabels.cityOptional}',
+          ),
+          const SizedBox(height: 14),
+          ProfilePanel(
+            icon: Icons.supervisor_account_outlined,
+            title: labels.tutorProfile,
+            body:
+                'Compte principal que revisa aportacions dels perfils infantils.',
+          ),
+          const SizedBox(height: 14),
+          SpectrumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeading(title: labels.childProfile),
+                const SizedBox(height: 10),
+                for (final child in sampleChildProfiles)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: ChildProfileTile(profile: child),
+                  ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: childAliasController,
+                  decoration: InputDecoration(labelText: authLabels.childAlias),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: childAgeRange,
+                  decoration: InputDecoration(labelText: authLabels.childAge),
+                  items: const [
+                    DropdownMenuItem(value: '0-5', child: Text('0-5')),
+                    DropdownMenuItem(value: '6-9', child: Text('6-9')),
+                    DropdownMenuItem(value: '10-13', child: Text('10-13')),
+                    DropdownMenuItem(value: '14-17', child: Text('14-17')),
+                  ],
+                  onChanged: onChildAgeChanged,
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: isProfileSubmitting ? null : onCreateChildProfile,
+                  icon: isProfileSubmitting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add),
+                  label: Text(authLabels.createChildProfile),
+                ),
+                if (profileMessage != null) ...[
+                  const SizedBox(height: 12),
+                  StatusMessage(message: profileMessage!),
                 ],
-                onChanged: onChildAgeChanged,
-              ),
-              const SizedBox(height: 14),
-              FilledButton.icon(
-                onPressed: isProfileSubmitting ? null : onCreateChildProfile,
-                icon: isProfileSubmitting
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.add),
-                label: Text(authLabels.createChildProfile),
-              ),
-              if (profileMessage != null) ...[
-                const SizedBox(height: 12),
-                StatusMessage(message: profileMessage!),
               ],
-            ],
+            ),
           ),
-        ),
-        const SizedBox(height: 14),
-        SpectrumPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeading(title: authLabels.professionalRequestTitle),
-              const SizedBox(height: 12),
-              TextField(
-                controller: professionalNameController,
-                decoration: InputDecoration(
-                  labelText: authLabels.professionalName,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: licenseNumberController,
-                decoration: InputDecoration(
-                  labelText: authLabels.licenseNumber,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: professionalCollegeController,
-                decoration: InputDecoration(
-                  labelText: authLabels.professionalCollege,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: specialtyController,
-                decoration: InputDecoration(labelText: authLabels.specialty),
-              ),
-              const SizedBox(height: 14),
-              FilledButton.icon(
-                onPressed: isProfessionalSubmitting
-                    ? null
-                    : onRequestProfessionalVerification,
-                icon: isProfessionalSubmitting
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.verified_outlined),
-                label: Text(authLabels.requestVerification),
-              ),
-              if (professionalMessage != null) ...[
+          const SizedBox(height: 14),
+          SpectrumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeading(title: authLabels.professionalRequestTitle),
                 const SizedBox(height: 12),
-                StatusMessage(message: professionalMessage!),
+                TextField(
+                  controller: professionalNameController,
+                  decoration: InputDecoration(
+                    labelText: authLabels.professionalName,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: licenseNumberController,
+                  decoration: InputDecoration(
+                    labelText: authLabels.licenseNumber,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: professionalCollegeController,
+                  decoration: InputDecoration(
+                    labelText: authLabels.professionalCollege,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: specialtyController,
+                  decoration: InputDecoration(labelText: authLabels.specialty),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: isProfessionalSubmitting
+                      ? null
+                      : onRequestProfessionalVerification,
+                  icon: isProfessionalSubmitting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.verified_outlined),
+                  label: Text(authLabels.requestVerification),
+                ),
+                if (professionalMessage != null) ...[
+                  const SizedBox(height: 12),
+                  StatusMessage(message: professionalMessage!),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        const SizedBox(height: 14),
-        ProfilePanel(
-          icon: Icons.tune_outlined,
-          title: labels.sensoryProfile,
-          body: 'Preferències de soroll, llum, afluència i temps d’espera.',
-        ),
+          const SizedBox(height: 14),
+          ProfilePanel(
+            icon: Icons.tune_outlined,
+            title: labels.sensoryProfile,
+            body: 'Preferències de soroll, llum, afluència i temps d’espera.',
+          ),
+        ],
       ],
     );
   }
