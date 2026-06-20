@@ -2,15 +2,20 @@ name: Web staging deploy
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
 
 jobs:
   deploy:
     name: Deploy Firebase Hosting staging
     runs-on: ubuntu-latest
-    if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON != '' }}
     steps:
+      - name: Validate Firebase deploy configuration
+        env:
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          test -n "$FIREBASE_PROJECT_ID"
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
+
       - name: Checkout
         uses: actions/checkout@v5
 
