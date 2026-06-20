@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'firebase_services.dart';
@@ -17,6 +19,121 @@ const googleMapsRequested = bool.fromEnvironment(
   defaultValue: true,
 );
 const _nativeConfigChannel = MethodChannel('spectrum_access/native_config');
+
+enum LocationStatus { idle, locating, located, denied, unavailable, error }
+
+class DeviceLocation {
+  const DeviceLocation({
+    required this.latitude,
+    required this.longitude,
+    required this.accuracyMeters,
+  });
+
+  final double latitude;
+  final double longitude;
+  final double accuracyMeters;
+}
+
+List<PlaceSummary> rankPlacesByDeviceLocation(
+  List<PlaceSummary> source,
+  DeviceLocation? location,
+) {
+  if (location == null) {
+    return source;
+  }
+
+  final ranked =
+      source
+          .map(
+            (place) => (
+              place: place,
+              distanceKm: distanceBetweenKm(
+                location.latitude,
+                location.longitude,
+                place.latitude,
+                place.longitude,
+              ),
+            ),
+          )
+          .toList()
+        ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+
+  return ranked
+      .map(
+        (entry) =>
+            entry.place.copyWith(distance: formatDistance(entry.distanceKm)),
+      )
+      .toList();
+}
+
+List<VerifiedProfile> rankVerifiedProfilesByDeviceLocation(
+  List<VerifiedProfile> source,
+  DeviceLocation? location,
+) {
+  if (location == null) {
+    return source;
+  }
+
+  final ranked =
+      source
+          .map(
+            (profile) => (
+              profile: profile,
+              distanceKm: distanceBetweenKm(
+                location.latitude,
+                location.longitude,
+                profile.latitude,
+                profile.longitude,
+              ),
+            ),
+          )
+          .toList()
+        ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+
+  return ranked
+      .map(
+        (entry) =>
+            entry.profile.copyWith(distance: formatDistance(entry.distanceKm)),
+      )
+      .toList();
+}
+
+double distanceBetweenKm(
+  double originLat,
+  double originLng,
+  double destinationLat,
+  double destinationLng,
+) {
+  const earthRadiusKm = 6371.0;
+  final latDelta = _toRadians(destinationLat - originLat);
+  final lngDelta = _toRadians(destinationLng - originLng);
+  final originLatitude = _toRadians(originLat);
+  final destinationLatitude = _toRadians(destinationLat);
+  final a =
+      math.sin(latDelta / 2) * math.sin(latDelta / 2) +
+      math.cos(originLatitude) *
+          math.cos(destinationLatitude) *
+          math.sin(lngDelta / 2) *
+          math.sin(lngDelta / 2);
+  final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+
+  return earthRadiusKm * c;
+}
+
+double _toRadians(double value) => value * math.pi / 180;
+
+String formatDistance(double distanceKm) {
+  if (distanceKm < 1) {
+    final meters = math.max(50, (distanceKm * 1000 / 50).round() * 50);
+    return '$meters m';
+  }
+
+  if (distanceKm < 10) {
+    return '${distanceKm.toStringAsFixed(1)} km';
+  }
+
+  return '${distanceKm.round()} km';
+}
 
 class SpectrumAccessApp extends StatefulWidget {
   const SpectrumAccessApp({super.key});
@@ -70,6 +187,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _professionalSubmitting = false;
   int _selectedPlace = 0;
   int _selectedFilter = 0;
+  LocationStatus _locationStatus = LocationStatus.idle;
+  DeviceLocation? _deviceLocation;
   LocaleOption _locale = LocaleOption.ca;
   MobileTab _selectedTab = MobileTab.consult;
   SpectrumFirebaseServices? _firebaseServices;
@@ -113,6 +232,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
     super.initState();
     _listenToAuth();
     unawaited(_resolveGoogleMapsAvailability());
+    unawaited(_locateDeviceOnLaunch());
     unawaited(_restoreLostImages());
   }
 
@@ -345,6 +465,80 @@ class _SpectrumShellState extends State<SpectrumShell> {
     }
   }
 
+  Future<void> _locateDeviceOnLaunch() async {
+    if (_locationStatus == LocationStatus.locating) {
+      return;
+    }
+
+    setStateIfMounted(() => _locationStatus = LocationStatus.locating);
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setStateIfMounted(() => _locationStatus = LocationStatus.unavailable);
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        setStateIfMounted(() => _locationStatus = LocationStatus.denied);
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+
+      setStateIfMounted(() {
+        _deviceLocation = DeviceLocation(
+          latitude: position.latitude,
+          longitude: position.longitude,
+          accuracyMeters: position.accuracy,
+        );
+        _locationStatus = LocationStatus.located;
+        _selectedPlace = 0;
+      });
+    } catch (_) {
+      setStateIfMounted(() => _locationStatus = LocationStatus.error);
+    }
+  }
+
+  String _mapSubtitleFor(PlaceSummary selectedPlace) {
+    return switch (_locationStatus) {
+      LocationStatus.locating => switch (_locale) {
+        LocaleOption.ca => 'Buscant ubicació',
+        LocaleOption.es => 'Buscando ubicación',
+        LocaleOption.en => 'Finding location',
+      },
+      LocationStatus.located =>
+        '${selectedPlace.distance} · ${selectedPlace.city}',
+      LocationStatus.denied => switch (_locale) {
+        LocaleOption.ca => 'Permís d’ubicació bloquejat',
+        LocaleOption.es => 'Permiso de ubicación bloqueado',
+        LocaleOption.en => 'Location permission blocked',
+      },
+      LocationStatus.unavailable => switch (_locale) {
+        LocaleOption.ca => 'Ubicació no disponible',
+        LocaleOption.es => 'Ubicación no disponible',
+        LocaleOption.en => 'Location unavailable',
+      },
+      LocationStatus.error => switch (_locale) {
+        LocaleOption.ca => 'No s’ha pogut obtenir la ubicació',
+        LocaleOption.es => 'No se ha podido obtener la ubicación',
+        LocaleOption.en => 'Could not get location',
+      },
+      LocationStatus.idle => selectedPlace.city,
+    };
+  }
+
   void setStateIfMounted(VoidCallback update) {
     if (!mounted) {
       return;
@@ -412,7 +606,14 @@ class _SpectrumShellState extends State<SpectrumShell> {
         return;
       }
 
-      final place = samplePlaces[_selectedPlace];
+      final visiblePlaces = rankPlacesByDeviceLocation(
+        samplePlaces,
+        _deviceLocation,
+      );
+      final place =
+          visiblePlaces[_selectedPlace
+              .clamp(0, visiblePlaces.length - 1)
+              .toInt()];
       final comment = _notesController.text.trim();
       await service.submitReview(
         placeId: place.id,
@@ -455,7 +656,19 @@ class _SpectrumShellState extends State<SpectrumShell> {
     final labels = appCopies[_locale]!;
     final authLabels = authCopies[_locale]!;
     final isDark = widget.themeMode == ThemeMode.dark;
-    final selectedPlace = samplePlaces[_selectedPlace];
+    final visiblePlaces = rankPlacesByDeviceLocation(
+      samplePlaces,
+      _deviceLocation,
+    );
+    final visibleVerifiedProfiles = rankVerifiedProfilesByDeviceLocation(
+      sampleVerifiedProfiles,
+      _deviceLocation,
+    );
+    final selectedPlaceIndex = _selectedPlace
+        .clamp(0, visiblePlaces.length - 1)
+        .toInt();
+    final selectedPlace = visiblePlaces[selectedPlaceIndex];
+    final mapSubtitle = _mapSubtitleFor(selectedPlace);
 
     return Scaffold(
       appBar: AppBar(
@@ -543,7 +756,13 @@ class _SpectrumShellState extends State<SpectrumShell> {
                   isAuthenticated: _authUser != null,
                   focusMode: _focusMode,
                   googleMapsAvailable: _googleMapsAvailable,
+                  places: visiblePlaces,
+                  verifiedProfiles: visibleVerifiedProfiles,
                   selectedPlace: selectedPlace,
+                  mapSubtitle: mapSubtitle,
+                  locationStatus: _locationStatus,
+                  deviceLocation: _deviceLocation,
+                  onLocate: _locateDeviceOnLaunch,
                   onOpenTab: _openTab,
                   onOpenPlace: (index) => setState(() {
                     _selectedPlace = index;
@@ -551,7 +770,14 @@ class _SpectrumShellState extends State<SpectrumShell> {
                     _showHome = false;
                   }),
                 )
-              : _screenForTab(labels, selectedPlace),
+              : _screenForTab(
+                  labels,
+                  selectedPlace,
+                  visiblePlaces,
+                  visibleVerifiedProfiles,
+                  selectedPlaceIndex,
+                  mapSubtitle,
+                ),
         ),
       ),
       bottomNavigationBar: BottomNavigation(
@@ -562,7 +788,14 @@ class _SpectrumShellState extends State<SpectrumShell> {
     );
   }
 
-  Widget _screenForTab(AppCopy labels, PlaceSummary selectedPlace) {
+  Widget _screenForTab(
+    AppCopy labels,
+    PlaceSummary selectedPlace,
+    List<PlaceSummary> places,
+    List<VerifiedProfile> verifiedProfiles,
+    int selectedPlaceIndex,
+    String mapSubtitle,
+  ) {
     final authLabels = authCopies[_locale]!;
     final isAuthenticated = _authUser != null;
 
@@ -572,12 +805,17 @@ class _SpectrumShellState extends State<SpectrumShell> {
           key: const ValueKey('consult'),
           labels: labels,
           authLabels: authLabels,
-          selectedPlace: _selectedPlace,
+          places: places,
+          selectedPlace: selectedPlaceIndex,
           selectedFilter: _selectedFilter,
           googleMapsAvailable: _googleMapsAvailable,
+          mapSubtitle: mapSubtitle,
+          locationStatus: _locationStatus,
+          deviceLocation: _deviceLocation,
           isAuthenticated: isAuthenticated,
           onFilterChanged: (index) => setState(() => _selectedFilter = index),
           onPlaceChanged: (index) => setState(() => _selectedPlace = index),
+          onLocate: _locateDeviceOnLaunch,
           onContribute: () => _openTab(MobileTab.contribute),
         );
       case MobileTab.contribute:
@@ -618,6 +856,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
           authLabels: authLabels,
           isAuthenticated: isAuthenticated,
           userProfile: _userProfile,
+          verifiedProfiles: verifiedProfiles,
           childAliasController: _childAliasController,
           childAgeRange: _childAgeRange,
           profileMessage: _profileMessage,
@@ -877,7 +1116,13 @@ class HomeScreen extends StatelessWidget {
     required this.isAuthenticated,
     required this.focusMode,
     required this.googleMapsAvailable,
+    required this.places,
+    required this.verifiedProfiles,
     required this.selectedPlace,
+    required this.mapSubtitle,
+    required this.locationStatus,
+    required this.deviceLocation,
+    required this.onLocate,
     required this.onOpenTab,
     required this.onOpenPlace,
     super.key,
@@ -888,7 +1133,13 @@ class HomeScreen extends StatelessWidget {
   final bool isAuthenticated;
   final bool focusMode;
   final bool googleMapsAvailable;
+  final List<PlaceSummary> places;
+  final List<VerifiedProfile> verifiedProfiles;
   final PlaceSummary selectedPlace;
+  final String mapSubtitle;
+  final LocationStatus locationStatus;
+  final DeviceLocation? deviceLocation;
+  final Future<void> Function() onLocate;
   final ValueChanged<MobileTab> onOpenTab;
   final ValueChanged<int> onOpenPlace;
 
@@ -917,9 +1168,13 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 24),
         SensoryMapPanel(
           title: labels.nearbyMap,
-          subtitle: 'Barcelona',
+          subtitle: mapSubtitle,
           googleMapsAvailable: googleMapsAvailable,
+          places: places,
           selectedPlace: selectedPlace,
+          locationStatus: locationStatus,
+          deviceLocation: deviceLocation,
+          onLocate: onLocate,
           onOpen: () => onOpenTab(MobileTab.consult),
           onPlaceSelected: onOpenPlace,
         ),
@@ -930,7 +1185,7 @@ class HomeScreen extends StatelessWidget {
             children: [
               SectionHeading(title: labels.savedPlaces, action: labels.viewAll),
               const SizedBox(height: 10),
-              for (final entry in samplePlaces.indexed)
+              for (final entry in places.indexed)
                 SavedPlaceRow(
                   place: entry.$2,
                   onTap: () => onOpenPlace(entry.$1),
@@ -989,7 +1244,7 @@ class HomeScreen extends StatelessWidget {
                 action: labels.viewAll,
               ),
               const SizedBox(height: 12),
-              for (final profile in sampleVerifiedProfiles)
+              for (final profile in verifiedProfiles)
                 VerifiedRow(profile: profile, labels: labels),
             ],
           ),
@@ -1033,29 +1288,39 @@ class ConsultScreen extends StatelessWidget {
   const ConsultScreen({
     required this.labels,
     required this.authLabels,
+    required this.places,
     required this.selectedPlace,
     required this.selectedFilter,
     required this.googleMapsAvailable,
+    required this.mapSubtitle,
+    required this.locationStatus,
+    required this.deviceLocation,
     required this.isAuthenticated,
     required this.onFilterChanged,
     required this.onPlaceChanged,
+    required this.onLocate,
     required this.onContribute,
     super.key,
   });
 
   final AppCopy labels;
   final AuthCopy authLabels;
+  final List<PlaceSummary> places;
   final int selectedPlace;
   final int selectedFilter;
   final bool googleMapsAvailable;
+  final String mapSubtitle;
+  final LocationStatus locationStatus;
+  final DeviceLocation? deviceLocation;
   final bool isAuthenticated;
   final ValueChanged<int> onFilterChanged;
   final ValueChanged<int> onPlaceChanged;
+  final Future<void> Function() onLocate;
   final VoidCallback onContribute;
 
   @override
   Widget build(BuildContext context) {
-    final place = samplePlaces[selectedPlace];
+    final place = places[selectedPlace];
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       children: [
@@ -1085,9 +1350,13 @@ class ConsultScreen extends StatelessWidget {
         const SizedBox(height: 18),
         SensoryMapPanel(
           title: labels.nearbyMap,
-          subtitle: 'Barcelona',
+          subtitle: mapSubtitle,
           googleMapsAvailable: googleMapsAvailable,
+          places: places,
           selectedPlace: place,
+          locationStatus: locationStatus,
+          deviceLocation: deviceLocation,
+          onLocate: onLocate,
           onPlaceSelected: onPlaceChanged,
         ),
         const SizedBox(height: 18),
@@ -1099,7 +1368,7 @@ class ConsultScreen extends StatelessWidget {
           onContribute: onContribute,
         ),
         const SizedBox(height: 18),
-        for (final entry in samplePlaces.indexed)
+        for (final entry in places.indexed)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: SavedPlaceRow(
@@ -1337,6 +1606,7 @@ class ProfilesScreen extends StatelessWidget {
     required this.authLabels,
     required this.isAuthenticated,
     required this.userProfile,
+    required this.verifiedProfiles,
     required this.childAliasController,
     required this.childAgeRange,
     required this.profileMessage,
@@ -1357,6 +1627,7 @@ class ProfilesScreen extends StatelessWidget {
   final AuthCopy authLabels;
   final bool isAuthenticated;
   final SpectrumUserProfile? userProfile;
+  final List<VerifiedProfile> verifiedProfiles;
   final TextEditingController childAliasController;
   final String? childAgeRange;
   final String? profileMessage;
@@ -1399,7 +1670,7 @@ class ProfilesScreen extends StatelessWidget {
                 action: labels.viewAll,
               ),
               const SizedBox(height: 10),
-              for (final profile in sampleVerifiedProfiles)
+              for (final profile in verifiedProfiles)
                 VerifiedRow(profile: profile, labels: labels),
             ],
           ),
@@ -1655,7 +1926,11 @@ class SensoryMapPanel extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.googleMapsAvailable,
+    required this.places,
     required this.selectedPlace,
+    required this.locationStatus,
+    required this.deviceLocation,
+    required this.onLocate,
     required this.onPlaceSelected,
     this.onOpen,
     super.key,
@@ -1664,7 +1939,11 @@ class SensoryMapPanel extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool googleMapsAvailable;
+  final List<PlaceSummary> places;
   final PlaceSummary selectedPlace;
+  final LocationStatus locationStatus;
+  final DeviceLocation? deviceLocation;
+  final Future<void> Function() onLocate;
   final ValueChanged<int> onPlaceSelected;
   final VoidCallback? onOpen;
 
@@ -1695,8 +1974,13 @@ class SensoryMapPanel extends StatelessWidget {
                 icon: const Icon(Icons.tune_outlined),
               ),
               IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.my_location_outlined),
+                tooltip: subtitle,
+                onPressed: () => unawaited(onLocate()),
+                icon: Icon(
+                  locationStatus == LocationStatus.locating
+                      ? Icons.location_searching
+                      : Icons.my_location_outlined,
+                ),
               ),
             ],
           ),
@@ -1712,12 +1996,17 @@ class SensoryMapPanel extends StatelessWidget {
                 children: [
                   if (googleMapsAvailable)
                     _GoogleMapLayer(
+                      places: places,
                       selectedPlace: selectedPlace,
+                      deviceLocation: deviceLocation,
+                      locationStatus: locationStatus,
                       onPlaceSelected: onPlaceSelected,
                     )
                   else
                     _FallbackMapLayer(
+                      places: places,
                       selectedPlace: selectedPlace,
+                      deviceLocation: deviceLocation,
                       onPlaceSelected: onPlaceSelected,
                     ),
                   Positioned(
@@ -1791,27 +2080,44 @@ class SensoryMapPanel extends StatelessWidget {
 
 class _GoogleMapLayer extends StatelessWidget {
   const _GoogleMapLayer({
+    required this.places,
     required this.selectedPlace,
+    required this.deviceLocation,
+    required this.locationStatus,
     required this.onPlaceSelected,
   });
 
+  final List<PlaceSummary> places;
   final PlaceSummary selectedPlace;
+  final DeviceLocation? deviceLocation;
+  final LocationStatus locationStatus;
   final ValueChanged<int> onPlaceSelected;
 
   @override
   Widget build(BuildContext context) {
-    final selectedIndex = samplePlaces.indexOf(selectedPlace);
+    final selectedIndex = places.indexWhere(
+      (place) => place.id == selectedPlace.id,
+    );
+    final deviceLatLng = deviceLocation == null
+        ? null
+        : LatLng(deviceLocation!.latitude, deviceLocation!.longitude);
+    final cameraTarget =
+        deviceLatLng ?? LatLng(selectedPlace.latitude, selectedPlace.longitude);
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: GoogleMap(
+        key: ValueKey(
+          '${selectedPlace.id}-${deviceLocation?.latitude}-${deviceLocation?.longitude}',
+        ),
         initialCameraPosition: CameraPosition(
-          target: LatLng(selectedPlace.latitude, selectedPlace.longitude),
-          zoom: 13,
+          target: cameraTarget,
+          zoom: deviceLatLng == null ? 13 : 14,
         ),
         markers: {
-          for (final entry in samplePlaces.indexed)
+          for (final entry in places.indexed)
             Marker(
-              markerId: MarkerId(entry.$2.name),
+              markerId: MarkerId(entry.$2.id),
               position: LatLng(entry.$2.latitude, entry.$2.longitude),
               onTap: () => onPlaceSelected(entry.$1),
               icon: BitmapDescriptor.defaultMarkerWithHue(
@@ -1820,9 +2126,18 @@ class _GoogleMapLayer extends StatelessWidget {
                     : BitmapDescriptor.hueAzure,
               ),
             ),
+          if (deviceLatLng != null)
+            Marker(
+              markerId: const MarkerId('device-location'),
+              position: deviceLatLng,
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueBlue,
+              ),
+            ),
         },
         compassEnabled: false,
         mapToolbarEnabled: false,
+        myLocationEnabled: locationStatus == LocationStatus.located,
         myLocationButtonEnabled: false,
         zoomControlsEnabled: false,
       ),
@@ -1832,15 +2147,27 @@ class _GoogleMapLayer extends StatelessWidget {
 
 class _FallbackMapLayer extends StatelessWidget {
   const _FallbackMapLayer({
+    required this.places,
     required this.selectedPlace,
+    required this.deviceLocation,
     required this.onPlaceSelected,
   });
 
+  final List<PlaceSummary> places;
   final PlaceSummary selectedPlace;
+  final DeviceLocation? deviceLocation;
   final ValueChanged<int> onPlaceSelected;
 
   @override
   Widget build(BuildContext context) {
+    final pinLayout = [
+      (left: .38, top: .45),
+      (left: .59, top: .28),
+      (left: .68, top: .64),
+      (left: .32, top: .63),
+      (left: .72, top: .38),
+    ];
+
     return Stack(
       children: [
         Positioned.fill(
@@ -1850,24 +2177,26 @@ class _FallbackMapLayer extends StatelessWidget {
             ),
           ),
         ),
-        _MapPin(
-          left: .38,
-          top: .45,
-          active: selectedPlace == samplePlaces[0],
-          onTap: () => onPlaceSelected(0),
-        ),
-        _MapPin(
-          left: .59,
-          top: .28,
-          active: selectedPlace == samplePlaces[1],
-          onTap: () => onPlaceSelected(1),
-        ),
-        _MapPin(
-          left: .68,
-          top: .64,
-          active: selectedPlace == samplePlaces[2],
-          onTap: () => onPlaceSelected(2),
-        ),
+        for (final entry in places.indexed)
+          _MapPin(
+            left: pinLayout[entry.$1 % pinLayout.length].left,
+            top: pinLayout[entry.$1 % pinLayout.length].top,
+            active: selectedPlace.id == entry.$2.id,
+            onTap: () => onPlaceSelected(entry.$1),
+          ),
+        if (deviceLocation != null)
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 122,
+            child: Center(
+              child: Icon(
+                Icons.my_location,
+                color: SpectrumColors.primary,
+                size: 28,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -2414,7 +2743,7 @@ class VerifiedRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  profile.identifier,
+                  '${profile.identifier} · ${profile.distance}',
                   style: TextStyle(color: mutedColor(context), fontSize: 12),
                 ),
               ],

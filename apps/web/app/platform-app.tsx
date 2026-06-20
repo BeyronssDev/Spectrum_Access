@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { User } from "firebase/auth";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AppUser, Place as FirebasePlace, SensoryRating } from "@accessibilitat/shared";
 import {
   createChildProfile,
@@ -69,6 +69,7 @@ type SensoryKey = "noise" | "density" | "light" | "wait";
 type MapLayerId = "roadmap" | "satellite" | "terrain";
 type LocationState = "idle" | "locating" | "located" | "denied" | "unsupported" | "error";
 type AuthMode = "login" | "register";
+type UserLocation = { lat: number; lng: number; accuracy?: number };
 
 type ContributionDraft = {
   createNewPlace: boolean;
@@ -104,6 +105,12 @@ type Professional = {
   license: string;
   college: string;
   specialty: string;
+  city: string;
+  distance: string;
+  position: {
+    lat: number;
+    lng: number;
+  };
   initials: string;
 };
 
@@ -113,6 +120,11 @@ type Organization = {
   city: string;
   registry: string;
   description: string;
+  distance: string;
+  position: {
+    lat: number;
+    lng: number;
+  };
   initials: string;
 };
 
@@ -722,6 +734,73 @@ function toUiPlace(place: FirebasePlace): Place {
   };
 }
 
+function distanceBetweenKm(origin: UserLocation, destination: { lat: number; lng: number }) {
+  const earthRadiusKm = 6371;
+  const latDelta = toRadians(destination.lat - origin.lat);
+  const lngDelta = toRadians(destination.lng - origin.lng);
+  const originLat = toRadians(origin.lat);
+  const destinationLat = toRadians(destination.lat);
+  const a =
+    Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
+    Math.cos(originLat) * Math.cos(destinationLat) * Math.sin(lngDelta / 2) * Math.sin(lngDelta / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusKm * c;
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function formatDistance(distanceKm: number) {
+  if (distanceKm < 1) {
+    return `${Math.max(50, Math.round((distanceKm * 1000) / 50) * 50)} m`;
+  }
+
+  if (distanceKm < 10) {
+    return `${distanceKm.toFixed(1)} km`;
+  }
+
+  return `${Math.round(distanceKm)} km`;
+}
+
+function rankPlacesByDistance(source: Place[], userLocation: UserLocation | null) {
+  if (!userLocation) {
+    return source;
+  }
+
+  return source
+    .map((place) => ({
+      place,
+      distanceKm: distanceBetweenKm(userLocation, place.position)
+    }))
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .map(({ place, distanceKm }) => ({
+      ...place,
+      distance: formatDistance(distanceKm)
+    }));
+}
+
+function rankLocatedItemsByDistance<T extends { distance: string; position: { lat: number; lng: number } }>(
+  source: T[],
+  userLocation: UserLocation | null
+) {
+  if (!userLocation) {
+    return source;
+  }
+
+  return source
+    .map((item) => ({
+      item,
+      distanceKm: distanceBetweenKm(userLocation, item.position)
+    }))
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .map(({ item, distanceKm }) => ({
+      ...item,
+      distance: formatDistance(distanceKm)
+    }));
+}
+
 const professionals: Professional[] = [
   {
     id: "marta-gomez",
@@ -730,6 +809,9 @@ const professionals: Professional[] = [
     license: "COPC 47145",
     college: "Col·legi Oficial de Psicologia de Catalunya",
     specialty: "Autisme adult i suport familiar",
+    city: "Barcelona",
+    distance: "0.7 km",
+    position: { lat: 41.3891, lng: 2.1706 },
     initials: "MG"
   },
   {
@@ -739,6 +821,9 @@ const professionals: Professional[] = [
     license: "COPC 50218",
     college: "Col·legi Oficial de Psicologia de Catalunya",
     specialty: "Infància, tutors i regulació sensorial",
+    city: "Barcelona",
+    distance: "1.4 km",
+    position: { lat: 41.3928, lng: 2.1649 },
     initials: "PF"
   }
 ];
@@ -750,6 +835,8 @@ const organizations: Organization[] = [
     city: "Barcelona",
     registry: "Reg. E-12345",
     description: "Centre d'acompanyament per a persones autistes i famílies.",
+    distance: "1.1 km",
+    position: { lat: 41.3878, lng: 2.1602 },
     initials: "CT"
   },
   {
@@ -758,6 +845,8 @@ const organizations: Organization[] = [
     city: "Sabadell",
     registry: "Reg. E-98765",
     description: "Associació local amb activitats de suport i orientació.",
+    distance: "19 km",
+    position: { lat: 41.5489, lng: 2.1079 },
     initials: "TV"
   }
 ];
@@ -831,6 +920,8 @@ export function PlatformApp() {
   const [query, setQuery] = useState("");
   const [selectedPlaceId, setSelectedPlaceId] = useState(places[0].id);
   const [selectedFilter, setSelectedFilter] = useState<number | null>(null);
+  const [locationState, setLocationState] = useState<LocationState>("idle");
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [anonymous, setAnonymous] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [notes, setNotes] = useState("");
@@ -854,6 +945,34 @@ export function PlatformApp() {
     light: 2,
     wait: 1
   });
+  const autoLocationRequestedRef = useRef(false);
+
+  const requestUserLocation = useCallback(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationState("unsupported");
+      return;
+    }
+
+    setLocationState("locating");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+        setLocationState("located");
+      },
+      (error) => {
+        setLocationState(error.code === error.PERMISSION_DENIED ? "denied" : "error");
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 60000,
+        timeout: 12000
+      }
+    );
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -904,6 +1023,15 @@ export function PlatformApp() {
   }, [locale]);
 
   useEffect(() => {
+    if (autoLocationRequestedRef.current) {
+      return;
+    }
+
+    autoLocationRequestedRef.current = true;
+    requestUserLocation();
+  }, [requestUserLocation]);
+
+  useEffect(() => {
     let active = true;
 
     listActivePlaces()
@@ -930,9 +1058,18 @@ export function PlatformApp() {
   }, []);
 
   const c = copy[locale];
+  const rankedPlaces = useMemo(() => rankPlacesByDistance(availablePlaces, userLocation), [availablePlaces, userLocation]);
+  const rankedProfessionals = useMemo(
+    () => rankLocatedItemsByDistance(professionals, userLocation),
+    [userLocation]
+  );
+  const rankedOrganizations = useMemo(
+    () => rankLocatedItemsByDistance(organizations, userLocation),
+    [userLocation]
+  );
   const filteredPlaces = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return availablePlaces.filter((place) => {
+    return rankedPlaces.filter((place) => {
       const matchesQuery =
         !normalized ||
         [place.name, place.area, place.city, place.category]
@@ -943,11 +1080,19 @@ export function PlatformApp() {
 
       return matchesQuery && matchesFilter;
     });
-  }, [availablePlaces, query, selectedFilter]);
+  }, [rankedPlaces, query, selectedFilter]);
 
-  const selectedPlace = availablePlaces.find((place) => place.id === selectedPlaceId) ?? availablePlaces[0];
+  const selectedPlace = rankedPlaces.find((place) => place.id === selectedPlaceId) ?? rankedPlaces[0] ?? places[0];
   const visibleSelectedPlace =
     filteredPlaces.find((place) => place.id === selectedPlaceId) ?? filteredPlaces[0] ?? selectedPlace;
+
+  useEffect(() => {
+    if (!userLocation || rankedPlaces.length === 0) {
+      return;
+    }
+
+    setSelectedPlaceId(rankedPlaces[0].id);
+  }, [rankedPlaces, userLocation]);
 
   useEffect(() => {
     if (filteredPlaces.length === 0 || filteredPlaces.some((place) => place.id === selectedPlaceId)) {
@@ -1054,8 +1199,8 @@ export function PlatformApp() {
           city: contributionDraft.city.trim(),
           addressOrArea: contributionDraft.addressOrArea.trim(),
           description: contributionDraft.description.trim() || undefined,
-          latitude: selectedPlace.position.lat,
-          longitude: selectedPlace.position.lng
+          latitude: userLocation?.lat ?? selectedPlace.position.lat,
+          longitude: userLocation?.lng ?? selectedPlace.position.lng
         });
         placeId = created.data.placeId;
       }
@@ -1229,10 +1374,15 @@ export function PlatformApp() {
               places={filteredPlaces}
               selectedFilter={selectedFilter}
               selectedPlace={visibleSelectedPlace}
+              locationState={locationState}
+              userLocation={userLocation}
+              professionals={rankedProfessionals}
+              organizations={rankedOrganizations}
               isAuthenticated={isAuthenticated}
               onNavigate={navigateToView}
               onSelectPlace={setSelectedPlaceId}
               onCycleFilter={cycleFilter}
+              onLocate={requestUserLocation}
             />
           ) : null}
 
@@ -1245,12 +1395,15 @@ export function PlatformApp() {
               selectedFilter={selectedFilter}
               selectedPlace={visibleSelectedPlace}
               places={filteredPlaces}
+              locationState={locationState}
+              userLocation={userLocation}
               isAuthenticated={isAuthenticated}
               onQuery={setQuery}
               onFilter={toggleFilter}
               onSelectPlace={setSelectedPlaceId}
               onNavigate={navigateToView}
               onCycleFilter={cycleFilter}
+              onLocate={requestUserLocation}
               onRequireAuth={() => setAuthPanelOpen(true)}
             />
           ) : null}
@@ -1286,13 +1439,17 @@ export function PlatformApp() {
               authCopy={authCopy[locale]}
               locale={locale}
               appUser={appUser}
+              professionals={rankedProfessionals}
+              organizations={rankedOrganizations}
               isAuthenticated={isAuthenticated}
               onRequireAuth={() => setAuthPanelOpen(true)}
               onRefreshProfile={refreshAppProfile}
             />
           ) : null}
 
-          {!gatedViewNeedsAuth && activeView === "verified" ? <VerifiedView copy={c} /> : null}
+          {!gatedViewNeedsAuth && activeView === "verified" ? (
+            <VerifiedView copy={c} professionals={rankedProfessionals} organizations={rankedOrganizations} />
+          ) : null}
         </section>
       </div>
 
@@ -1612,10 +1769,15 @@ function HomeView({
   places: availablePlaces,
   selectedFilter,
   selectedPlace,
+  locationState,
+  userLocation,
+  professionals: verifiedProfessionals,
+  organizations: verifiedOrganizations,
   isAuthenticated,
   onNavigate,
   onSelectPlace,
-  onCycleFilter
+  onCycleFilter,
+  onLocate
 }: {
   copy: (typeof copy)[Locale];
   authLabels: (typeof authCopy)[Locale];
@@ -1623,10 +1785,15 @@ function HomeView({
   places: Place[];
   selectedFilter: number | null;
   selectedPlace: Place;
+  locationState: LocationState;
+  userLocation: UserLocation | null;
+  professionals: Professional[];
+  organizations: Organization[];
   isAuthenticated: boolean;
   onNavigate: (view: ViewId) => void;
   onSelectPlace: (id: string) => void;
   onCycleFilter: () => void;
+  onLocate: () => void;
 }) {
   return (
     <div className="dashboard-grid">
@@ -1643,8 +1810,11 @@ function HomeView({
         filters={c.filters}
         selectedFilter={selectedFilter}
         selectedPlace={selectedPlace}
+        locationState={locationState}
+        userLocation={userLocation}
         onSelectPlace={onSelectPlace}
         onCycleFilter={onCycleFilter}
+        onLocate={onLocate}
         onOpen={() => onNavigate("consult")}
       />
 
@@ -1704,11 +1874,21 @@ function HomeView({
       <section className="panel trust-panel">
         <PanelHeading title={`${c.trust} · ${c.professionalsAndEntities}`} action={c.viewAll} onAction={() => onNavigate("verified")} />
         <div className="trust-strip">
-          {professionals.slice(0, 1).map((professional) => (
-            <VerifiedMiniCard key={professional.id} title={professional.name} meta={professional.license} initials={professional.initials} />
+          {verifiedProfessionals.slice(0, 1).map((professional) => (
+            <VerifiedMiniCard
+              key={professional.id}
+              title={professional.name}
+              meta={`${professional.license} · ${professional.distance}`}
+              initials={professional.initials}
+            />
           ))}
-          {organizations.map((organization) => (
-            <VerifiedMiniCard key={organization.id} title={organization.name} meta={organization.registry} initials={organization.initials} />
+          {verifiedOrganizations.map((organization) => (
+            <VerifiedMiniCard
+              key={organization.id}
+              title={organization.name}
+              meta={`${organization.registry} · ${organization.distance}`}
+              initials={organization.initials}
+            />
           ))}
         </div>
       </section>
@@ -1754,12 +1934,15 @@ function ConsultView({
   selectedFilter,
   selectedPlace,
   places: visiblePlaces,
+  locationState,
+  userLocation,
   isAuthenticated,
   onQuery,
   onFilter,
   onSelectPlace,
   onNavigate,
   onCycleFilter,
+  onLocate,
   onRequireAuth
 }: {
   copy: (typeof copy)[Locale];
@@ -1769,12 +1952,15 @@ function ConsultView({
   selectedFilter: number | null;
   selectedPlace: Place;
   places: Place[];
+  locationState: LocationState;
+  userLocation: UserLocation | null;
   isAuthenticated: boolean;
   onQuery: (query: string) => void;
   onFilter: (index: number) => void;
   onSelectPlace: (id: string) => void;
   onNavigate: (view: ViewId) => void;
   onCycleFilter: () => void;
+  onLocate: () => void;
   onRequireAuth: () => void;
 }) {
   return (
@@ -1811,8 +1997,11 @@ function ConsultView({
         filters={c.filters}
         selectedFilter={selectedFilter}
         selectedPlace={selectedPlace}
+        locationState={locationState}
+        userLocation={userLocation}
         onSelectPlace={onSelectPlace}
         onCycleFilter={onCycleFilter}
+        onLocate={onLocate}
         tall
       />
 
@@ -2061,6 +2250,8 @@ function ProfilesView({
   authCopy: ac,
   locale,
   appUser,
+  professionals: verifiedProfessionals,
+  organizations: verifiedOrganizations,
   isAuthenticated,
   onRequireAuth,
   onRefreshProfile
@@ -2069,6 +2260,8 @@ function ProfilesView({
   authCopy: (typeof authCopy)[Locale];
   locale: Locale;
   appUser: AppUser | null;
+  professionals: Professional[];
+  organizations: Organization[];
   isAuthenticated: boolean;
   onRequireAuth: () => void;
   onRefreshProfile: () => Promise<void>;
@@ -2144,11 +2337,21 @@ function ProfilesView({
       <section className="panel profiles-public-trust">
         <PanelHeading title={c.verifiedTitle} action={c.viewAll} />
         <div className="trust-strip">
-          {professionals.map((professional) => (
-            <VerifiedMiniCard key={professional.id} title={professional.name} meta={professional.license} initials={professional.initials} />
+          {verifiedProfessionals.map((professional) => (
+            <VerifiedMiniCard
+              key={professional.id}
+              title={professional.name}
+              meta={`${professional.license} · ${professional.distance}`}
+              initials={professional.initials}
+            />
           ))}
-          {organizations.map((organization) => (
-            <VerifiedMiniCard key={organization.id} title={organization.name} meta={organization.registry} initials={organization.initials} />
+          {verifiedOrganizations.map((organization) => (
+            <VerifiedMiniCard
+              key={organization.id}
+              title={organization.name}
+              meta={`${organization.registry} · ${organization.distance}`}
+              initials={organization.initials}
+            />
           ))}
         </div>
       </section>
@@ -2267,7 +2470,15 @@ function ProfilesView({
   );
 }
 
-function VerifiedView({ copy: c }: { copy: (typeof copy)[Locale] }) {
+function VerifiedView({
+  copy: c,
+  professionals: verifiedProfessionals,
+  organizations: verifiedOrganizations
+}: {
+  copy: (typeof copy)[Locale];
+  professionals: Professional[];
+  organizations: Organization[];
+}) {
   return (
     <div className="verified-grid">
       <section className="section-intro">
@@ -2276,12 +2487,14 @@ function VerifiedView({ copy: c }: { copy: (typeof copy)[Locale] }) {
       </section>
 
       <section className="verified-list">
-        {professionals.map((professional) => (
+        {verifiedProfessionals.map((professional) => (
           <article key={professional.id} className="panel verified-profile-card">
             <span className="portrait">{professional.initials}</span>
             <div>
               <h3>{professional.name}</h3>
-              <p>{professional.role}</p>
+              <p>
+                {professional.role} · {professional.city} · {professional.distance}
+              </p>
               <strong>
                 {c.license}: {professional.license}
               </strong>
@@ -2295,12 +2508,14 @@ function VerifiedView({ copy: c }: { copy: (typeof copy)[Locale] }) {
           </article>
         ))}
 
-        {organizations.map((organization) => (
+        {verifiedOrganizations.map((organization) => (
           <article key={organization.id} className="panel verified-profile-card">
             <span className="portrait entity">{organization.initials}</span>
             <div>
               <h3>{organization.name}</h3>
-              <p>{organization.city}</p>
+              <p>
+                {organization.city} · {organization.distance}
+              </p>
               <strong>
                 {c.registry}: {organization.registry}
               </strong>
@@ -2353,9 +2568,12 @@ function MapPanel({
   filters,
   selectedFilter,
   selectedPlace,
+  locationState,
+  userLocation,
   tall = false,
   onSelectPlace,
   onCycleFilter,
+  onLocate,
   onOpen
 }: {
   title: string;
@@ -2365,15 +2583,16 @@ function MapPanel({
   filters: string[];
   selectedFilter: number | null;
   selectedPlace: Place;
+  locationState: LocationState;
+  userLocation: UserLocation | null;
   tall?: boolean;
   onSelectPlace: (id: string) => void;
   onCycleFilter: () => void;
+  onLocate: () => void;
   onOpen?: () => void;
 }) {
   const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
   const [mapLayer, setMapLayer] = useState<MapLayerId>("roadmap");
-  const [locationState, setLocationState] = useState<LocationState>("idle");
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const layerLabels: Record<MapLayerId, string> = {
     roadmap: copyText.mapLayerRoadmap,
@@ -2392,32 +2611,6 @@ function MapPanel({
     activeFilterLabel,
     layerLabels[mapLayer]
   ].filter(Boolean).join(" · ");
-
-  const locateUser = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setLocationState("unsupported");
-      return;
-    }
-
-    setLocationState("locating");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-        setLocationState("located");
-      },
-      (error) => {
-        setLocationState(error.code === error.PERMISSION_DENIED ? "denied" : "error");
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 60000,
-        timeout: 12000
-      }
-    );
-  };
 
   const cycleLayer = () => {
     setMapLayer((current) => {
@@ -2457,7 +2650,7 @@ function MapPanel({
             data-tooltip={locationControlLabel}
             aria-label={locationControlLabel}
             title={locationControlLabel}
-            onClick={locateUser}
+            onClick={onLocate}
           >
             <LocateFixed aria-hidden="true" size={18} />
           </button>
@@ -2553,7 +2746,7 @@ function GoogleMapCanvas({
   mapLayer: MapLayerId;
   places: Place[];
   selectedPlace: Place;
-  userLocation: { lat: number; lng: number } | null;
+  userLocation: UserLocation | null;
   userLocationLabel: string;
   onSelectPlace: (id: string) => void;
 }) {
@@ -2668,7 +2861,7 @@ function FallbackMapCanvas({
   places: Place[];
   selectedPlace: Place;
   onSelectPlace: (id: string) => void;
-  userLocation: { lat: number; lng: number } | null;
+  userLocation: UserLocation | null;
   userLocationLabel: string;
   label: string;
 }) {

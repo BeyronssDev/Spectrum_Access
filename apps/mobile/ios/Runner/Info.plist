@@ -22,6 +22,8 @@
 	<string>Spectrum Access necesita acceder a la cámara para crear aportaciones sensoriales con imágenes.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Spectrum Access necesita acceder a la galería para adjuntar imágenes de lugares sensoriales.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Spectrum Access necesita acceder a tu ubicación para mostrar lugares y profesionales cercanos a tu zona.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

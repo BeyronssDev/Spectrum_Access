@@ -46,6 +46,7 @@ dependencies:
   google_fonts: ^8.1.0
   google_maps_flutter: ^2.17.1
   cloud_functions: ^6.3.3
+  geolocator: ^14.0.3
 
 dev_dependencies:
   flutter_test:

@@ -39,6 +39,22 @@ class PlaceSummary {
   final String description;
   final double latitude;
   final double longitude;
+
+  PlaceSummary copyWith({String? distance}) {
+    return PlaceSummary(
+      id: id,
+      name: name,
+      area: area,
+      city: city,
+      category: category,
+      score: score,
+      distance: distance ?? this.distance,
+      quietDb: quietDb,
+      description: description,
+      latitude: latitude,
+      longitude: longitude,
+    );
+  }
 }
 
 class VerifiedProfile {
@@ -47,6 +63,9 @@ class VerifiedProfile {
     required this.kind,
     required this.identifier,
     required this.detail,
+    required this.distance,
+    required this.latitude,
+    required this.longitude,
     required this.initials,
     required this.icon,
   });
@@ -55,8 +74,25 @@ class VerifiedProfile {
   final String kind;
   final String identifier;
   final String detail;
+  final String distance;
+  final double latitude;
+  final double longitude;
   final String initials;
   final IconData icon;
+
+  VerifiedProfile copyWith({String? distance}) {
+    return VerifiedProfile(
+      name: name,
+      kind: kind,
+      identifier: identifier,
+      detail: detail,
+      distance: distance ?? this.distance,
+      latitude: latitude,
+      longitude: longitude,
+      initials: initials,
+      icon: icon,
+    );
+  }
 }
 
 class ChildProfile {
@@ -639,6 +675,9 @@ const verifiedProfiles = [
     kind: 'Psicòloga',
     identifier: 'COPC 47145',
     detail: 'Autisme adult i suport familiar',
+    distance: '0.7 km',
+    latitude: 41.3891,
+    longitude: 2.1706,
     initials: 'MG',
     icon: Icons.psychology_outlined,
   ),
@@ -647,6 +686,9 @@ const verifiedProfiles = [
     kind: 'Entitat',
     identifier: 'Reg. E-12345',
     detail: 'Acompanyament per a persones autistes i famílies',
+    distance: '1.1 km',
+    latitude: 41.3878,
+    longitude: 2.1602,
     initials: 'CT',
     icon: Icons.apartment_outlined,
   ),
