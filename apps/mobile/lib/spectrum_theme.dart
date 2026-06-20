@@ -171,6 +171,12 @@ Color softPanelColor(BuildContext context) {
       : SpectrumColors.surfaceContainerLow;
 }
 
+Color borderColor(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? SpectrumColors.outline
+      : SpectrumColors.surfaceContainerHigh;
+}
+
 class BrandLogo extends StatelessWidget {
   const BrandLogo({this.size = 44, super.key});
 

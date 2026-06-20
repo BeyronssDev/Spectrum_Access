@@ -23,6 +23,14 @@ void main() {
     expect(find.text('Aportació sensorial'), findsOneWidget);
     expect(find.text('Biblioteca Veridian'), findsOneWidget);
     expect(find.text('Pujar imatges'), findsOneWidget);
+    expect(find.text('Càmera'), findsOneWidget);
+    expect(find.text('Galeria'), findsOneWidget);
+    expect(
+      find.text(
+        'Les fotos HEIC/HEIF d’iPhone es conservaran amb el seu format i quedaran pendents de moderació.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Publicar com a anònim'), findsOneWidget);
 
     await tester.tap(find.text('Perfils').last);

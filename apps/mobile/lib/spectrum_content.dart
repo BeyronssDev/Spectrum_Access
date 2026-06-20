@@ -15,6 +15,7 @@ enum SensoryKey { noise, density, light, wait }
 
 class PlaceSummary {
   const PlaceSummary({
+    required this.id,
     required this.name,
     required this.area,
     required this.city,
@@ -27,6 +28,7 @@ class PlaceSummary {
     required this.longitude,
   });
 
+  final String id;
   final String name;
   final String area;
   final String city;
@@ -101,6 +103,15 @@ class AppCopy {
     required this.sensoryReport,
     required this.reportIntro,
     required this.uploadImages,
+    required this.takePhoto,
+    required this.chooseFromGallery,
+    required this.selectedImages,
+    required this.heicNotice,
+    required this.uploadReady,
+    required this.removeImage,
+    required this.uploadAuthRequired,
+    required this.submitSuccess,
+    required this.submitFailed,
     required this.notes,
     required this.notesHint,
     required this.submit,
@@ -154,6 +165,15 @@ class AppCopy {
   final String sensoryReport;
   final String reportIntro;
   final String uploadImages;
+  final String takePhoto;
+  final String chooseFromGallery;
+  final String selectedImages;
+  final String heicNotice;
+  final String uploadReady;
+  final String removeImage;
+  final String uploadAuthRequired;
+  final String submitSuccess;
+  final String submitFailed;
   final String notes;
   final String notesHint;
   final String submit;
@@ -211,6 +231,16 @@ const appCopies = {
     reportIntro:
         'Comparteix l’estat actual del lloc quan ho puguis fer amb calma.',
     uploadImages: 'Pujar imatges',
+    takePhoto: 'Càmera',
+    chooseFromGallery: 'Galeria',
+    selectedImages: 'Imatges seleccionades',
+    heicNotice:
+        'Les fotos HEIC/HEIF d’iPhone es conservaran amb el seu format i quedaran pendents de moderació.',
+    uploadReady: 'Preparada per enviar',
+    removeImage: 'Eliminar imatge',
+    uploadAuthRequired: 'Has d’iniciar sessió per pujar fotos.',
+    submitSuccess: 'Aportació enviada a moderació.',
+    submitFailed: 'No s’ha pogut enviar l’aportació. Torna-ho a provar.',
     notes: 'Notes atmosfèriques',
     notesHint: 'Descriu soroll, llum, afluència o espera...',
     submit: 'Enviar aportació',
@@ -268,6 +298,16 @@ const appCopies = {
     reportIntro:
         'Comparte el estado actual del lugar cuando puedas hacerlo con calma.',
     uploadImages: 'Subir imágenes',
+    takePhoto: 'Cámara',
+    chooseFromGallery: 'Galería',
+    selectedImages: 'Imágenes seleccionadas',
+    heicNotice:
+        'Las fotos HEIC/HEIF de iPhone se conservarán con su formato y quedarán pendientes de moderación.',
+    uploadReady: 'Preparada para enviar',
+    removeImage: 'Eliminar imagen',
+    uploadAuthRequired: 'Debes iniciar sesión para subir fotos.',
+    submitSuccess: 'Aportación enviada a moderación.',
+    submitFailed: 'No se ha podido enviar la aportación. Inténtalo de nuevo.',
     notes: 'Notas atmosféricas',
     notesHint: 'Describe ruido, luz, afluencia o espera...',
     submit: 'Enviar aportación',
@@ -326,6 +366,16 @@ const appCopies = {
     reportIntro:
         'Share the current state of the place when you can do it calmly.',
     uploadImages: 'Upload images',
+    takePhoto: 'Camera',
+    chooseFromGallery: 'Gallery',
+    selectedImages: 'Selected images',
+    heicNotice:
+        'iPhone HEIC/HEIF photos keep their format and remain pending moderation.',
+    uploadReady: 'Ready to submit',
+    removeImage: 'Remove image',
+    uploadAuthRequired: 'You must sign in to upload photos.',
+    submitSuccess: 'Contribution sent to moderation.',
+    submitFailed: 'The contribution could not be submitted. Try again.',
     notes: 'Atmospheric notes',
     notesHint: 'Describe noise, light, crowding or waiting...',
     submit: 'Submit report',
@@ -354,6 +404,7 @@ const appCopies = {
 
 const places = [
   PlaceSummary(
+    id: 'biblioteca-veridian',
     name: 'Biblioteca Veridian',
     area: 'Zona silenciosa',
     city: 'Barcelona',
@@ -367,6 +418,7 @@ const places = [
         'Biblioteca amb llum difusa, plantes baixes tranquil·les i sortida visible.',
   ),
   PlaceSummary(
+    id: 'jardi-atrium',
     name: 'Jardí Atrium',
     area: 'Espai verd',
     city: 'Barcelona',
@@ -380,6 +432,7 @@ const places = [
         'Pati obert amb recorregut senzill, bancs separats i zones d’ombra.',
   ),
   PlaceSummary(
+    id: 'esbeteria-mar-blau',
     name: 'Esbeteria Mar Blau',
     area: 'Cafeteria tranquil·la',
     city: 'Barcelona',

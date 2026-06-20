@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import 'firebase_services.dart';
+import 'mobile_image_upload.dart';
 import 'spectrum_content.dart';
 import 'spectrum_theme.dart';
 
@@ -55,13 +59,24 @@ class _SpectrumShellState extends State<SpectrumShell> {
   int _selectedFilter = 0;
   LocaleOption _locale = LocaleOption.ca;
   MobileTab _selectedTab = MobileTab.consult;
+  SpectrumFirebaseServices? _firebaseServices;
+  final PlaceImagePicker _imagePicker = PlaceImagePicker();
+  final List<PreparedPlaceImage> _selectedImages = [];
   final TextEditingController _notesController = TextEditingController();
+  bool _isSubmittingReport = false;
+  String? _reportMessage;
   final Map<SensoryKey, double> _ratings = {
     SensoryKey.noise: 2,
     SensoryKey.density: 2,
     SensoryKey.light: 2,
     SensoryKey.wait: 1,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_restoreLostImages());
+  }
 
   @override
   void dispose() {
@@ -78,6 +93,104 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
   void _openHome() {
     setState(() => _showHome = true);
+  }
+
+  Future<void> _restoreLostImages() async {
+    try {
+      final images = await _imagePicker.retrieveLostImages();
+      if (!mounted || images.isEmpty) {
+        return;
+      }
+      setState(() {
+        _selectedImages.addAll(images);
+        _reportMessage = null;
+      });
+    } catch (_) {
+      // The plugin can be unavailable in widget tests; users can still pick again.
+    }
+  }
+
+  Future<void> _pickReportImageFromGallery() {
+    return _addPickedImage(_imagePicker.pickFromGallery());
+  }
+
+  Future<void> _takeReportPhoto() {
+    return _addPickedImage(_imagePicker.takePhoto());
+  }
+
+  Future<void> _addPickedImage(Future<PreparedPlaceImage?> pendingImage) async {
+    try {
+      final image = await pendingImage;
+      if (!mounted || image == null) {
+        return;
+      }
+      setState(() {
+        _selectedImages.add(image);
+        _reportMessage = null;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _reportMessage = appCopies[_locale]!.submitFailed);
+    }
+  }
+
+  Future<void> _submitReport(AppCopy labels) async {
+    if (_isSubmittingReport) {
+      return;
+    }
+
+    setState(() {
+      _isSubmittingReport = true;
+      _reportMessage = null;
+    });
+
+    try {
+      final service = _firebaseServices ??= SpectrumFirebaseServices();
+      if (!service.hasAuthenticatedUser) {
+        if (mounted) {
+          setState(() => _reportMessage = labels.uploadAuthRequired);
+        }
+        return;
+      }
+
+      final place = samplePlaces[_selectedPlace];
+      final comment = _notesController.text.trim();
+      await service.submitReview(
+        placeId: place.id,
+        ratings: _ratings,
+        comment: comment.isEmpty ? null : comment,
+      );
+
+      for (final image in _selectedImages) {
+        await service.uploadPlaceImage(
+          placeId: place.id,
+          bytes: image.bytes,
+          fileName: image.fileName,
+          contentType: image.contentType,
+          altText: {_locale.name: image.originalName},
+        );
+      }
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _selectedImages.clear();
+        _notesController.clear();
+        _reportMessage = labels.submitSuccess;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _reportMessage = labels.submitFailed);
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmittingReport = false);
+      }
+    }
   }
 
   @override
@@ -206,9 +319,17 @@ class _SpectrumShellState extends State<SpectrumShell> {
           ratings: _ratings,
           notesController: _notesController,
           anonymous: _anonymous,
+          selectedImages: _selectedImages,
+          isSubmitting: _isSubmittingReport,
+          reportMessage: _reportMessage,
           onAnonymousChanged: (value) => setState(() => _anonymous = value),
           onRatingChanged: (key, value) =>
               setState(() => _ratings[key] = value),
+          onPickFromGallery: _pickReportImageFromGallery,
+          onTakePhoto: _takeReportPhoto,
+          onRemoveImage: (index) =>
+              setState(() => _selectedImages.removeAt(index)),
+          onSubmit: () => _submitReport(labels),
         );
       case MobileTab.support:
         return HelpScreen(
@@ -428,8 +549,15 @@ class ReportScreen extends StatelessWidget {
     required this.ratings,
     required this.notesController,
     required this.anonymous,
+    required this.selectedImages,
+    required this.isSubmitting,
+    required this.reportMessage,
     required this.onAnonymousChanged,
     required this.onRatingChanged,
+    required this.onPickFromGallery,
+    required this.onTakePhoto,
+    required this.onRemoveImage,
+    required this.onSubmit,
     super.key,
   });
 
@@ -439,8 +567,15 @@ class ReportScreen extends StatelessWidget {
   final Map<SensoryKey, double> ratings;
   final TextEditingController notesController;
   final bool anonymous;
+  final List<PreparedPlaceImage> selectedImages;
+  final bool isSubmitting;
+  final String? reportMessage;
   final ValueChanged<bool> onAnonymousChanged;
   final void Function(SensoryKey key, double value) onRatingChanged;
+  final VoidCallback onPickFromGallery;
+  final VoidCallback onTakePhoto;
+  final ValueChanged<int> onRemoveImage;
+  final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -467,7 +602,13 @@ class ReportScreen extends StatelessWidget {
             children: [
               PlaceContext(place: place, labels: labels),
               const SizedBox(height: 18),
-              InlineUploadBox(labels: labels),
+              InlineUploadBox(
+                labels: labels,
+                selectedImages: selectedImages,
+                onPickFromGallery: onPickFromGallery,
+                onTakePhoto: onTakePhoto,
+                onRemoveImage: onRemoveImage,
+              ),
               const SizedBox(height: 28),
               for (final key in SensoryKey.values)
                 SensoryControl(
@@ -493,9 +634,20 @@ class ReportScreen extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 title: Text(labels.anonymous),
               ),
+              if (reportMessage != null) ...[
+                const SizedBox(height: 8),
+                StatusMessage(message: reportMessage!),
+                const SizedBox(height: 14),
+              ] else
+                const SizedBox(height: 8),
               FilledButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.send_outlined),
+                onPressed: isSubmitting ? null : onSubmit,
+                icon: isSubmitting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_outlined),
                 label: Text(labels.submit),
               ),
             ],
@@ -1224,10 +1376,48 @@ class PlaceContext extends StatelessWidget {
   }
 }
 
+class StatusMessage extends StatelessWidget {
+  const StatusMessage({required this.message, super.key});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: softPanelColor(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor(context)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class InlineUploadBox extends StatelessWidget {
-  const InlineUploadBox({required this.labels, super.key});
+  const InlineUploadBox({
+    required this.labels,
+    required this.selectedImages,
+    required this.onPickFromGallery,
+    required this.onTakePhoto,
+    required this.onRemoveImage,
+    super.key,
+  });
 
   final AppCopy labels;
+  final List<PreparedPlaceImage> selectedImages;
+  final VoidCallback onPickFromGallery;
+  final VoidCallback onTakePhoto;
+  final ValueChanged<int> onRemoveImage;
 
   @override
   Widget build(BuildContext context) {
@@ -1238,34 +1428,153 @@ class InlineUploadBox extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.add_photo_alternate_outlined,
+                  color: SpectrumColors.tertiary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        labels.uploadImages,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${labels.pendingModeration}. ${labels.tutorReview}.',
+                        style: TextStyle(
+                          color: mutedColor(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onTakePhoto,
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: Text(labels.takePhoto),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onPickFromGallery,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: Text(labels.chooseFromGallery),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              labels.heicNotice,
+              style: TextStyle(color: mutedColor(context), fontSize: 12),
+            ),
+            if (selectedImages.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                labels.selectedImages,
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 8),
+              for (final entry in selectedImages.indexed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: PreparedImageRow(
+                    image: entry.$2,
+                    labels: labels,
+                    onRemove: () => onRemoveImage(entry.$1),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PreparedImageRow extends StatelessWidget {
+  const PreparedImageRow({
+    required this.image,
+    required this.labels,
+    required this.onRemove,
+    super.key,
+  });
+
+  final PreparedPlaceImage image;
+  final AppCopy labels;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: panelColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor(context)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           children: [
-            const Icon(
-              Icons.add_photo_alternate_outlined,
-              color: SpectrumColors.tertiary,
-            ),
-            const SizedBox(width: 12),
+            const Icon(Icons.image_outlined, size: 20),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    labels.uploadImages,
+                    image.fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
-                    '${labels.pendingModeration}. ${labels.tutorReview}.',
+                    '${image.contentType} · ${_formatImageSize(image.sizeInBytes)} · ${labels.uploadReady}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: mutedColor(context), fontSize: 12),
                   ),
                 ],
               ),
+            ),
+            if (image.isHeic) ...[
+              const SizedBox(width: 8),
+              const Chip(
+                label: Text('HEIC'),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+            IconButton(
+              tooltip: labels.removeImage,
+              onPressed: onRemove,
+              icon: const Icon(Icons.close),
             ),
           ],
         ),
       ),
     );
   }
+}
+
+String _formatImageSize(int bytes) {
+  if (bytes < 1024 * 1024) {
+    return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  }
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 }
 
 class SensoryControl extends StatelessWidget {

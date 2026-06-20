@@ -26,6 +26,8 @@ class SpectrumFirebaseServices {
   final FirebaseFunctions _functions;
   final FirebaseStorage _storage;
 
+  bool get hasAuthenticatedUser => _auth.currentUser != null;
+
   Future<List<PlaceSummary>> loadActivePlaces() async {
     final snapshot = await _firestore
         .collection('places')
@@ -189,6 +191,7 @@ PlaceSummary _placeFromDocument(
       : null;
 
   return PlaceSummary(
+    id: doc.id,
     name: (data['name'] as String?) ?? '',
     area:
         (data['addressOrArea'] as String?) ??
