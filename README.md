@@ -4,7 +4,7 @@ Open sensory accessibility platform for consulting, reviewing and documenting pl
 
 Spectrum Access combines a web application, an iOS/Android mobile application and a Firebase backend. The project is designed for autistic people, families, tutors, verified professionals, associations and moderators who need practical information about sensory conditions before visiting a place.
 
-> Project status: MVP in development. Public deployment, final domain and production test users will be documented when the authentication, publication and moderation flows are closed.
+> Project status: application under development. The repository documents the current functional prototype and its local setup.
 
 **Languages:** [English](#english) · [Català](#catala) · [Castellano](#castellano)
 
@@ -401,7 +401,7 @@ The platform supports standard users, trusted users, tutors, professionals, orga
 
 #### 9. Tutors and Child Profiles
 
-Child profiles do not have their own login or email in the MVP. They live inside the tutor account. Contributions linked to a child profile require tutor review before moderation or publication.
+Child profiles do not have their own login or email in the current version. They live inside the tutor account. Contributions linked to a child profile require tutor review before moderation or publication.
 
 #### 10. Verified Professionals
 
@@ -473,10 +473,10 @@ Current status:
 Pending:
 
 - Close final Firebase Auth configuration.
-- Create test users when login is closed.
+- Prepare test data for validation when login is closed.
 - Complete the internal testing flow for real devices.
 - Finish moderation and publication workflow validation.
-- Prepare the public deployment only when the domain and release criteria are ready.
+- Document a demo environment only if one is finally used.
 - Prepare final presentation material outside the repository.
 - Extend visual and functional tests.
 
@@ -880,7 +880,7 @@ La plataforma contempla usuaris estàndard, usuaris de confiança, tutors, profe
 
 #### 9. Tutors i Perfils Infantils
 
-Els perfils infantils no tenen login propi ni email independent en l'MVP. Viuen dins del compte del tutor. Les aportacions vinculades a un perfil infantil requereixen revisió del tutor abans de la moderació o publicació.
+Els perfils infantils no tenen login propi ni email independent en la versió actual. Viuen dins del compte del tutor. Les aportacions vinculades a un perfil infantil requereixen revisió del tutor abans de la moderació o publicació.
 
 #### 10. Professionals Verificats
 
@@ -952,10 +952,10 @@ Estat actual:
 Pendent:
 
 - Tancar configuració final de Firebase Auth.
-- Crear usuaris de prova quan el login estigui tancat.
+- Preparar dades de prova quan el login estigui tancat.
 - Completar el flux intern de proves amb dispositius reals.
 - Validar completament moderació i publicació.
-- Preparar el desplegament públic només quan domini i criteris de publicació estiguin definits.
+- Documentar un entorn de demo només si finalment s'utilitza.
 - Preparar material final de presentació fora del repositori.
 - Ampliar tests visuals i funcionals.
 
@@ -1359,7 +1359,7 @@ La plataforma contempla usuarios estándar, usuarios de confianza, tutores, prof
 
 #### 9. Tutores y Perfiles Infantiles
 
-Los perfiles infantiles no tienen login propio ni email independiente en el MVP. Viven dentro de la cuenta del tutor. Las aportaciones vinculadas a un perfil infantil requieren revisión del tutor antes de la moderación o publicación.
+Los perfiles infantiles no tienen login propio ni email independiente en la versión actual. Viven dentro de la cuenta del tutor. Las aportaciones vinculadas a un perfil infantil requieren revisión del tutor antes de la moderación o publicación.
 
 #### 10. Profesionales Verificados
 
@@ -1431,10 +1431,10 @@ Estado actual:
 Pendiente:
 
 - Cerrar configuración final de Firebase Auth.
-- Crear usuarios de prueba cuando el login esté cerrado.
+- Preparar datos de prueba cuando el login esté cerrado.
 - Completar el flujo interno de pruebas con dispositivos reales.
 - Validar completamente moderación y publicación.
-- Preparar el despliegue público solo cuando dominio y criterios de publicación estén definidos.
+- Documentar un entorno de demo solo si finalmente se utiliza.
 - Preparar material final de presentación fuera del repositorio.
 - Ampliar tests visuales y funcionales.
 
