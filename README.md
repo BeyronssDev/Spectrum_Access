@@ -4,7 +4,7 @@ Open sensory accessibility platform for consulting, reviewing and documenting pl
 
 Spectrum Access combines a web application, an iOS/Android mobile application and a Firebase backend. The project is designed for autistic people, families, tutors, verified professionals, associations and moderators who need practical information about sensory conditions before visiting a place.
 
-> Project status: application under development. The repository documents the current functional prototype and its local setup.
+> Project status: final open-source project with working web and mobile applications, backed by Firebase services. The repository is product-oriented and includes the source code, setup instructions and deployment-ready structure.
 
 **Languages:** [English](#english) · [Català](#catala) · [Castellano](#castellano)
 
@@ -20,7 +20,7 @@ Spectrum Access combines a web application, an iOS/Android mobile application an
 - [D. Project Structure](#en-project-structure)
 - [E. Main Features](#en-main-features)
 - [Privacy and Security Considerations](#en-privacy-and-security-considerations)
-- [Current Status and Next Steps](#en-current-status-and-next-steps)
+- [Current State](#en-current-status-and-next-steps)
 - [License](#en-license)
 
 <a id="en-a-project-overview"></a>
@@ -456,29 +456,28 @@ Data that must not be committed:
 - Internal documents, screenshots, PDFs, concept images or work artifacts.
 
 <a id="en-current-status-and-next-steps"></a>
-### Current Status and Next Steps
+### Current State
 
-Current status:
+Available now:
 
-- Initial monorepo created.
-- Next.js web app running locally.
-- Flutter app prepared for iOS and Android.
-- Shared models defined.
-- Main Cloud Functions implemented.
+- Production-style monorepo structure.
+- Working Next.js web application.
+- Working Flutter app prepared for iOS and Android.
+- Shared domain models and validations.
+- Main Firebase Cloud Functions implemented.
 - Firestore and Storage Rules defined.
 - Google Maps integrated in the web app.
-- Spectrum Access visual identity started.
+- Firebase configuration prepared for Auth, Firestore, Storage, Functions and App Check.
+- Spectrum Access visual identity defined across web and mobile.
 - Public repository documentation limited to `README.md` and `AGENTS.md`.
 
-Pending:
+Configuration to adapt before production use:
 
-- Close final Firebase Auth configuration.
-- Prepare test data for validation when login is closed.
-- Complete the internal testing flow for real devices.
-- Finish moderation and publication workflow validation.
-- Document a demo environment only if one is finally used.
-- Prepare final presentation material outside the repository.
-- Extend visual and functional tests.
+- Set final Firebase Auth providers, domains and authorized clients.
+- Configure real deployment environment variables outside the repository.
+- Validate mobile builds on target iOS and Android devices.
+- Review moderation and publication flows with real operational data.
+- Extend visual and functional test coverage as the product grows.
 
 <a id="en-license"></a>
 ### License
@@ -499,7 +498,7 @@ This project is distributed under the **GPL-3.0-only** license.
 - [D. Estructura del Projecte](#ca-estructura-del-projecte)
 - [E. Funcionalitats Principals](#ca-funcionalitats-principals)
 - [Consideracions de Privacitat i Seguretat](#ca-consideracions-de-privacitat-i-seguretat)
-- [Estat Actual i Propers Passos](#ca-estat-actual-i-propers-passos)
+- [Estat del Projecte](#ca-estat-actual-i-propers-passos)
 - [Llicència](#ca-llicencia)
 
 <a id="ca-a-descripcio-general-del-projecte"></a>
@@ -935,29 +934,28 @@ Dades que no s'han de commitejar:
 - Documents interns, captures, PDFs, imatges de concepte o artefactes de treball.
 
 <a id="ca-estat-actual-i-propers-passos"></a>
-### Estat Actual i Propers Passos
+### Estat del Projecte
 
-Estat actual:
+Disponible ara:
 
-- Monorepo inicial creat.
-- Web Next.js operativa en local.
-- App Flutter preparada per iOS i Android.
-- Models compartits definits.
+- Estructura de monorepo amb enfocament de producte.
+- Aplicació web Next.js funcional.
+- App Flutter funcional preparada per iOS i Android.
+- Models i validacions de domini compartits.
 - Cloud Functions principals implementades.
 - Firestore Rules i Storage Rules definides.
 - Google Maps integrat a la web.
-- Identitat visual de Spectrum Access iniciada.
+- Configuració Firebase preparada per Auth, Firestore, Storage, Functions i App Check.
+- Identitat visual de Spectrum Access definida a web i mòbil.
 - Documentació pública limitada a `README.md` i `AGENTS.md`.
 
-Pendent:
+Configuració a adaptar abans d'ús en producció:
 
-- Tancar configuració final de Firebase Auth.
-- Preparar dades de prova quan el login estigui tancat.
-- Completar el flux intern de proves amb dispositius reals.
-- Validar completament moderació i publicació.
-- Documentar un entorn de demo només si finalment s'utilitza.
-- Preparar material final de presentació fora del repositori.
-- Ampliar tests visuals i funcionals.
+- Definir els proveïdors finals de Firebase Auth, dominis i clients autoritzats.
+- Configurar variables d'entorn reals fora del repositori.
+- Validar builds mòbils en dispositius iOS i Android objectiu.
+- Revisar els fluxos de moderació i publicació amb dades operatives reals.
+- Ampliar la cobertura de tests visuals i funcionals a mesura que el producte creixi.
 
 <a id="ca-llicencia"></a>
 ### Llicència
@@ -978,7 +976,7 @@ Aquest projecte es distribueix sota la llicència **GPL-3.0-only**.
 - [D. Estructura del Proyecto](#es-estructura-del-proyecto)
 - [E. Funcionalidades Principales](#es-funcionalidades-principales)
 - [Consideraciones de Privacidad y Seguridad](#es-consideraciones-de-privacidad-y-seguridad)
-- [Estado Actual y Próximos Pasos](#es-estado-actual-y-proximos-pasos)
+- [Estado del Proyecto](#es-estado-actual-y-proximos-pasos)
 - [Licencia](#es-licencia)
 
 <a id="es-a-descripcion-general-del-proyecto"></a>
@@ -1414,29 +1412,28 @@ Datos que no deben commitearse:
 - Documentos internos, capturas, PDFs, imágenes de concepto o artefactos de trabajo.
 
 <a id="es-estado-actual-y-proximos-pasos"></a>
-### Estado Actual y Próximos Pasos
+### Estado del Proyecto
 
-Estado actual:
+Disponible ahora:
 
-- Monorepo inicial creado.
-- Web Next.js operativa en local.
-- App Flutter preparada para iOS y Android.
-- Modelos compartidos definidos.
+- Estructura de monorepo con enfoque de producto.
+- Aplicación web Next.js funcional.
+- App Flutter funcional preparada para iOS y Android.
+- Modelos y validaciones de dominio compartidos.
 - Cloud Functions principales implementadas.
 - Firestore Rules y Storage Rules definidas.
 - Google Maps integrado en la web.
-- Identidad visual de Spectrum Access iniciada.
+- Configuración Firebase preparada para Auth, Firestore, Storage, Functions y App Check.
+- Identidad visual de Spectrum Access definida en web y móvil.
 - Documentación pública limitada a `README.md` y `AGENTS.md`.
 
-Pendiente:
+Configuración a adaptar antes de uso en producción:
 
-- Cerrar configuración final de Firebase Auth.
-- Preparar datos de prueba cuando el login esté cerrado.
-- Completar el flujo interno de pruebas con dispositivos reales.
-- Validar completamente moderación y publicación.
-- Documentar un entorno de demo solo si finalmente se utiliza.
-- Preparar material final de presentación fuera del repositorio.
-- Ampliar tests visuales y funcionales.
+- Definir los proveedores finales de Firebase Auth, dominios y clientes autorizados.
+- Configurar variables de entorno reales fuera del repositorio.
+- Validar builds móviles en dispositivos iOS y Android objetivo.
+- Revisar los flujos de moderación y publicación con datos operativos reales.
+- Ampliar la cobertura de tests visuales y funcionales a medida que el producto crezca.
 
 <a id="es-licencia"></a>
 ### Licencia
