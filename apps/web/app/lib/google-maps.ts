@@ -1,6 +1,7 @@
 type GoogleMapOptions = {
   center: { lat: number; lng: number };
   zoom: number;
+  mapTypeId?: string;
   disableDefaultUI?: boolean;
   zoomControl?: boolean;
   clickableIcons?: boolean;
@@ -10,6 +11,8 @@ type GoogleMapOptions = {
 export type GoogleMapInstance = {
   fitBounds: (bounds: GoogleLatLngBounds) => void;
   panTo: (position: { lat: number; lng: number }) => void;
+  setMapTypeId: (mapTypeId: string) => void;
+  setZoom: (zoom: number) => void;
 };
 
 export type GoogleMarkerInstance = {

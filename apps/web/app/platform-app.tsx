@@ -47,6 +47,8 @@ import { loadGoogleMaps, type GoogleMarkerInstance } from "./lib/google-maps";
 type Locale = "ca" | "es" | "en";
 type ViewId = "home" | "consult" | "contribute" | "support" | "profiles" | "verified";
 type SensoryKey = "noise" | "density" | "light" | "wait";
+type MapLayerId = "roadmap" | "satellite" | "terrain";
+type LocationState = "idle" | "locating" | "located" | "denied" | "unsupported" | "error";
 
 type Place = {
   id: string;
@@ -62,6 +64,7 @@ type Place = {
     lat: number;
     lng: number;
   };
+  filterIds: number[];
 };
 
 type Professional = {
@@ -107,6 +110,17 @@ const copy: Record<
     focusOn: string;
     darkMode: string;
     lightMode: string;
+    mapCurrentStatus: string;
+    mapLocating: string;
+    mapLocated: string;
+    mapLocationDenied: string;
+    mapLocationUnsupported: string;
+    mapLocationError: string;
+    mapLayerRoadmap: string;
+    mapLayerSatellite: string;
+    mapLayerTerrain: string;
+    mapFilterAll: string;
+    mapYourLocation: string;
     greeting: string;
     homeIntro: string;
     sensoryMap: string;
@@ -172,6 +186,17 @@ const copy: Record<
     focusOn: "Focus actiu",
     darkMode: "Mode fosc",
     lightMode: "Mode clar",
+    mapCurrentStatus: "Estat actual",
+    mapLocating: "Buscant ubicació",
+    mapLocated: "Ubicació detectada",
+    mapLocationDenied: "Permís d'ubicació bloquejat",
+    mapLocationUnsupported: "Ubicació no disponible",
+    mapLocationError: "No s'ha pogut obtenir la ubicació",
+    mapLayerRoadmap: "Mapa",
+    mapLayerSatellite: "Satèl·lit",
+    mapLayerTerrain: "Terreny",
+    mapFilterAll: "Tots els filtres",
+    mapYourLocation: "La teva ubicació",
     greeting: "Bon dia, Josep",
     homeIntro:
       "Basat en el teu perfil sensorial, et suggerim visitar espais amb baixa densitat acústica i sortides clares.",
@@ -242,6 +267,17 @@ const copy: Record<
     focusOn: "Focus activo",
     darkMode: "Modo oscuro",
     lightMode: "Modo claro",
+    mapCurrentStatus: "Estado actual",
+    mapLocating: "Buscando ubicación",
+    mapLocated: "Ubicación detectada",
+    mapLocationDenied: "Permiso de ubicación bloqueado",
+    mapLocationUnsupported: "Ubicación no disponible",
+    mapLocationError: "No se ha podido obtener la ubicación",
+    mapLayerRoadmap: "Mapa",
+    mapLayerSatellite: "Satélite",
+    mapLayerTerrain: "Terreno",
+    mapFilterAll: "Todos los filtros",
+    mapYourLocation: "Tu ubicación",
     greeting: "Buenos días, Josep",
     homeIntro:
       "Según tu perfil sensorial, sugerimos visitar espacios con baja densidad acústica y salidas claras.",
@@ -312,6 +348,17 @@ const copy: Record<
     focusOn: "Focus active",
     darkMode: "Dark mode",
     lightMode: "Light mode",
+    mapCurrentStatus: "Current status",
+    mapLocating: "Finding location",
+    mapLocated: "Location detected",
+    mapLocationDenied: "Location permission blocked",
+    mapLocationUnsupported: "Location unavailable",
+    mapLocationError: "Could not get location",
+    mapLayerRoadmap: "Map",
+    mapLayerSatellite: "Satellite",
+    mapLayerTerrain: "Terrain",
+    mapFilterAll: "All filters",
+    mapYourLocation: "Your location",
     greeting: "Good morning, Josep",
     homeIntro:
       "Based on your sensory profile, we suggest spaces with low acoustic density and clear exits.",
@@ -380,6 +427,7 @@ const places: Place[] = [
     distance: "0.4 km",
     quietDb: "34dB",
     position: { lat: 41.3867, lng: 2.1699 },
+    filterIds: [0, 1, 3],
     description:
       "Biblioteca amb llum difusa, plantes baixes tranquil·les i sortida principal visible des de la sala de lectura."
   },
@@ -393,6 +441,7 @@ const places: Place[] = [
     distance: "0.8 km",
     quietDb: "38dB",
     position: { lat: 41.3921, lng: 2.1636 },
+    filterIds: [1, 2, 3],
     description:
       "Pati obert amb recorregut senzill, bancs separats i zones d'ombra. Recomanat en hores de baixa afluència."
   },
@@ -406,6 +455,7 @@ const places: Place[] = [
     distance: "1.2 km",
     quietDb: "42dB",
     position: { lat: 41.3815, lng: 2.1871 },
+    filterIds: [0, 2],
     description:
       "Interior petit amb música baixa al matí, personal amable i una taula lateral amb menys estímuls visuals."
   }
@@ -438,7 +488,8 @@ function toUiPlace(place: FirebasePlace): Place {
     position: {
       lat: place.position.latitude,
       lng: place.position.longitude
-    }
+    },
+    filterIds: [0, 1, 2, 3]
   };
 }
 
@@ -529,7 +580,7 @@ export function PlatformApp() {
   const [availablePlaces, setAvailablePlaces] = useState<Place[]>(places);
   const [query, setQuery] = useState("");
   const [selectedPlaceId, setSelectedPlaceId] = useState(places[0].id);
-  const [selectedFilter, setSelectedFilter] = useState(0);
+  const [selectedFilter, setSelectedFilter] = useState<number | null>(null);
   const [anonymous, setAnonymous] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
@@ -569,22 +620,48 @@ export function PlatformApp() {
   const c = copy[locale];
   const filteredPlaces = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) {
-      return availablePlaces;
-    }
-
-    return availablePlaces.filter((place) =>
-      [place.name, place.area, place.city, place.category]
+    return availablePlaces.filter((place) => {
+      const matchesQuery =
+        !normalized ||
+        [place.name, place.area, place.city, place.category]
         .join(" ")
         .toLowerCase()
-        .includes(normalized)
-    );
-  }, [availablePlaces, query]);
+        .includes(normalized);
+      const matchesFilter = selectedFilter === null || place.filterIds.includes(selectedFilter);
+
+      return matchesQuery && matchesFilter;
+    });
+  }, [availablePlaces, query, selectedFilter]);
 
   const selectedPlace = availablePlaces.find((place) => place.id === selectedPlaceId) ?? availablePlaces[0];
+  const visibleSelectedPlace =
+    filteredPlaces.find((place) => place.id === selectedPlaceId) ?? filteredPlaces[0] ?? selectedPlace;
+
+  useEffect(() => {
+    if (filteredPlaces.length === 0 || filteredPlaces.some((place) => place.id === selectedPlaceId)) {
+      return;
+    }
+
+    setSelectedPlaceId(filteredPlaces[0].id);
+  }, [filteredPlaces, selectedPlaceId]);
 
   const updateRating = (key: SensoryKey, value: number) => {
     setRatings((current) => ({ ...current, [key]: value }));
+  };
+
+  const toggleFilter = (index: number) => {
+    setSelectedFilter((current) => (current === index ? null : index));
+  };
+
+  const cycleFilter = () => {
+    setSelectedFilter((current) => {
+      if (current === null) {
+        return 0;
+      }
+
+      const next = current + 1;
+      return next >= c.filters.length ? null : next;
+    });
   };
 
   return (
@@ -694,10 +771,12 @@ export function PlatformApp() {
             <HomeView
               copy={c}
               locale={locale}
-              places={availablePlaces}
-              selectedPlace={selectedPlace}
+              places={filteredPlaces}
+              selectedFilter={selectedFilter}
+              selectedPlace={visibleSelectedPlace}
               onNavigate={setActiveView}
               onSelectPlace={setSelectedPlaceId}
+              onCycleFilter={cycleFilter}
             />
           ) : null}
 
@@ -707,12 +786,13 @@ export function PlatformApp() {
               locale={locale}
               query={query}
               selectedFilter={selectedFilter}
-              selectedPlace={selectedPlace}
+              selectedPlace={visibleSelectedPlace}
               places={filteredPlaces}
               onQuery={setQuery}
-              onFilter={setSelectedFilter}
+              onFilter={toggleFilter}
               onSelectPlace={setSelectedPlaceId}
               onNavigate={setActiveView}
+              onCycleFilter={cycleFilter}
             />
           ) : null}
 
@@ -800,16 +880,20 @@ function HomeView({
   copy: c,
   locale,
   places: availablePlaces,
+  selectedFilter,
   selectedPlace,
   onNavigate,
-  onSelectPlace
+  onSelectPlace,
+  onCycleFilter
 }: {
   copy: (typeof copy)[Locale];
   locale: Locale;
   places: Place[];
+  selectedFilter: number | null;
   selectedPlace: Place;
   onNavigate: (view: ViewId) => void;
   onSelectPlace: (id: string) => void;
+  onCycleFilter: () => void;
 }) {
   return (
     <div className="dashboard-grid">
@@ -821,9 +905,13 @@ function HomeView({
       <MapPanel
         title={c.sensoryMap}
         subtitle={c.mapArea}
+        copyText={c}
         places={availablePlaces}
+        filters={c.filters}
+        selectedFilter={selectedFilter}
         selectedPlace={selectedPlace}
         onSelectPlace={onSelectPlace}
+        onCycleFilter={onCycleFilter}
         onOpen={() => onNavigate("consult")}
       />
 
@@ -921,18 +1009,20 @@ function ConsultView({
   onQuery,
   onFilter,
   onSelectPlace,
-  onNavigate
+  onNavigate,
+  onCycleFilter
 }: {
   copy: (typeof copy)[Locale];
   locale: Locale;
   query: string;
-  selectedFilter: number;
+  selectedFilter: number | null;
   selectedPlace: Place;
   places: Place[];
   onQuery: (query: string) => void;
   onFilter: (index: number) => void;
   onSelectPlace: (id: string) => void;
   onNavigate: (view: ViewId) => void;
+  onCycleFilter: () => void;
 }) {
   return (
     <div className="consult-grid">
@@ -963,9 +1053,13 @@ function ConsultView({
       <MapPanel
         title={c.sensoryMap}
         subtitle={c.mapArea}
+        copyText={c}
         places={visiblePlaces}
+        filters={c.filters}
+        selectedFilter={selectedFilter}
         selectedPlace={selectedPlace}
         onSelectPlace={onSelectPlace}
+        onCycleFilter={onCycleFilter}
         tall
       />
 
@@ -1294,21 +1388,86 @@ function PanelHeading({
 function MapPanel({
   title,
   subtitle,
+  copyText,
   places: visiblePlaces,
+  filters,
+  selectedFilter,
   selectedPlace,
   tall = false,
   onSelectPlace,
+  onCycleFilter,
   onOpen
 }: {
   title: string;
   subtitle: string;
+  copyText: (typeof copy)[Locale];
   places: Place[];
+  filters: string[];
+  selectedFilter: number | null;
   selectedPlace: Place;
   tall?: boolean;
   onSelectPlace: (id: string) => void;
+  onCycleFilter: () => void;
   onOpen?: () => void;
 }) {
   const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
+  const [mapLayer, setMapLayer] = useState<MapLayerId>("roadmap");
+  const [locationState, setLocationState] = useState<LocationState>("idle");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  const layerLabels: Record<MapLayerId, string> = {
+    roadmap: copyText.mapLayerRoadmap,
+    satellite: copyText.mapLayerSatellite,
+    terrain: copyText.mapLayerTerrain
+  };
+
+  const activeFilterLabel = selectedFilter === null ? null : filters[selectedFilter];
+  const mapStatus = getLocationStatus(copyText, locationState);
+  const providerLabel = [
+    googleMapsKey ? "Google Maps" : "Google Maps key missing",
+    activeFilterLabel,
+    layerLabels[mapLayer]
+  ].filter(Boolean).join(" · ");
+
+  const locateUser = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationState("unsupported");
+      return;
+    }
+
+    setLocationState("locating");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+        setLocationState("located");
+      },
+      (error) => {
+        setLocationState(error.code === error.PERMISSION_DENIED ? "denied" : "error");
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 60000,
+        timeout: 12000
+      }
+    );
+  };
+
+  const cycleLayer = () => {
+    setMapLayer((current) => {
+      if (current === "roadmap") {
+        return "satellite";
+      }
+
+      if (current === "satellite") {
+        return "terrain";
+      }
+
+      return "roadmap";
+    });
+  };
 
   return (
     <section className="panel map-panel" data-tall={tall}>
@@ -1318,13 +1477,18 @@ function MapPanel({
           <span>{subtitle}</span>
         </div>
         <div className="map-tools">
-          <button type="button" aria-label="Filtres">
+          <button type="button" data-active={selectedFilter !== null} aria-label="Filtres" onClick={onCycleFilter}>
             <SlidersHorizontal aria-hidden="true" size={18} />
           </button>
-          <button type="button" aria-label="Centrar mapa">
+          <button
+            type="button"
+            data-active={locationState === "located" || locationState === "locating"}
+            aria-label="Centrar mapa"
+            onClick={locateUser}
+          >
             <LocateFixed aria-hidden="true" size={18} />
           </button>
-          <button type="button" aria-label="Capes">
+          <button type="button" data-active={mapLayer !== "roadmap"} aria-label="Capes" onClick={cycleLayer}>
             <Layers aria-hidden="true" size={18} />
           </button>
         </div>
@@ -1333,8 +1497,12 @@ function MapPanel({
         {googleMapsKey ? (
           <GoogleMapCanvas
             apiKey={googleMapsKey}
+            label={providerLabel}
+            mapLayer={mapLayer}
             places={visiblePlaces}
             selectedPlace={selectedPlace}
+            userLocation={userLocation}
+            userLocationLabel={copyText.mapYourLocation}
             onSelectPlace={onSelectPlace}
           />
         ) : (
@@ -1342,16 +1510,18 @@ function MapPanel({
             places={visiblePlaces}
             selectedPlace={selectedPlace}
             onSelectPlace={onSelectPlace}
-            label="Google Maps key missing"
+            userLocation={userLocation}
+            userLocationLabel={copyText.mapYourLocation}
+            label={providerLabel}
           />
         )}
         <div className="current-status">
           <span />
           <div>
-            <small>Current status</small>
-            <strong>{selectedPlace.area}</strong>
+            <small>{mapStatus}</small>
+            <strong>{locationState === "located" ? copyText.mapYourLocation : selectedPlace.area}</strong>
           </div>
-          <em>{selectedPlace.quietDb}</em>
+          <em>{locationState === "located" ? layerLabels[mapLayer] : selectedPlace.quietDb}</em>
         </div>
       </div>
       {onOpen ? (
@@ -1364,15 +1534,47 @@ function MapPanel({
   );
 }
 
+function getLocationStatus(copyText: (typeof copy)[Locale], state: LocationState) {
+  if (state === "locating") {
+    return copyText.mapLocating;
+  }
+
+  if (state === "located") {
+    return copyText.mapLocated;
+  }
+
+  if (state === "denied") {
+    return copyText.mapLocationDenied;
+  }
+
+  if (state === "unsupported") {
+    return copyText.mapLocationUnsupported;
+  }
+
+  if (state === "error") {
+    return copyText.mapLocationError;
+  }
+
+  return copyText.mapCurrentStatus;
+}
+
 function GoogleMapCanvas({
   apiKey,
+  label,
+  mapLayer,
   places: visiblePlaces,
   selectedPlace,
+  userLocation,
+  userLocationLabel,
   onSelectPlace
 }: {
   apiKey: string;
+  label: string;
+  mapLayer: MapLayerId;
   places: Place[];
   selectedPlace: Place;
+  userLocation: { lat: number; lng: number } | null;
+  userLocationLabel: string;
   onSelectPlace: (id: string) => void;
 }) {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
@@ -1391,10 +1593,11 @@ function GoogleMapCanvas({
         const map = new google.maps.Map(mapElementRef.current, {
           center: selectedPlace.position,
           zoom: 13,
+          mapTypeId: mapLayer,
           disableDefaultUI: true,
           zoomControl: true,
           clickableIcons: false,
-          styles: googleMapStyles
+          styles: mapLayer === "roadmap" ? googleMapStyles : undefined
         });
         const bounds = new google.maps.LatLngBounds();
 
@@ -1418,7 +1621,24 @@ function GoogleMapCanvas({
           markers.push(marker);
         });
 
-        if (visiblePlaces.length > 1) {
+        if (userLocation) {
+          const marker = new google.maps.Marker({
+            map,
+            position: userLocation,
+            title: userLocationLabel,
+            icon: {
+              path: "M 0,0 m -9,0 a 9,9 0 1,0 18,0 a 9,9 0 1,0 -18,0",
+              fillColor: "#2f7df6",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 3,
+              scale: 1.25
+            }
+          });
+          markers.push(marker);
+          map.panTo(userLocation);
+          map.setZoom(14);
+        } else if (visiblePlaces.length > 1) {
           map.fitBounds(bounds);
         } else {
           map.panTo(selectedPlace.position);
@@ -1434,7 +1654,7 @@ function GoogleMapCanvas({
       cancelled = true;
       markers.forEach((marker) => marker.setMap(null));
     };
-  }, [apiKey, visiblePlaces, selectedPlace, onSelectPlace]);
+  }, [apiKey, mapLayer, visiblePlaces, selectedPlace, userLocation, userLocationLabel, onSelectPlace]);
 
   if (loadFailed) {
     return (
@@ -1442,6 +1662,8 @@ function GoogleMapCanvas({
         places={visiblePlaces}
         selectedPlace={selectedPlace}
         onSelectPlace={onSelectPlace}
+        userLocation={userLocation}
+        userLocationLabel={userLocationLabel}
         label="Google Maps load error"
       />
     );
@@ -1450,7 +1672,7 @@ function GoogleMapCanvas({
   return (
     <>
       <div ref={mapElementRef} className="google-map-layer" />
-      <span className="map-provider-note">Google Maps</span>
+      <span className="map-provider-note">{label}</span>
     </>
   );
 }
@@ -1459,11 +1681,15 @@ function FallbackMapCanvas({
   places: visiblePlaces,
   selectedPlace,
   onSelectPlace,
+  userLocation,
+  userLocationLabel,
   label
 }: {
   places: Place[];
   selectedPlace: Place;
   onSelectPlace: (id: string) => void;
+  userLocation: { lat: number; lng: number } | null;
+  userLocationLabel: string;
   label: string;
 }) {
   const pinLayout = [
@@ -1495,6 +1721,7 @@ function FallbackMapCanvas({
           onClick={() => onSelectPlace(place.id)}
         />
       ))}
+      {userLocation ? <span className="user-location-pin" aria-label={userLocationLabel} /> : null}
       <span className="map-provider-note">{label}</span>
     </>
   );

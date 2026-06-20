@@ -542,6 +542,12 @@ svg {
   color: var(--primary);
 }
 
+.map-tools button[data-active="true"] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
 .map-canvas {
   position: relative;
   min-height: 420px;
@@ -675,6 +681,21 @@ svg {
   background: var(--tertiary-container);
   box-shadow:
     0 0 0 22px rgba(204, 167, 48, 0.14),
+    0 16px 34px rgba(0, 1, 1, 0.18);
+}
+
+.user-location-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  border: 4px solid var(--surface-container-lowest);
+  border-radius: 999px;
+  background: #2f7df6;
+  box-shadow:
+    0 0 0 20px rgba(47, 125, 246, 0.16),
     0 16px 34px rgba(0, 1, 1, 0.18);
 }
 
