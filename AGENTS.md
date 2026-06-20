@@ -70,6 +70,13 @@ Executa les comandes des de l'arrel tret que s'indiqui el contrari.
 
 Per a comandes directes de Flutter, entra a `apps/mobile` i usa `flutter pub get`, `flutter analyze` o `flutter test`.
 
+## Git i publicació a GitHub
+
+- Es poden preparar commits locals quan el canvi estigui tancat i verificat, si la petició ho requereix o el flux de treball ho justifica.
+- No facis mai `git push` sense una ordre explícita del propietari del projecte en el torn actual.
+- No assumeixis que un commit local s'ha de publicar. Si el propietari no ha demanat push, deixa el commit només en local i informa del hash.
+- Si cal obrir una PR, crear una branca o publicar canvis a GitHub, pregunta o espera confirmació explícita abans de fer cap operació remota d'escriptura.
+
 ## Arquitectura i decisions que cal preservar
 
 - Monorepo amb `pnpm` fixat a `pnpm@11.1.2`.
