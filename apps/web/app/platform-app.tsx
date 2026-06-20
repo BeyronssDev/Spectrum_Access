@@ -120,6 +120,9 @@ const copy: Record<
     mapLayerSatellite: string;
     mapLayerTerrain: string;
     mapFilterAll: string;
+    mapFilterControl: string;
+    mapLocationControl: string;
+    mapLayerControl: string;
     mapYourLocation: string;
     greeting: string;
     homeIntro: string;
@@ -196,6 +199,9 @@ const copy: Record<
     mapLayerSatellite: "Satèl·lit",
     mapLayerTerrain: "Terreny",
     mapFilterAll: "Tots els filtres",
+    mapFilterControl: "Filtre del mapa",
+    mapLocationControl: "Trobar la meva ubicació",
+    mapLayerControl: "Canviar capa del mapa",
     mapYourLocation: "La teva ubicació",
     greeting: "Bon dia, Josep",
     homeIntro:
@@ -277,6 +283,9 @@ const copy: Record<
     mapLayerSatellite: "Satélite",
     mapLayerTerrain: "Terreno",
     mapFilterAll: "Todos los filtros",
+    mapFilterControl: "Filtro del mapa",
+    mapLocationControl: "Encontrar mi ubicación",
+    mapLayerControl: "Cambiar capa del mapa",
     mapYourLocation: "Tu ubicación",
     greeting: "Buenos días, Josep",
     homeIntro:
@@ -358,6 +367,9 @@ const copy: Record<
     mapLayerSatellite: "Satellite",
     mapLayerTerrain: "Terrain",
     mapFilterAll: "All filters",
+    mapFilterControl: "Map filter",
+    mapLocationControl: "Find my location",
+    mapLayerControl: "Change map layer",
     mapYourLocation: "Your location",
     greeting: "Good morning, Josep",
     homeIntro:
@@ -701,7 +713,7 @@ export function PlatformApp() {
             })}
           </nav>
 
-          <div className="side-footer focus-hide">
+          <div className="side-footer">
             <div className="member-card">
               <span className="avatar avatar-small">JB</span>
               <div>
@@ -727,7 +739,7 @@ export function PlatformApp() {
             </div>
 
             <div className="top-actions">
-              <span className="health-pill focus-hide">
+              <span className="health-pill">
                 <Check aria-hidden="true" size={15} />
                 {c.status}
               </span>
@@ -759,13 +771,11 @@ export function PlatformApp() {
                 inactiveIcon={Moon}
                 onClick={() => setDarkMode((value) => !value)}
               />
-              <button type="button" className="icon-button focus-hide" aria-label="Notificacions">
+              <button type="button" className="icon-button" aria-label="Notificacions">
                 <Bell aria-hidden="true" size={22} />
               </button>
             </div>
           </header>
-
-          {focusMode ? <FocusNotice copy={c} onOpenSupport={() => setActiveView("support")} /> : null}
 
           {activeView === "home" ? (
             <HomeView
@@ -858,21 +868,6 @@ function ToggleButton({
       <span>{label}</span>
       <span className="switch" />
     </button>
-  );
-}
-
-function FocusNotice({ copy: c, onOpenSupport }: { copy: (typeof copy)[Locale]; onOpenSupport: () => void }) {
-  return (
-    <section className="focus-notice" aria-live="polite">
-      <div>
-        <strong>{c.focusModeTitle}</strong>
-        <span>{c.focusModeBody}</span>
-      </div>
-      <button type="button" onClick={onOpenSupport}>
-        {c.openSupport}
-        <ChevronRight aria-hidden="true" size={17} />
-      </button>
-    </section>
   );
 }
 
@@ -1423,6 +1418,10 @@ function MapPanel({
 
   const activeFilterLabel = selectedFilter === null ? null : filters[selectedFilter];
   const mapStatus = getLocationStatus(copyText, locationState);
+  const filterControlLabel = `${copyText.mapFilterControl}: ${activeFilterLabel ?? copyText.mapFilterAll}`;
+  const locationControlLabel =
+    locationState === "idle" ? copyText.mapLocationControl : `${copyText.mapLocationControl} · ${mapStatus}`;
+  const layerControlLabel = `${copyText.mapLayerControl}: ${layerLabels[mapLayer]}`;
   const providerLabel = [
     googleMapsKey ? "Google Maps" : "Google Maps key missing",
     activeFilterLabel,
@@ -1477,18 +1476,34 @@ function MapPanel({
           <span>{subtitle}</span>
         </div>
         <div className="map-tools">
-          <button type="button" data-active={selectedFilter !== null} aria-label="Filtres" onClick={onCycleFilter}>
+          <button
+            type="button"
+            data-active={selectedFilter !== null}
+            data-tooltip={filterControlLabel}
+            aria-label={filterControlLabel}
+            title={filterControlLabel}
+            onClick={onCycleFilter}
+          >
             <SlidersHorizontal aria-hidden="true" size={18} />
           </button>
           <button
             type="button"
             data-active={locationState === "located" || locationState === "locating"}
-            aria-label="Centrar mapa"
+            data-tooltip={locationControlLabel}
+            aria-label={locationControlLabel}
+            title={locationControlLabel}
             onClick={locateUser}
           >
             <LocateFixed aria-hidden="true" size={18} />
           </button>
-          <button type="button" data-active={mapLayer !== "roadmap"} aria-label="Capes" onClick={cycleLayer}>
+          <button
+            type="button"
+            data-active={mapLayer !== "roadmap"}
+            data-tooltip={layerControlLabel}
+            aria-label={layerControlLabel}
+            title={layerControlLabel}
+            onClick={cycleLayer}
+          >
             <Layers aria-hidden="true" size={18} />
           </button>
         </div>

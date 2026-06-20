@@ -134,10 +134,6 @@ svg {
   --shadow-tight: none;
 }
 
-.spectrum-app[data-focus="true"] .focus-hide {
-  display: none;
-}
-
 .spectrum-app[data-focus="true"] .panel,
 .spectrum-app[data-focus="true"] .map-panel,
 .spectrum-app[data-focus="true"] .topbar {
@@ -244,7 +240,6 @@ svg {
 .select-control,
 .toggle-button,
 .icon-button,
-.focus-notice,
 .panel,
 .search-box {
   border: 1px solid var(--surface-container-high);
@@ -257,7 +252,6 @@ svg {
 .spectrum-app[data-theme="dark"] .select-control,
 .spectrum-app[data-theme="dark"] .toggle-button,
 .spectrum-app[data-theme="dark"] .icon-button,
-.spectrum-app[data-theme="dark"] .focus-notice,
 .spectrum-app[data-theme="dark"] .panel,
 .spectrum-app[data-theme="dark"] .search-box {
   background: rgba(49, 48, 48, 0.76);
@@ -413,35 +407,6 @@ svg {
   padding: 0;
 }
 
-.focus-notice {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 24px;
-  border-radius: 24px;
-  padding: 18px 22px;
-}
-
-.focus-notice strong,
-.focus-notice span {
-  display: block;
-}
-
-.focus-notice strong {
-  color: var(--primary);
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: 23px;
-}
-
-.focus-notice span {
-  margin-top: 4px;
-  color: var(--secondary);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.focus-notice button,
 .text-action,
 .panel-heading button {
   display: inline-flex;
@@ -532,6 +497,7 @@ svg {
 }
 
 .map-tools button {
+  position: relative;
   display: inline-flex;
   width: 42px;
   height: 42px;
@@ -540,6 +506,37 @@ svg {
   border: 1px solid var(--surface-container-high);
   border-radius: 999px;
   color: var(--primary);
+}
+
+.map-tools button::after {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 12;
+  max-width: 220px;
+  transform: translateY(-4px);
+  border: 1px solid var(--surface-container-high);
+  border-radius: 12px;
+  background: var(--surface-container-lowest);
+  color: var(--primary);
+  box-shadow: var(--shadow-tight);
+  content: attr(data-tooltip);
+  opacity: 0;
+  padding: 8px 10px;
+  pointer-events: none;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 800;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.map-tools button:hover::after,
+.map-tools button:focus-visible::after {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .map-tools button[data-active="true"] {
@@ -1578,6 +1575,105 @@ svg {
   grid-area: evidence;
   align-self: start;
   padding: 32px;
+}
+
+@media (min-width: 1181px) {
+  .app-frame,
+  .side-rail,
+  .brand-block,
+  .nav-button,
+  .map-canvas {
+    transition:
+      grid-template-columns 180ms ease,
+      width 180ms ease,
+      padding 180ms ease,
+      min-height 180ms ease,
+      gap 180ms ease;
+  }
+
+  .spectrum-app[data-focus="true"] .app-frame {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .spectrum-app[data-focus="true"] .side-rail {
+    align-items: center;
+    gap: 24px;
+    padding: 32px 16px 24px;
+  }
+
+  .spectrum-app[data-focus="true"] .brand-block {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .spectrum-app[data-focus="true"] .brand-block > div,
+  .spectrum-app[data-focus="true"] .nav-button span,
+  .spectrum-app[data-focus="true"] .nav-button > span + svg,
+  .spectrum-app[data-focus="true"] .member-card div,
+  .spectrum-app[data-focus="true"] .security-card div {
+    display: none;
+  }
+
+  .spectrum-app[data-focus="true"] .official-logo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .spectrum-app[data-focus="true"] .primary-nav,
+  .spectrum-app[data-focus="true"] .side-footer {
+    width: 100%;
+  }
+
+  .spectrum-app[data-focus="true"] .nav-button {
+    grid-template-columns: 1fr;
+    min-height: 52px;
+    justify-items: center;
+    gap: 0;
+    padding: 0;
+  }
+
+  .spectrum-app[data-focus="true"] .nav-button[data-active="true"] {
+    box-shadow: inset 0 3px 0 var(--tertiary-container);
+  }
+
+  .spectrum-app[data-focus="true"] .member-card,
+  .spectrum-app[data-focus="true"] .security-card {
+    justify-content: center;
+    padding: 10px;
+  }
+
+  .spectrum-app[data-focus="true"] .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 0.28fr);
+    grid-template-areas:
+      "map saved"
+      "map draft"
+      "map trust"
+      "support profile";
+  }
+
+  .spectrum-app[data-focus="true"] .dashboard-grid .hero-copy {
+    display: none;
+  }
+
+  .spectrum-app[data-focus="true"] .dashboard-grid .map-canvas {
+    min-height: 620px;
+  }
+
+  .spectrum-app[data-focus="true"] .consult-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.3fr);
+    grid-template-areas:
+      "search search"
+      "map detail"
+      "map results";
+  }
+
+  .spectrum-app[data-focus="true"] .consult-grid .section-intro {
+    display: none;
+  }
+
+  .spectrum-app[data-focus="true"] .consult-grid .map-panel[data-tall="true"] .map-canvas {
+    min-height: 680px;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
