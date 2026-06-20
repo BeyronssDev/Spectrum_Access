@@ -28,6 +28,42 @@ afterAll(async () => {
 });
 
 describe("Firestore security rules", () => {
+  it("allows base user creation without elevated roles", async () => {
+    const userDb = testEnv.authenticatedContext("user-a").firestore();
+
+    await assertSucceeds(
+      userDb.collection("users").doc("user-a").set({
+        uid: "user-a",
+        displayName: "Josep Baro",
+        publicName: "Josep",
+        authProviders: ["password"],
+        roles: ["user"],
+        status: "active",
+        locale: "ca",
+        createdAt: "2026-06-20T00:00:00.000Z",
+        updatedAt: "2026-06-20T00:00:00.000Z"
+      })
+    );
+  });
+
+  it("blocks users from creating themselves with elevated roles", async () => {
+    const userDb = testEnv.authenticatedContext("user-a").firestore();
+
+    await assertFails(
+      userDb.collection("users").doc("user-a").set({
+        uid: "user-a",
+        displayName: "Josep Baro",
+        publicName: "Josep",
+        authProviders: ["password"],
+        roles: ["user", "professional", "admin"],
+        status: "active",
+        locale: "ca",
+        createdAt: "2026-06-20T00:00:00.000Z",
+        updatedAt: "2026-06-20T00:00:00.000Z"
+      })
+    );
+  });
+
   it("lets public users read active places only", async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await context.firestore().collection("places").doc("active").set({
@@ -71,6 +107,21 @@ describe("Firestore security rules", () => {
         scanStatus: "not_configured",
         storagePath: "place-images/user-a/img-2/original.jpg",
         createdAt: "2026-06-19T00:00:00.000Z"
+      })
+    );
+  });
+
+  it("blocks anonymous place image records", async () => {
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+
+    await assertFails(
+      anonDb.collection("placeImages").doc("img-1").set({
+        placeId: "place-1",
+        authorUid: "anonymous",
+        status: "pending",
+        scanStatus: "not_configured",
+        storagePath: "place-images/anonymous/img-1/original.jpg",
+        createdAt: "2026-06-20T00:00:00.000Z"
       })
     );
   });

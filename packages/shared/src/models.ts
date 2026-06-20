@@ -76,17 +76,33 @@ export type ReportTargetType = (typeof reportTargetTypes)[number];
 export const verificationRequestTypes = ["professional", "organization"] as const;
 export type VerificationRequestType = (typeof verificationRequestTypes)[number];
 
+export const authProviderIds = ["password", "google.com", "apple.com"] as const;
+export type AuthProviderId = (typeof authProviderIds)[number];
+
 export type SensoryRating = Record<SensoryCriterion, number>;
 
 export interface AppUser {
   uid: string;
+  email?: string;
   displayName: string;
   publicName: string;
+  city?: string;
+  authProviders: AuthProviderId[];
   roles: UserRole[];
   status: "active" | "disabled";
   locale: Locale;
+  onboardingCompletedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CompleteUserOnboardingInput {
+  publicName: string;
+  displayName?: string;
+  email?: string;
+  city?: string;
+  locale: Locale;
+  authProviders: AuthProviderId[];
 }
 
 export interface ChildProfile {

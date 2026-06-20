@@ -1,6 +1,20 @@
-import { getAuth } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  GoogleAuthProvider,
+  OAuthProvider,
+  onAuthStateChanged,
+  sendEmailVerification,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  updateProfile,
+  type User
+} from "firebase/auth";
 import {
   collection,
+  doc,
+  getDoc,
   getDocs,
   getFirestore,
   limit,
@@ -10,7 +24,7 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getStorage, ref, uploadBytes } from "firebase/storage";
-import type { Place, SensoryRating } from "@accessibilitat/shared";
+import type { AppUser, AuthProviderId, Locale, Place, SensoryRating } from "@accessibilitat/shared";
 import { requireFirebaseApp } from "./firebase";
 
 const functionsRegion = "europe-west1";
@@ -49,6 +63,25 @@ export type CreateChildProfileInput = {
   alias: string;
   ageRange?: "0-5" | "6-9" | "10-13" | "14-17";
   sensoryPreferences?: Record<string, "low" | "medium" | "high">;
+};
+
+export type CompleteUserOnboardingInput = {
+  publicName: string;
+  displayName?: string;
+  email?: string;
+  city?: string;
+  locale: Locale;
+  authProviders: AuthProviderId[];
+};
+
+export type ProfessionalVerificationInput = {
+  professionalName: string;
+  licenseNumber: string;
+  professionalCollege: string;
+  specialty: string;
+  photoPath?: string;
+  evidencePath?: string;
+  note?: string;
 };
 
 function getCallable<TInput, TOutput>(name: string) {
@@ -119,6 +152,119 @@ export async function createReport(input: CreateReportInput) {
 export async function createChildProfile(input: CreateChildProfileInput) {
   const callable = getCallable<CreateChildProfileInput, { childProfileId: string }>("createChildProfile");
   return callable(input);
+}
+
+export async function completeUserOnboarding(input: CompleteUserOnboardingInput) {
+  const callable = getCallable<CompleteUserOnboardingInput, { uid: string; status: "active"; roles: string[] }>(
+    "completeUserOnboarding"
+  );
+  return callable(input);
+}
+
+export async function requestProfessionalVerification(input: ProfessionalVerificationInput) {
+  const callable = getCallable<
+    ProfessionalVerificationInput,
+    { profileId: string; verificationRequestId: string; status: "pending_verification" }
+  >("requestProfessionalVerification");
+  return callable(input);
+}
+
+export async function readCurrentAppUser(): Promise<AppUser | null> {
+  const app = requireFirebaseApp();
+  const authUser = getAuth(app).currentUser;
+  if (!authUser) {
+    return null;
+  }
+
+  const snapshot = await getDoc(doc(getFirestore(app), "users", authUser.uid));
+  return snapshot.exists() ? (snapshot.data() as AppUser) : null;
+}
+
+export function subscribeToAuthState(callback: (user: User | null) => void) {
+  const app = requireFirebaseApp();
+  return onAuthStateChanged(getAuth(app), callback);
+}
+
+function fallbackPublicName(user: User): string {
+  if (user.displayName?.trim()) {
+    return user.displayName.trim();
+  }
+
+  const emailName = user.email?.split("@")[0]?.trim();
+  return emailName || "Spectrum user";
+}
+
+function providerIds(user: User, fallback: AuthProviderId): AuthProviderId[] {
+  const ids = user.providerData
+    .map((provider) => provider.providerId)
+    .filter((provider): provider is AuthProviderId =>
+      provider === "password" || provider === "google.com" || provider === "apple.com"
+    );
+
+  return ids.length > 0 ? Array.from(new Set(ids)) : [fallback];
+}
+
+async function finishAuthOnboarding(user: User, locale: Locale, fallbackProvider: AuthProviderId, city?: string) {
+  const publicName = fallbackPublicName(user);
+  await completeUserOnboarding({
+    publicName,
+    displayName: user.displayName ?? publicName,
+    email: user.email ?? undefined,
+    city: city?.trim() || undefined,
+    locale,
+    authProviders: providerIds(user, fallbackProvider)
+  });
+}
+
+export async function registerWithEmailPassword(input: {
+  email: string;
+  password: string;
+  publicName: string;
+  city?: string;
+  locale: Locale;
+}) {
+  const app = requireFirebaseApp();
+  const credential = await createUserWithEmailAndPassword(getAuth(app), input.email, input.password);
+  await updateProfile(credential.user, { displayName: input.publicName });
+  await sendEmailVerification(credential.user);
+  await completeUserOnboarding({
+    publicName: input.publicName,
+    displayName: input.publicName,
+    email: credential.user.email ?? input.email,
+    city: input.city?.trim() || undefined,
+    locale: input.locale,
+    authProviders: ["password"]
+  });
+  return credential.user;
+}
+
+export async function loginWithEmailPassword(input: { email: string; password: string; locale: Locale }) {
+  const app = requireFirebaseApp();
+  const credential = await signInWithEmailAndPassword(getAuth(app), input.email, input.password);
+  await finishAuthOnboarding(credential.user, input.locale, "password");
+  return credential.user;
+}
+
+export async function loginWithGoogle(locale: Locale) {
+  const app = requireFirebaseApp();
+  const credential = await signInWithPopup(getAuth(app), new GoogleAuthProvider());
+  await finishAuthOnboarding(credential.user, locale, "google.com");
+  return credential.user;
+}
+
+export async function loginWithApple(locale: Locale) {
+  const app = requireFirebaseApp();
+  const provider = new OAuthProvider("apple.com");
+  provider.addScope("email");
+  provider.addScope("name");
+  const credential = await signInWithPopup(getAuth(app), provider);
+  await finishAuthOnboarding(credential.user, locale, "apple.com");
+  return credential.user;
+}
+
+export async function logout() {
+  const app = requireFirebaseApp();
+  await signOut(getAuth(app));
 }
 
 export async function uploadPlaceImage(placeId: string, file: File, altText?: Record<string, string>) {

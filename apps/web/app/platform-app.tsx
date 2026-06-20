@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Apple,
   Bell,
   Bookmark,
   Building2,
@@ -14,11 +15,14 @@ import {
   HeartHandshake,
   Home,
   ImagePlus,
+  KeyRound,
   Languages,
   Layers,
   LifeBuoy,
   LocateFixed,
+  LogOut,
   Lock,
+  Mail,
   Map,
   MapPin,
   MessageSquare,
@@ -34,14 +38,30 @@ import {
   Star,
   Sun,
   Upload,
+  UserPlus,
   UserRound,
   UsersRound,
   Volume2
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { User } from "firebase/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Place as FirebasePlace } from "@accessibilitat/shared";
-import { listActivePlaces } from "./lib/firebase-actions";
+import type { AppUser, Place as FirebasePlace, SensoryRating } from "@accessibilitat/shared";
+import {
+  createChildProfile,
+  createPlace,
+  listActivePlaces,
+  loginWithApple,
+  loginWithEmailPassword,
+  loginWithGoogle,
+  logout,
+  readCurrentAppUser,
+  registerWithEmailPassword,
+  requestProfessionalVerification,
+  submitReview,
+  subscribeToAuthState,
+  uploadPlaceImage
+} from "./lib/firebase-actions";
 import { loadGoogleMaps, type GoogleMarkerInstance } from "./lib/google-maps";
 
 type Locale = "ca" | "es" | "en";
@@ -49,6 +69,15 @@ type ViewId = "home" | "consult" | "contribute" | "support" | "profiles" | "veri
 type SensoryKey = "noise" | "density" | "light" | "wait";
 type MapLayerId = "roadmap" | "satellite" | "terrain";
 type LocationState = "idle" | "locating" | "located" | "denied" | "unsupported" | "error";
+type AuthMode = "login" | "register";
+
+type ContributionDraft = {
+  createNewPlace: boolean;
+  placeName: string;
+  city: string;
+  addressOrArea: string;
+  description: string;
+};
 
 type Place = {
   id: string;
@@ -428,6 +457,166 @@ const copy: Record<
   }
 };
 
+const authCopy: Record<
+  Locale,
+  {
+    signedOutTitle: string;
+    signedOutIntro: string;
+    login: string;
+    register: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+    publicName: string;
+    cityOptional: string;
+    continueWithGoogle: string;
+    continueWithApple: string;
+    emailLogin: string;
+    emailRegister: string;
+    logout: string;
+    loadingSession: string;
+    passwordsMismatch: string;
+    authFailed: string;
+    emailVerificationSent: string;
+    contributionSent: string;
+    createNewPlace: string;
+    useSelectedPlace: string;
+    placeName: string;
+    placeCity: string;
+    placeAddress: string;
+    placeDescription: string;
+    childAlias: string;
+    childAge: string;
+    createChildProfile: string;
+    childProfileCreated: string;
+    professionalRequestTitle: string;
+    professionalName: string;
+    licenseNumber: string;
+    professionalCollege: string;
+    specialty: string;
+    requestVerification: string;
+    verificationRequested: string;
+  }
+> = {
+  ca: {
+    signedOutTitle: "Entra a Spectrum Access",
+    signedOutIntro:
+      "Registra't per consultar, aportar imatges, crear perfils tutelats i sol·licitar verificació professional.",
+    login: "Iniciar sessió",
+    register: "Crear compte",
+    email: "Email",
+    password: "Contrasenya",
+    confirmPassword: "Repeteix la contrasenya",
+    publicName: "Nom públic",
+    cityOptional: "Ciutat opcional",
+    continueWithGoogle: "Continuar amb Google",
+    continueWithApple: "Continuar amb Apple",
+    emailLogin: "Entrar amb email",
+    emailRegister: "Registrar amb email",
+    logout: "Tancar sessió",
+    loadingSession: "Comprovant sessió segura...",
+    passwordsMismatch: "Les contrasenyes no coincideixen.",
+    authFailed: "No s'ha pogut completar l'autenticació. Revisa Firebase Auth i torna-ho a provar.",
+    emailVerificationSent: "Compte creat. T'hem enviat un correu de verificació.",
+    contributionSent: "Aportació enviada a moderació.",
+    createNewPlace: "Crear lloc nou",
+    useSelectedPlace: "Usar el lloc seleccionat",
+    placeName: "Nom del lloc",
+    placeCity: "Ciutat",
+    placeAddress: "Adreça o zona",
+    placeDescription: "Descripció opcional",
+    childAlias: "Àlies del perfil infantil",
+    childAge: "Franja d'edat",
+    createChildProfile: "Crear perfil tutelat",
+    childProfileCreated: "Perfil tutelat creat.",
+    professionalRequestTitle: "Sol·licitar perfil professional",
+    professionalName: "Nom professional",
+    licenseNumber: "Número de col·legiat/da",
+    professionalCollege: "Col·legi professional",
+    specialty: "Especialitat",
+    requestVerification: "Enviar verificació",
+    verificationRequested: "Sol·licitud enviada. Queda pendent de revisió manual."
+  },
+  es: {
+    signedOutTitle: "Entra en Spectrum Access",
+    signedOutIntro:
+      "Regístrate para consultar, aportar imágenes, crear perfiles tutelados y solicitar verificación profesional.",
+    login: "Iniciar sesión",
+    register: "Crear cuenta",
+    email: "Email",
+    password: "Contraseña",
+    confirmPassword: "Repite la contraseña",
+    publicName: "Nombre público",
+    cityOptional: "Ciudad opcional",
+    continueWithGoogle: "Continuar con Google",
+    continueWithApple: "Continuar con Apple",
+    emailLogin: "Entrar con email",
+    emailRegister: "Registrar con email",
+    logout: "Cerrar sesión",
+    loadingSession: "Comprobando sesión segura...",
+    passwordsMismatch: "Las contraseñas no coinciden.",
+    authFailed: "No se ha podido completar la autenticación. Revisa Firebase Auth e inténtalo de nuevo.",
+    emailVerificationSent: "Cuenta creada. Te hemos enviado un correo de verificación.",
+    contributionSent: "Aportación enviada a moderación.",
+    createNewPlace: "Crear lugar nuevo",
+    useSelectedPlace: "Usar el lugar seleccionado",
+    placeName: "Nombre del lugar",
+    placeCity: "Ciudad",
+    placeAddress: "Dirección o zona",
+    placeDescription: "Descripción opcional",
+    childAlias: "Alias del perfil infantil",
+    childAge: "Franja de edad",
+    createChildProfile: "Crear perfil tutelado",
+    childProfileCreated: "Perfil tutelado creado.",
+    professionalRequestTitle: "Solicitar perfil profesional",
+    professionalName: "Nombre profesional",
+    licenseNumber: "Número de colegiado/a",
+    professionalCollege: "Colegio profesional",
+    specialty: "Especialidad",
+    requestVerification: "Enviar verificación",
+    verificationRequested: "Solicitud enviada. Queda pendiente de revisión manual."
+  },
+  en: {
+    signedOutTitle: "Enter Spectrum Access",
+    signedOutIntro:
+      "Register to discover places, upload images, create tutored profiles and request professional verification.",
+    login: "Sign in",
+    register: "Create account",
+    email: "Email",
+    password: "Password",
+    confirmPassword: "Repeat password",
+    publicName: "Public name",
+    cityOptional: "Optional city",
+    continueWithGoogle: "Continue with Google",
+    continueWithApple: "Continue with Apple",
+    emailLogin: "Sign in with email",
+    emailRegister: "Register with email",
+    logout: "Sign out",
+    loadingSession: "Checking secure session...",
+    passwordsMismatch: "Passwords do not match.",
+    authFailed: "Authentication could not be completed. Check Firebase Auth and try again.",
+    emailVerificationSent: "Account created. We sent you a verification email.",
+    contributionSent: "Contribution sent to moderation.",
+    createNewPlace: "Create new place",
+    useSelectedPlace: "Use selected place",
+    placeName: "Place name",
+    placeCity: "City",
+    placeAddress: "Address or area",
+    placeDescription: "Optional description",
+    childAlias: "Child profile alias",
+    childAge: "Age range",
+    createChildProfile: "Create tutored profile",
+    childProfileCreated: "Tutored profile created.",
+    professionalRequestTitle: "Request professional profile",
+    professionalName: "Professional name",
+    licenseNumber: "License number",
+    professionalCollege: "Professional college",
+    specialty: "Specialty",
+    requestVerification: "Send verification",
+    verificationRequested: "Request sent. It remains pending manual review."
+  }
+};
+
 const places: Place[] = [
   {
     id: "biblioteca-veridian",
@@ -584,6 +773,27 @@ const sensoryWords: Record<Locale, Record<SensoryKey, string[]>> = {
   }
 };
 
+function toSensoryRating(ratings: Record<SensoryKey, number>): SensoryRating {
+  const noise = Math.round(ratings.noise);
+  const density = Math.round(ratings.density);
+  const light = Math.round(ratings.light);
+  const wait = Math.round(ratings.wait);
+  const generalRecommendation = Math.round((noise + density + light + wait) / 4);
+
+  return {
+    noise,
+    crowd: density,
+    lighting: light,
+    temperature: 3,
+    waitingTime: wait,
+    staffTreatment: 3,
+    quietSpace: Math.max(1, Math.min(5, 6 - noise)),
+    exitEase: 3,
+    perceivedSafety: 3,
+    generalRecommendation
+  };
+}
+
 export function PlatformApp() {
   const [locale, setLocale] = useState<Locale>("ca");
   const [activeView, setActiveView] = useState<ViewId>("home");
@@ -594,14 +804,75 @@ export function PlatformApp() {
   const [selectedPlaceId, setSelectedPlaceId] = useState(places[0].id);
   const [selectedFilter, setSelectedFilter] = useState<number | null>(null);
   const [anonymous, setAnonymous] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [notes, setNotes] = useState("");
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [isSubmittingContribution, setIsSubmittingContribution] = useState(false);
+  const [contributionMessage, setContributionMessage] = useState<string | null>(null);
+  const [contributionDraft, setContributionDraft] = useState<ContributionDraft>({
+    createNewPlace: false,
+    placeName: "",
+    city: "",
+    addressOrArea: "",
+    description: ""
+  });
   const [ratings, setRatings] = useState<Record<SensoryKey, number>>({
     noise: 2,
     density: 2,
     light: 2,
     wait: 1
   });
+
+  useEffect(() => {
+    let active = true;
+
+    try {
+      const unsubscribe = subscribeToAuthState((user) => {
+        if (!active) {
+          return;
+        }
+
+        setAuthUser(user);
+        setAuthMessage(null);
+        if (!user) {
+          setAppUser(null);
+          setAuthChecked(true);
+          return;
+        }
+
+        readCurrentAppUser()
+          .then((profile) => {
+            if (active) {
+              setAppUser(profile);
+            }
+          })
+          .catch(() => {
+            if (active) {
+              setAppUser(null);
+            }
+          })
+          .finally(() => {
+            if (active) {
+              setAuthChecked(true);
+            }
+          });
+      });
+
+      return () => {
+        active = false;
+        unsubscribe();
+      };
+    } catch {
+      setAuthMessage(authCopy[locale].authFailed);
+      setAuthChecked(true);
+      return () => {
+        active = false;
+      };
+    }
+  }, [locale]);
 
   useEffect(() => {
     let active = true;
@@ -676,6 +947,124 @@ export function PlatformApp() {
     });
   };
 
+  const refreshAppProfile = async () => {
+    const profile = await readCurrentAppUser();
+    setAppUser(profile);
+  };
+
+  const handleEmailRegister = async (input: {
+    email: string;
+    password: string;
+    publicName: string;
+    city?: string;
+  }) => {
+    await registerWithEmailPassword({ ...input, locale });
+    await refreshAppProfile();
+    setAuthMessage(authCopy[locale].emailVerificationSent);
+  };
+
+  const handleEmailLogin = async (input: { email: string; password: string }) => {
+    await loginWithEmailPassword({ ...input, locale });
+    await refreshAppProfile();
+  };
+
+  const handleGoogleLogin = async () => {
+    await loginWithGoogle(locale);
+    await refreshAppProfile();
+  };
+
+  const handleAppleLogin = async () => {
+    await loginWithApple(locale);
+    await refreshAppProfile();
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setAuthUser(null);
+    setAppUser(null);
+  };
+
+  const updateContributionDraft = (patch: Partial<ContributionDraft>) => {
+    setContributionDraft((current) => ({ ...current, ...patch }));
+  };
+
+  const submitContribution = async () => {
+    if (isSubmittingContribution) {
+      return;
+    }
+
+    setIsSubmittingContribution(true);
+    setContributionMessage(null);
+
+    try {
+      let placeId = selectedPlace.id;
+      if (contributionDraft.createNewPlace) {
+        const created = await createPlace({
+          name: contributionDraft.placeName.trim(),
+          category: "other",
+          city: contributionDraft.city.trim(),
+          addressOrArea: contributionDraft.addressOrArea.trim(),
+          description: contributionDraft.description.trim() || undefined,
+          latitude: selectedPlace.position.lat,
+          longitude: selectedPlace.position.lng
+        });
+        placeId = created.data.placeId;
+      }
+
+      await submitReview({
+        placeId,
+        ratings: toSensoryRating(ratings),
+        comment: notes.trim() || undefined
+      });
+
+      for (const file of uploadedFiles) {
+        await uploadPlaceImage(placeId, file, { [locale]: file.name });
+      }
+
+      setNotes("");
+      setUploadedFiles([]);
+      setContributionDraft({
+        createNewPlace: false,
+        placeName: "",
+        city: "",
+        addressOrArea: "",
+        description: ""
+      });
+      setContributionMessage(authCopy[locale].contributionSent);
+    } catch {
+      setContributionMessage(authCopy[locale].authFailed);
+    } finally {
+      setIsSubmittingContribution(false);
+    }
+  };
+
+  if (!authChecked) {
+    return (
+      <main className="spectrum-app" data-theme={darkMode ? "dark" : "light"} data-focus="false">
+        <AuthLoading copy={authCopy[locale]} />
+      </main>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <main className="spectrum-app" data-theme={darkMode ? "dark" : "light"} data-focus="false">
+        <AuthGate
+          copy={authCopy[locale]}
+          locale={locale}
+          darkMode={darkMode}
+          message={authMessage}
+          onLocale={setLocale}
+          onDarkMode={setDarkMode}
+          onEmailLogin={handleEmailLogin}
+          onEmailRegister={handleEmailRegister}
+          onGoogle={handleGoogleLogin}
+          onApple={handleAppleLogin}
+        />
+      </main>
+    );
+  }
+
   return (
     <main
       className="spectrum-app"
@@ -715,17 +1104,17 @@ export function PlatformApp() {
 
           <div className="side-footer">
             <div className="member-card">
-              <span className="avatar avatar-small">JB</span>
+              <span className="avatar avatar-small">{(appUser?.publicName ?? authUser.displayName ?? "SA").slice(0, 2).toUpperCase()}</span>
               <div>
-                <strong>Josep B.</strong>
-                <span>Tutor</span>
+                <strong>{appUser?.publicName ?? authUser.displayName ?? authUser.email ?? "Spectrum Access"}</strong>
+                <span>{appUser?.roles.includes("tutor") ? "Tutor" : "Usuari"}</span>
               </div>
             </div>
             <div className="security-card">
               <ShieldCheck aria-hidden="true" size={22} />
               <div>
                 <span>{c.status}</span>
-                <strong>{c.verified}</strong>
+                <strong>{authUser.emailVerified ? c.verified : "Email pendent"}</strong>
               </div>
             </div>
           </div>
@@ -774,6 +1163,9 @@ export function PlatformApp() {
               <button type="button" className="icon-button" aria-label="Notificacions">
                 <Bell aria-hidden="true" size={22} />
               </button>
+              <button type="button" className="icon-button" aria-label={authCopy[locale].logout} onClick={handleLogout}>
+                <LogOut aria-hidden="true" size={20} />
+              </button>
             </div>
           </header>
 
@@ -814,11 +1206,16 @@ export function PlatformApp() {
               notes={notes}
               anonymous={anonymous}
               uploadedFiles={uploadedFiles}
+              draft={contributionDraft}
+              statusMessage={contributionMessage}
+              isSubmitting={isSubmittingContribution}
               selectedPlace={selectedPlace}
               onRating={updateRating}
               onNotes={setNotes}
               onAnonymous={setAnonymous}
               onFiles={setUploadedFiles}
+              onDraft={updateContributionDraft}
+              onSubmit={submitContribution}
             />
           ) : null}
 
@@ -826,7 +1223,7 @@ export function PlatformApp() {
             <SupportView copy={c} focusMode={focusMode} onFocus={() => setFocusMode(true)} />
           ) : null}
 
-          {activeView === "profiles" ? <ProfilesView copy={c} locale={locale} /> : null}
+          {activeView === "profiles" ? <ProfilesView copy={c} authCopy={authCopy[locale]} locale={locale} appUser={appUser} onRefreshProfile={refreshAppProfile} /> : null}
 
           {activeView === "verified" ? <VerifiedView copy={c} /> : null}
         </section>
@@ -868,6 +1265,169 @@ function ToggleButton({
       <span>{label}</span>
       <span className="switch" />
     </button>
+  );
+}
+
+function AuthLoading({ copy: c }: { copy: (typeof authCopy)[Locale] }) {
+  return (
+    <section className="auth-shell">
+      <div className="auth-card panel">
+        <OfficialLogo size={64} />
+        <h1>Spectrum Access</h1>
+        <p>{c.loadingSession}</p>
+      </div>
+    </section>
+  );
+}
+
+function AuthGate({
+  copy: c,
+  locale,
+  darkMode,
+  message,
+  onLocale,
+  onDarkMode,
+  onEmailLogin,
+  onEmailRegister,
+  onGoogle,
+  onApple
+}: {
+  copy: (typeof authCopy)[Locale];
+  locale: Locale;
+  darkMode: boolean;
+  message: string | null;
+  onLocale: (locale: Locale) => void;
+  onDarkMode: (enabled: boolean) => void;
+  onEmailLogin: (input: { email: string; password: string }) => Promise<void>;
+  onEmailRegister: (input: { email: string; password: string; publicName: string; city?: string }) => Promise<void>;
+  onGoogle: () => Promise<void>;
+  onApple: () => Promise<void>;
+}) {
+  const [mode, setMode] = useState<AuthMode>("register");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordRepeat, setPasswordRepeat] = useState("");
+  const [publicName, setPublicName] = useState("");
+  const [city, setCity] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localMessage, setLocalMessage] = useState<string | null>(null);
+
+  const runAuth = async (action: () => Promise<void>) => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setLocalMessage(null);
+    try {
+      await action();
+    } catch {
+      setLocalMessage(c.authFailed);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const submitEmail = () => {
+    void runAuth(async () => {
+      if (mode === "register") {
+        if (password !== passwordRepeat) {
+          setLocalMessage(c.passwordsMismatch);
+          return;
+        }
+
+        await onEmailRegister({ email, password, publicName, city });
+        return;
+      }
+
+      await onEmailLogin({ email, password });
+    });
+  };
+
+  return (
+    <section className="auth-shell">
+      <div className="auth-card panel">
+        <div className="auth-toolbar">
+          <OfficialLogo size={58} />
+          <div className="top-actions">
+            <label className="select-control">
+              <Globe2 aria-hidden="true" size={17} />
+              <select aria-label="Idioma" value={locale} onChange={(event) => onLocale(event.target.value as Locale)}>
+                {Object.entries(locales).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <ToggleButton
+              active={darkMode}
+              label={darkMode ? copy[locale].lightMode : copy[locale].darkMode}
+              activeIcon={Sun}
+              inactiveIcon={Moon}
+              onClick={() => onDarkMode(!darkMode)}
+            />
+          </div>
+        </div>
+        <div className="auth-copy">
+          <h1>{c.signedOutTitle}</h1>
+          <p>{c.signedOutIntro}</p>
+        </div>
+        <div className="auth-mode-tabs" role="tablist" aria-label="Auth mode">
+          <button type="button" data-active={mode === "register"} onClick={() => setMode("register")}>
+            <UserPlus aria-hidden="true" size={17} />
+            {c.register}
+          </button>
+          <button type="button" data-active={mode === "login"} onClick={() => setMode("login")}>
+            <KeyRound aria-hidden="true" size={17} />
+            {c.login}
+          </button>
+        </div>
+        <div className="auth-provider-grid">
+          <button type="button" className="secondary-action" disabled={isSubmitting} onClick={() => void runAuth(onGoogle)}>
+            <Globe2 aria-hidden="true" size={17} />
+            {c.continueWithGoogle}
+          </button>
+          <button type="button" className="secondary-action" disabled={isSubmitting} onClick={() => void runAuth(onApple)}>
+            <Apple aria-hidden="true" size={18} />
+            {c.continueWithApple}
+          </button>
+        </div>
+        <div className="auth-form">
+          {mode === "register" ? (
+            <label>
+              <span>{c.publicName}</span>
+              <input value={publicName} onChange={(event) => setPublicName(event.target.value)} />
+            </label>
+          ) : null}
+          <label>
+            <span>{c.email}</span>
+            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </label>
+          <label>
+            <span>{c.password}</span>
+            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          </label>
+          {mode === "register" ? (
+            <>
+              <label>
+                <span>{c.confirmPassword}</span>
+                <input type="password" value={passwordRepeat} onChange={(event) => setPasswordRepeat(event.target.value)} />
+              </label>
+              <label>
+                <span>{c.cityOptional}</span>
+                <input value={city} onChange={(event) => setCity(event.target.value)} />
+              </label>
+            </>
+          ) : null}
+        </div>
+        <button type="button" className="primary-action auth-submit" disabled={isSubmitting} onClick={submitEmail}>
+          <Mail aria-hidden="true" size={17} />
+          {isSubmitting ? "..." : mode === "register" ? c.emailRegister : c.emailLogin}
+        </button>
+        {localMessage || message ? <p className="form-status">{localMessage ?? message}</p> : null}
+      </div>
+    </section>
   );
 }
 
@@ -1099,24 +1659,35 @@ function ContributeView({
   notes,
   anonymous,
   uploadedFiles,
+  draft,
+  statusMessage,
+  isSubmitting,
   selectedPlace,
   onRating,
   onNotes,
   onAnonymous,
-  onFiles
+  onFiles,
+  onDraft,
+  onSubmit
 }: {
   copy: (typeof copy)[Locale];
   locale: Locale;
   ratings: Record<SensoryKey, number>;
   notes: string;
   anonymous: boolean;
-  uploadedFiles: string[];
+  uploadedFiles: File[];
+  draft: ContributionDraft;
+  statusMessage: string | null;
+  isSubmitting: boolean;
   selectedPlace: Place;
   onRating: (key: SensoryKey, value: number) => void;
   onNotes: (notes: string) => void;
   onAnonymous: (anonymous: boolean) => void;
-  onFiles: (files: string[]) => void;
+  onFiles: (files: File[]) => void;
+  onDraft: (draft: Partial<ContributionDraft>) => void;
+  onSubmit: () => void;
 }) {
+  const ac = authCopy[locale];
   return (
     <div className="report-grid">
       <section className="section-intro report-intro">
@@ -1128,13 +1699,44 @@ function ContributeView({
         <div className="place-context">
           <PlaceSymbol />
           <div>
-            <strong>{selectedPlace.name}</strong>
+            <strong>{draft.createNewPlace ? ac.createNewPlace : selectedPlace.name}</strong>
             <span>
-              {selectedPlace.area} · {selectedPlace.quietDb}
+              {draft.createNewPlace ? ac.placeAddress : `${selectedPlace.area} · ${selectedPlace.quietDb}`}
             </span>
           </div>
           <em>{c.pendingModeration}</em>
         </div>
+
+        <section className="inline-form-block">
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={draft.createNewPlace}
+              onChange={(event) => onDraft({ createNewPlace: event.target.checked })}
+            />
+            <span>{draft.createNewPlace ? ac.createNewPlace : ac.useSelectedPlace}</span>
+          </label>
+          {draft.createNewPlace ? (
+            <div className="compact-form-grid">
+              <label>
+                <span>{ac.placeName}</span>
+                <input value={draft.placeName} onChange={(event) => onDraft({ placeName: event.target.value })} />
+              </label>
+              <label>
+                <span>{ac.placeCity}</span>
+                <input value={draft.city} onChange={(event) => onDraft({ city: event.target.value })} />
+              </label>
+              <label>
+                <span>{ac.placeAddress}</span>
+                <input value={draft.addressOrArea} onChange={(event) => onDraft({ addressOrArea: event.target.value })} />
+              </label>
+              <label>
+                <span>{ac.placeDescription}</span>
+                <input value={draft.description} onChange={(event) => onDraft({ description: event.target.value })} />
+              </label>
+            </div>
+          ) : null}
+        </section>
 
         <div className="slider-stack">
           {sensoryKeys.map((item) => (
@@ -1160,11 +1762,12 @@ function ContributeView({
             <input type="checkbox" checked={anonymous} onChange={(event) => onAnonymous(event.target.checked)} />
             <span>{c.anonymous}</span>
           </label>
-          <button type="button" className="primary-action">
+          <button type="button" className="primary-action" disabled={isSubmitting} onClick={onSubmit}>
             <Send aria-hidden="true" size={17} />
-            {c.submit}
+            {isSubmitting ? "..." : c.submit}
           </button>
         </div>
+        {statusMessage ? <p className="form-status">{statusMessage}</p> : null}
       </section>
 
       <aside className="side-stack">
@@ -1177,7 +1780,7 @@ function ContributeView({
             type="file"
             accept="image/*"
             multiple
-            onChange={(event) => onFiles(Array.from(event.target.files ?? []).map((file) => file.name))}
+            onChange={(event) => onFiles(Array.from(event.target.files ?? []))}
           />
         </label>
 
@@ -1192,9 +1795,9 @@ function ContributeView({
             <PanelHeading title={c.uploadImage} />
             <ul>
               {uploadedFiles.map((file) => (
-                <li key={file}>
+                <li key={`${file.name}-${file.size}`}>
                   <FileText aria-hidden="true" size={15} />
-                  {file}
+                  {file.name}
                 </li>
               ))}
             </ul>
@@ -1252,7 +1855,80 @@ function SupportView({
   );
 }
 
-function ProfilesView({ copy: c, locale }: { copy: (typeof copy)[Locale]; locale: Locale }) {
+function ProfilesView({
+  copy: c,
+  authCopy: ac,
+  locale,
+  appUser,
+  onRefreshProfile
+}: {
+  copy: (typeof copy)[Locale];
+  authCopy: (typeof authCopy)[Locale];
+  locale: Locale;
+  appUser: AppUser | null;
+  onRefreshProfile: () => Promise<void>;
+}) {
+  const [childAlias, setChildAlias] = useState("");
+  const [childAge, setChildAge] = useState<"0-5" | "6-9" | "10-13" | "14-17" | "">("");
+  const [childStatus, setChildStatus] = useState<string | null>(null);
+  const [professionalForm, setProfessionalForm] = useState({
+    professionalName: "",
+    licenseNumber: "",
+    professionalCollege: "",
+    specialty: ""
+  });
+  const [professionalStatus, setProfessionalStatus] = useState<string | null>(null);
+  const [isSavingChild, setIsSavingChild] = useState(false);
+  const [isSavingProfessional, setIsSavingProfessional] = useState(false);
+
+  const submitChildProfile = async () => {
+    if (isSavingChild) {
+      return;
+    }
+
+    setIsSavingChild(true);
+    setChildStatus(null);
+    try {
+      await createChildProfile({
+        alias: childAlias,
+        ageRange: childAge || undefined,
+        sensoryPreferences: {}
+      });
+      setChildAlias("");
+      setChildAge("");
+      setChildStatus(ac.childProfileCreated);
+      await onRefreshProfile();
+    } catch {
+      setChildStatus(ac.authFailed);
+    } finally {
+      setIsSavingChild(false);
+    }
+  };
+
+  const submitProfessionalVerification = async () => {
+    if (isSavingProfessional) {
+      return;
+    }
+
+    setIsSavingProfessional(true);
+    setProfessionalStatus(null);
+    try {
+      await requestProfessionalVerification(professionalForm);
+      setProfessionalForm({
+        professionalName: "",
+        licenseNumber: "",
+        professionalCollege: "",
+        specialty: ""
+      });
+      setProfessionalStatus(ac.verificationRequested);
+      await onRefreshProfile();
+    } catch {
+      setProfessionalStatus(ac.authFailed);
+    } finally {
+      setIsSavingProfessional(false);
+    }
+  };
+
   return (
     <div className="profiles-grid">
       <section className="section-intro">
@@ -1260,11 +1936,11 @@ function ProfilesView({ copy: c, locale }: { copy: (typeof copy)[Locale]; locale
         <p>{c.profilesIntro}</p>
       </section>
 
-      <ProfileCard icon={UserRound} title={c.adultProfile} meta="Josep B. · pseudònim públic editable">
+      <ProfileCard icon={UserRound} title={c.adultProfile} meta={`${appUser?.publicName ?? "Spectrum user"} · ${appUser?.city ?? ac.cityOptional}`}>
         <p>{locale === "en" ? "Same account for web and mobile actions." : "Mateix compte per a accions web i mòbil."}</p>
       </ProfileCard>
 
-      <ProfileCard icon={UsersRound} title={c.tutorProfile} meta="Compte principal">
+      <ProfileCard icon={UsersRound} title={c.tutorProfile} meta={appUser?.roles.includes("tutor") ? "Tutor actiu" : "Compte principal"}>
         <p>{c.childApproval}</p>
       </ProfileCard>
 
@@ -1282,11 +1958,67 @@ function ProfilesView({ copy: c, locale }: { copy: (typeof copy)[Locale]; locale
               </div>
             </article>
           ))}
-          <button type="button" className="add-child">
-            <Plus aria-hidden="true" size={20} />
-            Afegir
-          </button>
         </div>
+        <div className="compact-form-grid profile-form">
+          <label>
+            <span>{ac.childAlias}</span>
+            <input value={childAlias} onChange={(event) => setChildAlias(event.target.value)} />
+          </label>
+          <label>
+            <span>{ac.childAge}</span>
+            <select value={childAge} onChange={(event) => setChildAge(event.target.value as typeof childAge)}>
+              <option value="">-</option>
+              <option value="0-5">0-5</option>
+              <option value="6-9">6-9</option>
+              <option value="10-13">10-13</option>
+              <option value="14-17">14-17</option>
+            </select>
+          </label>
+        </div>
+        <button type="button" className="primary-action" disabled={isSavingChild} onClick={submitChildProfile}>
+          <Plus aria-hidden="true" size={17} />
+          {isSavingChild ? "..." : ac.createChildProfile}
+        </button>
+        {childStatus ? <p className="form-status">{childStatus}</p> : null}
+      </section>
+
+      <section className="panel professional-request-panel">
+        <PanelHeading title={ac.professionalRequestTitle} />
+        <div className="compact-form-grid profile-form">
+          <label>
+            <span>{ac.professionalName}</span>
+            <input
+              value={professionalForm.professionalName}
+              onChange={(event) => setProfessionalForm((current) => ({ ...current, professionalName: event.target.value }))}
+            />
+          </label>
+          <label>
+            <span>{ac.licenseNumber}</span>
+            <input
+              value={professionalForm.licenseNumber}
+              onChange={(event) => setProfessionalForm((current) => ({ ...current, licenseNumber: event.target.value }))}
+            />
+          </label>
+          <label>
+            <span>{ac.professionalCollege}</span>
+            <input
+              value={professionalForm.professionalCollege}
+              onChange={(event) => setProfessionalForm((current) => ({ ...current, professionalCollege: event.target.value }))}
+            />
+          </label>
+          <label>
+            <span>{ac.specialty}</span>
+            <input
+              value={professionalForm.specialty}
+              onChange={(event) => setProfessionalForm((current) => ({ ...current, specialty: event.target.value }))}
+            />
+          </label>
+        </div>
+        <button type="button" className="primary-action" disabled={isSavingProfessional} onClick={submitProfessionalVerification}>
+          <ShieldCheck aria-hidden="true" size={17} />
+          {isSavingProfessional ? "..." : ac.requestVerification}
+        </button>
+        {professionalStatus ? <p className="form-status">{professionalStatus}</p> : null}
       </section>
 
       <section className="panel sensory-profile-panel">

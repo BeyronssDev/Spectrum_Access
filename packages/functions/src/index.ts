@@ -5,6 +5,9 @@ import { onDocumentUpdated, onDocumentWritten } from "firebase-functions/v2/fire
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import {
   commentTargetTypeSet,
+  authProviderIdSet,
+  isAuthProviderId,
+  isLocale,
   isRecord,
   isSensoryRating,
   isValidCoordinate,
@@ -17,7 +20,8 @@ import {
   verificationStatusSet,
   type Locale,
   type Review,
-  type SensoryCriterion
+  type SensoryCriterion,
+  type UserRole
 } from "@accessibilitat/shared";
 
 initializeApp();
@@ -43,6 +47,10 @@ const moderationTargets = new Set(["places", "reviews", "comments", "placeImages
 const moderationTargetStatuses = new Set(["active", "hidden", "deleted", "rejected", "suspended"]);
 const childAgeRanges = new Set(["0-5", "6-9", "10-13", "14-17"]);
 const sensoryPreferenceLevels = new Set(["low", "medium", "high"]);
+const derivedVerificationRoles: Record<string, UserRole> = {
+  professional: "professional",
+  organization: "organization"
+};
 
 type AuthedRequest = CallableRequest<unknown> & {
   auth: NonNullable<CallableRequest<unknown>["auth"]>;
@@ -130,6 +138,48 @@ function requireSetValue(data: Record<string, unknown>, key: string, allowed: Se
   return value;
 }
 
+function optionalEmail(data: Record<string, unknown>, key: string): string | undefined {
+  const value = optionalText(data, key, 254);
+  if (!value) {
+    return undefined;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    throw new HttpsError("invalid-argument", `Invalid ${key}.`);
+  }
+
+  return value.toLowerCase();
+}
+
+function readAuthProviders(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > authProviderIdSet.size) {
+    throw new HttpsError("invalid-argument", "Invalid authProviders.");
+  }
+
+  const providers = new Set<string>();
+  for (const provider of value) {
+    if (!isAuthProviderId(provider)) {
+      throw new HttpsError("invalid-argument", "Invalid authProviders.");
+    }
+    providers.add(provider);
+  }
+
+  return [...providers];
+}
+
+function ensureUserRoles(currentRoles: unknown, role: UserRole, enabled: boolean): UserRole[] {
+  const roles = Array.isArray(currentRoles) ? currentRoles.filter((value): value is UserRole => typeof value === "string") : [];
+  const next = new Set<UserRole>(roles.includes("user") ? roles : ["user", ...roles]);
+
+  if (enabled) {
+    next.add(role);
+  } else {
+    next.delete(role);
+  }
+
+  return [...next];
+}
+
 function readSensoryPreferences(value: unknown): Partial<Record<SensoryCriterion, "low" | "medium" | "high">> {
   if (value === undefined || value === null) {
     return {};
@@ -183,6 +233,53 @@ async function assertChildProfileBelongsToTutor(childProfileId: string, uid: str
     throw new HttpsError("permission-denied", "The child profile does not belong to this tutor.");
   }
 }
+
+export const completeUserOnboarding = onCall(callableOptions, async (request) => {
+  const authedRequest = requireAuth(request);
+  const data = requirePayload(request);
+  const uid = authedRequest.auth.uid;
+  const now = FieldValue.serverTimestamp();
+  const locale = data.locale;
+
+  if (!isLocale(locale)) {
+    throw new HttpsError("invalid-argument", "Invalid locale.");
+  }
+
+  const publicName = requireText(data, "publicName", 80);
+  const displayName = optionalText(data, "displayName", 120) ?? publicName;
+  const authProviders = readAuthProviders(data.authProviders);
+  const email = optionalEmail(data, "email") ?? authedRequest.auth.token.email;
+  const city = optionalText(data, "city", 120);
+  const userRef = db.collection("users").doc(uid);
+  const userSnapshot = await userRef.get();
+  const existingRoles = userSnapshot.data()?.roles;
+  const roles = ensureUserRoles(existingRoles, "user", true);
+
+  await userRef.set(
+    {
+      uid,
+      ...(email ? { email } : {}),
+      displayName,
+      publicName,
+      ...(city ? { city } : {}),
+      authProviders,
+      roles,
+      status: "active",
+      locale,
+      onboardingCompletedAt: userSnapshot.exists ? userSnapshot.data()?.onboardingCompletedAt ?? now : now,
+      createdAt: userSnapshot.exists ? userSnapshot.data()?.createdAt ?? now : now,
+      updatedAt: now
+    },
+    { merge: true }
+  );
+
+  return {
+    uid,
+    publicName,
+    roles,
+    status: "active"
+  };
+});
 
 export const createPlace = onCall(callableOptions, async (request) => {
   const authedRequest = requireAuth(request);
@@ -323,8 +420,13 @@ export const createChildProfile = onCall(callableOptions, async (request) => {
   }
 
   const profileRef = db.collection("childProfiles").doc();
+  const userRef = db.collection("users").doc(authedRequest.auth.uid);
   const now = FieldValue.serverTimestamp();
-  await profileRef.set({
+  const userSnapshot = await userRef.get();
+  const roles = ensureUserRoles(userSnapshot.data()?.roles, "tutor", true);
+  const batch = db.batch();
+
+  batch.set(profileRef, {
     id: profileRef.id,
     tutorUid: authedRequest.auth.uid,
     alias: requireText(data, "alias", 80),
@@ -333,6 +435,18 @@ export const createChildProfile = onCall(callableOptions, async (request) => {
     createdAt: now,
     updatedAt: now
   });
+  batch.set(
+    userRef,
+    {
+      uid: authedRequest.auth.uid,
+      roles,
+      status: "active",
+      updatedAt: now,
+      ...(userSnapshot.exists ? {} : { createdAt: now })
+    },
+    { merge: true }
+  );
+  await batch.commit();
 
   return { childProfileId: profileRef.id };
 });
@@ -456,14 +570,41 @@ export const setVerificationStatus = onCall(callableOptions, async (request) => 
   const profileId = requireText(data, "profileId", 120);
   const collectionId = profileType === "professional" ? "professionalProfiles" : "organizationProfiles";
   const now = FieldValue.serverTimestamp();
+  const profileRef = db.collection(collectionId).doc(profileId);
+  const profileSnapshot = await profileRef.get();
+
+  if (!profileSnapshot.exists) {
+    throw new HttpsError("not-found", "Verification profile not found.");
+  }
+
+  const ownerUid = profileSnapshot.data()?.ownerUid;
+  if (typeof ownerUid !== "string" || ownerUid.length === 0) {
+    throw new HttpsError("failed-precondition", "Verification profile is missing ownerUid.");
+  }
+
+  const derivedRole = derivedVerificationRoles[profileType];
+  const userRef = db.collection("users").doc(ownerUid);
+  const userSnapshot = await userRef.get();
+  const roles = ensureUserRoles(userSnapshot.data()?.roles, derivedRole, status === "verified");
 
   const batch = db.batch();
-  batch.update(db.collection(collectionId).doc(profileId), {
+  batch.update(profileRef, {
     verificationStatus: status,
     verificationReviewedAt: now,
     verificationReviewedBy: moderatorRequest.auth.uid,
     updatedAt: now
   });
+  batch.set(
+    userRef,
+    {
+      uid: ownerUid,
+      roles,
+      status: "active",
+      updatedAt: now,
+      ...(userSnapshot.exists ? {} : { createdAt: now })
+    },
+    { merge: true }
+  );
   batch.set(db.collection("adminActions").doc(), {
     action: "verification_status_set",
     collectionId,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'firebase_services.dart';
@@ -61,14 +62,42 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _focusMode = false;
   bool _anonymous = false;
   bool _googleMapsAvailable = false;
+  bool _authReady = false;
+  bool _authUnavailable = false;
+  bool _authSubmitting = false;
+  bool _profileSubmitting = false;
+  bool _professionalSubmitting = false;
   int _selectedPlace = 0;
   int _selectedFilter = 0;
   LocaleOption _locale = LocaleOption.ca;
   MobileTab _selectedTab = MobileTab.consult;
   SpectrumFirebaseServices? _firebaseServices;
+  StreamSubscription<User?>? _authSubscription;
+  User? _authUser;
+  SpectrumUserProfile? _userProfile;
   final PlaceImagePicker _imagePicker = PlaceImagePicker();
   final List<PreparedPlaceImage> _selectedImages = [];
+  final TextEditingController _authEmailController = TextEditingController();
+  final TextEditingController _authPasswordController = TextEditingController();
+  final TextEditingController _authPasswordRepeatController =
+      TextEditingController();
+  final TextEditingController _authPublicNameController =
+      TextEditingController();
+  final TextEditingController _authCityController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _childAliasController = TextEditingController();
+  final TextEditingController _professionalNameController =
+      TextEditingController();
+  final TextEditingController _licenseNumberController =
+      TextEditingController();
+  final TextEditingController _professionalCollegeController =
+      TextEditingController();
+  final TextEditingController _specialtyController = TextEditingController();
+  bool _showRegister = true;
+  String? _childAgeRange;
+  String? _authMessage;
+  String? _profileMessage;
+  String? _professionalMessage;
   bool _isSubmittingReport = false;
   String? _reportMessage;
   final Map<SensoryKey, double> _ratings = {
@@ -81,14 +110,62 @@ class _SpectrumShellState extends State<SpectrumShell> {
   @override
   void initState() {
     super.initState();
+    _listenToAuth();
     unawaited(_resolveGoogleMapsAvailability());
     unawaited(_restoreLostImages());
   }
 
   @override
   void dispose() {
+    unawaited(_authSubscription?.cancel());
+    _authEmailController.dispose();
+    _authPasswordController.dispose();
+    _authPasswordRepeatController.dispose();
+    _authPublicNameController.dispose();
+    _authCityController.dispose();
     _notesController.dispose();
+    _childAliasController.dispose();
+    _professionalNameController.dispose();
+    _licenseNumberController.dispose();
+    _professionalCollegeController.dispose();
+    _specialtyController.dispose();
     super.dispose();
+  }
+
+  void _listenToAuth() {
+    try {
+      final service = _firebaseServices ??= SpectrumFirebaseServices();
+      _authSubscription = service.authStateChanges.listen((user) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _authUser = user;
+          _authReady = true;
+          _authUnavailable = false;
+        });
+        if (user != null) {
+          unawaited(_loadUserProfile());
+        } else {
+          setStateIfMounted(() => _userProfile = null);
+        }
+      });
+    } catch (_) {
+      setState(() {
+        _authReady = true;
+        _authUnavailable = true;
+      });
+    }
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final profile = await (_firebaseServices ??= SpectrumFirebaseServices())
+          .loadCurrentUserProfile();
+      setStateIfMounted(() => _userProfile = profile);
+    } catch (_) {
+      setStateIfMounted(() => _userProfile = null);
+    }
   }
 
   void _openTab(MobileTab tab) {
@@ -100,6 +177,148 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
   void _openHome() {
     setState(() => _showHome = true);
+  }
+
+  Future<void> _runAuthAction(Future<void> Function() action) async {
+    if (_authSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _authSubmitting = true;
+      _authMessage = null;
+    });
+
+    try {
+      await action();
+      await _loadUserProfile();
+    } catch (_) {
+      setStateIfMounted(() => _authMessage = authCopies[_locale]!.authFailed);
+    } finally {
+      setStateIfMounted(() => _authSubmitting = false);
+    }
+  }
+
+  Future<void> _registerWithEmail() {
+    final labels = authCopies[_locale]!;
+    if (_authPasswordController.text != _authPasswordRepeatController.text) {
+      setState(() => _authMessage = labels.passwordsMismatch);
+      return Future<void>.value();
+    }
+
+    return _runAuthAction(() async {
+      await (_firebaseServices ??= SpectrumFirebaseServices()).registerWithEmail(
+        email: _authEmailController.text.trim(),
+        password: _authPasswordController.text,
+        publicName: _authPublicNameController.text.trim(),
+        city: _authCityController.text.trim(),
+        locale: _locale.name,
+      );
+      setStateIfMounted(() => _authMessage = labels.verificationSent);
+    });
+  }
+
+  Future<void> _signInWithEmail() {
+    return _runAuthAction(() async {
+      await (_firebaseServices ??= SpectrumFirebaseServices()).signInWithEmail(
+        email: _authEmailController.text.trim(),
+        password: _authPasswordController.text,
+        locale: _locale.name,
+      );
+    });
+  }
+
+  Future<void> _signInWithGoogle() {
+    return _runAuthAction(() async {
+      await (_firebaseServices ??= SpectrumFirebaseServices()).signInWithGoogle(
+        locale: _locale.name,
+      );
+    });
+  }
+
+  Future<void> _signInWithApple() {
+    return _runAuthAction(() async {
+      await (_firebaseServices ??= SpectrumFirebaseServices()).signInWithApple(
+        locale: _locale.name,
+      );
+    });
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await (_firebaseServices ??= SpectrumFirebaseServices()).signOut();
+    } finally {
+      setStateIfMounted(() {
+        _authUser = null;
+        _userProfile = null;
+        _showHome = true;
+      });
+    }
+  }
+
+  Future<void> _createChildProfile() async {
+    if (_profileSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _profileSubmitting = true;
+      _profileMessage = null;
+    });
+
+    try {
+      await (_firebaseServices ??= SpectrumFirebaseServices()).createChildProfile(
+        alias: _childAliasController.text.trim(),
+        ageRange: _childAgeRange,
+        sensoryPreferences: const {},
+      );
+      _childAliasController.clear();
+      setStateIfMounted(() {
+        _childAgeRange = null;
+        _profileMessage = authCopies[_locale]!.childCreated;
+      });
+      await _loadUserProfile();
+    } catch (_) {
+      setStateIfMounted(() => _profileMessage = authCopies[_locale]!.authFailed);
+    } finally {
+      setStateIfMounted(() => _profileSubmitting = false);
+    }
+  }
+
+  Future<void> _requestProfessionalVerification() async {
+    if (_professionalSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _professionalSubmitting = true;
+      _professionalMessage = null;
+    });
+
+    try {
+      await (_firebaseServices ??= SpectrumFirebaseServices())
+          .requestProfessionalVerification(
+        professionalName: _professionalNameController.text.trim(),
+        licenseNumber: _licenseNumberController.text.trim(),
+        professionalCollege: _professionalCollegeController.text.trim(),
+        specialty: _specialtyController.text.trim(),
+      );
+      _professionalNameController.clear();
+      _licenseNumberController.clear();
+      _professionalCollegeController.clear();
+      _specialtyController.clear();
+      setStateIfMounted(
+        () => _professionalMessage =
+            authCopies[_locale]!.verificationRequested,
+      );
+      await _loadUserProfile();
+    } catch (_) {
+      setStateIfMounted(
+        () => _professionalMessage = authCopies[_locale]!.authFailed,
+      );
+    } finally {
+      setStateIfMounted(() => _professionalSubmitting = false);
+    }
   }
 
   Future<void> _resolveGoogleMapsAvailability() async {
@@ -232,8 +451,44 @@ class _SpectrumShellState extends State<SpectrumShell> {
   @override
   Widget build(BuildContext context) {
     final labels = appCopies[_locale]!;
+    final authLabels = authCopies[_locale]!;
     final isDark = widget.themeMode == ThemeMode.dark;
     final selectedPlace = samplePlaces[_selectedPlace];
+
+    if (!_authReady) {
+      return Scaffold(
+        body: Center(
+          child: Text(
+            authLabels.authTitle,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+      );
+    }
+
+    if (_authUser == null) {
+      return AuthScreen(
+        labels: labels,
+        authLabels: authLabels,
+        locale: _locale,
+        isDark: isDark,
+        showRegister: _showRegister,
+        isSubmitting: _authSubmitting,
+        authUnavailable: _authUnavailable,
+        message: _authMessage,
+        emailController: _authEmailController,
+        passwordController: _authPasswordController,
+        passwordRepeatController: _authPasswordRepeatController,
+        publicNameController: _authPublicNameController,
+        cityController: _authCityController,
+        onToggleMode: () => setState(() => _showRegister = !_showRegister),
+        onLocaleChanged: (locale) => setState(() => _locale = locale),
+        onThemeModeChanged: widget.onThemeModeChanged,
+        onEmailSubmit: _showRegister ? _registerWithEmail : _signInWithEmail,
+        onGoogle: _signInWithGoogle,
+        onApple: _signInWithApple,
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -302,7 +557,12 @@ class _SpectrumShellState extends State<SpectrumShell> {
                   (locale) =>
                       PopupMenuItem(value: locale, child: Text(locale.label)),
                 )
-                .toList(),
+            .toList(),
+          ),
+          IconButton(
+            tooltip: authLabels.signOut,
+            onPressed: _signOut,
+            icon: const Icon(Icons.logout_outlined),
           ),
           const SizedBox(width: 8),
         ],
@@ -377,8 +637,236 @@ class _SpectrumShellState extends State<SpectrumShell> {
           onEnableFocus: () => setState(() => _focusMode = true),
         );
       case MobileTab.profiles:
-        return ProfilesScreen(key: const ValueKey('profiles'), labels: labels);
+        return ProfilesScreen(
+          key: const ValueKey('profiles'),
+          labels: labels,
+          authLabels: authCopies[_locale]!,
+          userProfile: _userProfile,
+          childAliasController: _childAliasController,
+          childAgeRange: _childAgeRange,
+          profileMessage: _profileMessage,
+          professionalMessage: _professionalMessage,
+          professionalNameController: _professionalNameController,
+          licenseNumberController: _licenseNumberController,
+          professionalCollegeController: _professionalCollegeController,
+          specialtyController: _specialtyController,
+          isProfileSubmitting: _profileSubmitting,
+          isProfessionalSubmitting: _professionalSubmitting,
+          onChildAgeChanged: (value) => setState(() => _childAgeRange = value),
+          onCreateChildProfile: _createChildProfile,
+          onRequestProfessionalVerification: _requestProfessionalVerification,
+        );
     }
+  }
+}
+
+class AuthScreen extends StatelessWidget {
+  const AuthScreen({
+    required this.labels,
+    required this.authLabels,
+    required this.locale,
+    required this.isDark,
+    required this.showRegister,
+    required this.isSubmitting,
+    required this.authUnavailable,
+    required this.message,
+    required this.emailController,
+    required this.passwordController,
+    required this.passwordRepeatController,
+    required this.publicNameController,
+    required this.cityController,
+    required this.onToggleMode,
+    required this.onLocaleChanged,
+    required this.onThemeModeChanged,
+    required this.onEmailSubmit,
+    required this.onGoogle,
+    required this.onApple,
+    super.key,
+  });
+
+  final AppCopy labels;
+  final AuthCopy authLabels;
+  final LocaleOption locale;
+  final bool isDark;
+  final bool showRegister;
+  final bool isSubmitting;
+  final bool authUnavailable;
+  final String? message;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final TextEditingController passwordRepeatController;
+  final TextEditingController publicNameController;
+  final TextEditingController cityController;
+  final VoidCallback onToggleMode;
+  final ValueChanged<LocaleOption> onLocaleChanged;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
+  final VoidCallback onEmailSubmit;
+  final VoidCallback onGoogle;
+  final VoidCallback onApple;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
+          children: [
+            Row(
+              children: [
+                const BrandLogo(size: 46),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    labels.appName,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                PopupMenuButton<LocaleOption>(
+                  tooltip: 'Idioma',
+                  initialValue: locale,
+                  icon: Text(
+                    locale.label,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  onSelected: onLocaleChanged,
+                  itemBuilder: (context) => LocaleOption.values
+                      .map(
+                        (locale) => PopupMenuItem(
+                          value: locale,
+                          child: Text(locale.label),
+                        ),
+                      )
+                      .toList(),
+                ),
+                IconButton(
+                  tooltip: isDark ? labels.lightMode : labels.darkMode,
+                  onPressed: () => onThemeModeChanged(
+                    isDark ? ThemeMode.light : ThemeMode.dark,
+                  ),
+                  icon: Icon(
+                    isDark
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 34),
+            Text(
+              authLabels.authTitle,
+              style: Theme.of(context).textTheme.displayLarge,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              authLabels.authIntro,
+              style: TextStyle(
+                color: mutedColor(context),
+                fontSize: 16,
+                height: 1.55,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SpectrumPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SegmentedButton<bool>(
+                    segments: [
+                      ButtonSegment(
+                        value: true,
+                        label: Text(authLabels.register),
+                        icon: const Icon(Icons.person_add_alt_1_outlined),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        label: Text(authLabels.login),
+                        icon: const Icon(Icons.login_outlined),
+                      ),
+                    ],
+                    selected: {showRegister},
+                    onSelectionChanged: (_) => onToggleMode(),
+                  ),
+                  const SizedBox(height: 18),
+                  OutlinedButton.icon(
+                    onPressed: isSubmitting || authUnavailable ? null : onGoogle,
+                    icon: const Icon(Icons.g_mobiledata),
+                    label: Text(authLabels.continueWithGoogle),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: isSubmitting || authUnavailable ? null : onApple,
+                    icon: const Icon(Icons.apple),
+                    label: Text(authLabels.continueWithApple),
+                  ),
+                  const SizedBox(height: 18),
+                  if (showRegister) ...[
+                    TextField(
+                      controller: publicNameController,
+                      decoration: InputDecoration(
+                        labelText: authLabels.publicName,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(labelText: authLabels.email),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(labelText: authLabels.password),
+                  ),
+                  if (showRegister) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: passwordRepeatController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: authLabels.confirmPassword,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: cityController,
+                      decoration: InputDecoration(
+                        labelText: authLabels.cityOptional,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed:
+                        isSubmitting || authUnavailable ? null : onEmailSubmit,
+                    icon: isSubmitting
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.mail_outline),
+                    label: Text(
+                      showRegister
+                          ? authLabels.emailRegister
+                          : authLabels.emailLogin,
+                    ),
+                  ),
+                  if (message != null || authUnavailable) ...[
+                    const SizedBox(height: 14),
+                    StatusMessage(
+                      message: authUnavailable
+                          ? authLabels.authFailed
+                          : message!,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -804,9 +1292,42 @@ class HelpScreen extends StatelessWidget {
 }
 
 class ProfilesScreen extends StatelessWidget {
-  const ProfilesScreen({required this.labels, super.key});
+  const ProfilesScreen({
+    required this.labels,
+    required this.authLabels,
+    required this.userProfile,
+    required this.childAliasController,
+    required this.childAgeRange,
+    required this.profileMessage,
+    required this.professionalMessage,
+    required this.professionalNameController,
+    required this.licenseNumberController,
+    required this.professionalCollegeController,
+    required this.specialtyController,
+    required this.isProfileSubmitting,
+    required this.isProfessionalSubmitting,
+    required this.onChildAgeChanged,
+    required this.onCreateChildProfile,
+    required this.onRequestProfessionalVerification,
+    super.key,
+  });
 
   final AppCopy labels;
+  final AuthCopy authLabels;
+  final SpectrumUserProfile? userProfile;
+  final TextEditingController childAliasController;
+  final String? childAgeRange;
+  final String? profileMessage;
+  final String? professionalMessage;
+  final TextEditingController professionalNameController;
+  final TextEditingController licenseNumberController;
+  final TextEditingController professionalCollegeController;
+  final TextEditingController specialtyController;
+  final bool isProfileSubmitting;
+  final bool isProfessionalSubmitting;
+  final ValueChanged<String?> onChildAgeChanged;
+  final VoidCallback onCreateChildProfile;
+  final VoidCallback onRequestProfessionalVerification;
 
   @override
   Widget build(BuildContext context) {
@@ -845,7 +1366,8 @@ class ProfilesScreen extends StatelessWidget {
         ProfilePanel(
           icon: Icons.person_outline,
           title: labels.adultProfile,
-          body: 'Pseudònim públic editable, favorits, comentaris i imatges.',
+          body:
+              '${userProfile?.publicName ?? 'Spectrum user'} · ${userProfile?.city ?? authLabels.cityOptional}',
         ),
         const SizedBox(height: 14),
         ProfilePanel(
@@ -866,6 +1388,89 @@ class ProfilesScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: ChildProfileTile(profile: child),
                 ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: childAliasController,
+                decoration: InputDecoration(labelText: authLabels.childAlias),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: childAgeRange,
+                decoration: InputDecoration(labelText: authLabels.childAge),
+                items: const [
+                  DropdownMenuItem(value: '0-5', child: Text('0-5')),
+                  DropdownMenuItem(value: '6-9', child: Text('6-9')),
+                  DropdownMenuItem(value: '10-13', child: Text('10-13')),
+                  DropdownMenuItem(value: '14-17', child: Text('14-17')),
+                ],
+                onChanged: onChildAgeChanged,
+              ),
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                onPressed:
+                    isProfileSubmitting ? null : onCreateChildProfile,
+                icon: isProfileSubmitting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add),
+                label: Text(authLabels.createChildProfile),
+              ),
+              if (profileMessage != null) ...[
+                const SizedBox(height: 12),
+                StatusMessage(message: profileMessage!),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        SpectrumPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeading(title: authLabels.professionalRequestTitle),
+              const SizedBox(height: 12),
+              TextField(
+                controller: professionalNameController,
+                decoration: InputDecoration(
+                  labelText: authLabels.professionalName,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: licenseNumberController,
+                decoration: InputDecoration(labelText: authLabels.licenseNumber),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: professionalCollegeController,
+                decoration: InputDecoration(
+                  labelText: authLabels.professionalCollege,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: specialtyController,
+                decoration: InputDecoration(labelText: authLabels.specialty),
+              ),
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                onPressed: isProfessionalSubmitting
+                    ? null
+                    : onRequestProfessionalVerification,
+                icon: isProfessionalSubmitting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.verified_outlined),
+                label: Text(authLabels.requestVerification),
+              ),
+              if (professionalMessage != null) ...[
+                const SizedBox(height: 12),
+                StatusMessage(message: professionalMessage!),
+              ],
             ],
           ),
         ),

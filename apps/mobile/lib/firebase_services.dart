@@ -6,8 +6,45 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'spectrum_content.dart';
+
+class SpectrumUserProfile {
+  const SpectrumUserProfile({
+    required this.uid,
+    required this.publicName,
+    required this.roles,
+    this.email,
+    this.city,
+  });
+
+  final String uid;
+  final String publicName;
+  final List<String> roles;
+  final String? email;
+  final String? city;
+
+  bool get isTutor => roles.contains('tutor');
+  bool get isProfessional => roles.contains('professional');
+
+  factory SpectrumUserProfile.fromMap(Map<String, dynamic> data) {
+    final roles = data['roles'];
+    return SpectrumUserProfile(
+      uid: (data['uid'] as String?) ?? '',
+      publicName:
+          (data['publicName'] as String?) ??
+          (data['displayName'] as String?) ??
+          'Spectrum user',
+      email: data['email'] as String?,
+      city: data['city'] as String?,
+      roles: roles is List
+          ? roles.whereType<String>().toList(growable: false)
+          : const ['user'],
+    );
+  }
+}
 
 class SpectrumFirebaseServices {
   SpectrumFirebaseServices({
@@ -25,8 +62,177 @@ class SpectrumFirebaseServices {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
   final FirebaseStorage _storage;
+  static bool _googleSignInInitialized = false;
 
   bool get hasAuthenticatedUser => _auth.currentUser != null;
+  User? get currentUser => _auth.currentUser;
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  Future<SpectrumUserProfile?> loadCurrentUserProfile() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      return null;
+    }
+
+    final snapshot = await _firestore.collection('users').doc(uid).get();
+    final data = snapshot.data();
+    return data == null ? null : SpectrumUserProfile.fromMap(data);
+  }
+
+  Future<void> completeUserOnboarding({
+    required String publicName,
+    required String locale,
+    String? displayName,
+    String? email,
+    String? city,
+    required List<String> authProviders,
+  }) {
+    return _functions.httpsCallable('completeUserOnboarding').call({
+      'publicName': publicName,
+      if (displayName != null) 'displayName': displayName,
+      if (email != null) 'email': email,
+      if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+      'locale': locale,
+      'authProviders': authProviders,
+    });
+  }
+
+  Future<UserCredential> registerWithEmail({
+    required String email,
+    required String password,
+    required String publicName,
+    required String locale,
+    String? city,
+  }) async {
+    final credential = await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    await credential.user?.updateDisplayName(publicName);
+    await credential.user?.sendEmailVerification();
+    await completeUserOnboarding(
+      publicName: publicName,
+      displayName: publicName,
+      email: credential.user?.email ?? email,
+      city: city,
+      locale: locale,
+      authProviders: const ['password'],
+    );
+    return credential;
+  }
+
+  Future<UserCredential> signInWithEmail({
+    required String email,
+    required String password,
+    required String locale,
+  }) async {
+    final credential = await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    await _completeOnboardingFromUser(credential.user, locale, 'password');
+    return credential;
+  }
+
+  Future<UserCredential> signInWithGoogle({required String locale}) async {
+    await _ensureGoogleSignInInitialized();
+    final googleUser = await GoogleSignIn.instance.authenticate();
+    final googleAuth = googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      idToken: googleAuth.idToken,
+    );
+    final userCredential = await _auth.signInWithCredential(credential);
+    await _completeOnboardingFromUser(
+      userCredential.user,
+      locale,
+      'google.com',
+    );
+    return userCredential;
+  }
+
+  Future<UserCredential> signInWithApple({required String locale}) async {
+    final appleCredential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+    );
+    final identityToken = appleCredential.identityToken;
+    if (identityToken == null) {
+      throw StateError('apple-identity-token-missing');
+    }
+    final credential = OAuthProvider('apple.com').credential(
+      idToken: identityToken,
+      accessToken: appleCredential.authorizationCode,
+    );
+    final userCredential = await _auth.signInWithCredential(credential);
+    final fullName = [
+      appleCredential.givenName,
+      appleCredential.familyName,
+    ].whereType<String>().where((part) => part.trim().isNotEmpty).join(' ');
+    if (fullName.isNotEmpty && userCredential.user?.displayName == null) {
+      await userCredential.user?.updateDisplayName(fullName);
+    }
+    await _completeOnboardingFromUser(
+      userCredential.user,
+      locale,
+      'apple.com',
+    );
+    return userCredential;
+  }
+
+  Future<void> signOut() async {
+    await Future.wait([
+      _auth.signOut(),
+      if (_googleSignInInitialized) GoogleSignIn.instance.signOut(),
+    ]);
+  }
+
+  Future<void> _ensureGoogleSignInInitialized() async {
+    if (_googleSignInInitialized) {
+      return;
+    }
+
+    await GoogleSignIn.instance.initialize();
+    _googleSignInInitialized = true;
+  }
+
+  Future<void> _completeOnboardingFromUser(
+    User? user,
+    String locale,
+    String fallbackProvider,
+  ) async {
+    if (user == null) {
+      throw StateError('auth-user-missing');
+    }
+
+    final publicName =
+        user.displayName?.trim().isNotEmpty == true
+            ? user.displayName!.trim()
+            : (user.email?.split('@').first.trim().isNotEmpty == true
+                  ? user.email!.split('@').first.trim()
+                  : 'Spectrum user');
+    final authProviders = user.providerData
+        .map((provider) => provider.providerId)
+        .where(
+          (provider) =>
+              provider == 'password' ||
+              provider == 'google.com' ||
+              provider == 'apple.com',
+        )
+        .toSet()
+        .toList(growable: false);
+
+    await completeUserOnboarding(
+      publicName: publicName,
+      displayName: user.displayName ?? publicName,
+      email: user.email,
+      locale: locale,
+      authProviders: authProviders.isEmpty
+          ? [fallbackProvider]
+          : authProviders,
+    );
+  }
 
   Future<List<PlaceSummary>> loadActivePlaces() async {
     final snapshot = await _firestore

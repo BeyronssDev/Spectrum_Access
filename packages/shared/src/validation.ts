@@ -1,4 +1,5 @@
 import {
+  authProviderIds,
   commentTargetTypes,
   locales,
   moderationStatuses,
@@ -22,6 +23,7 @@ export const sensoryCriterionSet = asSet(sensoryCriteria);
 export const commentTargetTypeSet = asSet(commentTargetTypes);
 export const reportTargetTypeSet = asSet(reportTargetTypes);
 export const verificationRequestTypeSet = asSet(verificationRequestTypes);
+export const authProviderIdSet = asSet(authProviderIds);
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -58,4 +60,12 @@ export function isSensoryRating(value: unknown): value is SensoryRating {
   }
 
   return sensoryCriteria.every((criterion) => isScore(value[criterion]));
+}
+
+export function isLocale(value: unknown): value is (typeof locales)[number] {
+  return typeof value === "string" && localeSet.has(value);
+}
+
+export function isAuthProviderId(value: unknown): value is (typeof authProviderIds)[number] {
+  return typeof value === "string" && authProviderIdSet.has(value);
 }

@@ -30,11 +30,30 @@ service cloud.firestore {
       return !resource.data.keys().hasAny([field]) || request.resource.data[field] == resource.data[field];
     }
 
+    function validBaseUserRoles() {
+      return request.resource.data.roles is list
+        && request.resource.data.roles.size() == 1
+        && request.resource.data.roles[0] == "user";
+    }
+
+    function validUserLocale() {
+      return request.resource.data.locale in ["ca", "es", "en"];
+    }
+
+    function validAuthProviders() {
+      return request.resource.data.authProviders is list
+        && request.resource.data.authProviders.size() > 0
+        && request.resource.data.authProviders.hasOnly(["password", "google.com", "apple.com"]);
+    }
+
     match /users/{uid} {
       allow read: if isOwner(uid) || isModerator();
       allow create: if isOwner(uid)
         && request.resource.data.uid == uid
-        && request.resource.data.status == "active";
+        && request.resource.data.status == "active"
+        && validBaseUserRoles()
+        && validUserLocale()
+        && validAuthProviders();
       allow update: if isOwner(uid)
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.roles == resource.data.roles

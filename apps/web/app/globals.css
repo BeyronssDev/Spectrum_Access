@@ -1330,6 +1330,139 @@ svg {
   font-size: 13px;
 }
 
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 40px 20px;
+}
+
+.auth-card {
+  width: min(720px, 100%);
+  padding: 38px;
+}
+
+.auth-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.auth-copy {
+  margin: 42px 0 26px;
+}
+
+.auth-copy h1 {
+  color: var(--primary);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(44px, 7vw, 76px);
+  font-weight: 600;
+  line-height: 1.04;
+}
+
+.auth-copy p {
+  margin-top: 18px;
+  max-width: 600px;
+  color: var(--on-surface-variant);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.auth-mode-tabs,
+.auth-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.auth-mode-tabs button {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 16px;
+  background: var(--surface-container-low);
+  color: var(--secondary);
+  font-weight: 800;
+}
+
+.auth-mode-tabs button[data-active="true"] {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.auth-provider-grid {
+  margin-top: 18px;
+}
+
+.auth-form,
+.compact-form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-form {
+  margin-top: 22px;
+}
+
+.compact-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.auth-form label,
+.compact-form-grid label,
+.inline-form-block {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-form span,
+.compact-form-grid span,
+.inline-form-block > .checkbox-row span {
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-form input,
+.compact-form-grid input,
+.compact-form-grid select {
+  min-height: 48px;
+  width: 100%;
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  background: var(--surface-container-lowest);
+  color: var(--primary);
+  outline: 0;
+  padding: 0 14px;
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 18px;
+}
+
+.inline-form-block {
+  margin-top: 24px;
+  border-bottom: 1px solid var(--surface-container-high);
+  padding-bottom: 24px;
+}
+
+.form-status {
+  margin-top: 16px;
+  border-radius: 14px;
+  background: var(--surface-container-low);
+  color: var(--primary);
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .support-grid {
   grid-template-columns: minmax(0, 1fr) minmax(300px, 0.65fr);
   grid-template-areas:
@@ -1369,7 +1502,8 @@ svg {
   grid-template-areas:
     "intro intro"
     "adult tutor"
-    "child sensory";
+    "child sensory"
+    "professional professional";
 }
 
 .profiles-grid .profile-card:nth-of-type(1) {
@@ -1418,6 +1552,16 @@ svg {
 .sensory-profile-panel {
   grid-area: sensory;
   padding: 32px;
+}
+
+.professional-request-panel {
+  grid-area: professional;
+  padding: 32px;
+}
+
+.profile-form {
+  margin-top: 18px;
+  margin-bottom: 18px;
 }
 
 .preference-bars {
@@ -1751,6 +1895,7 @@ svg {
   .hero-copy,
   .section-intro,
   .map-panel,
+  .auth-card,
   .saved-panel,
   .draft-panel,
   .trust-panel,
@@ -1766,6 +1911,7 @@ svg {
   .focus-panel,
   .trusted-panel,
   .child-flow-panel,
+  .professional-request-panel,
   .sensory-profile-panel,
   .verified-list,
   .evidence-panel {
@@ -1779,6 +1925,7 @@ svg {
 
   .top-actions,
   .search-panel,
+  .auth-toolbar,
   .support-panel,
   .form-footer {
     align-items: stretch;
@@ -1801,6 +1948,9 @@ svg {
   }
 
   .trust-strip,
+  .auth-mode-tabs,
+  .auth-provider-grid,
+  .compact-form-grid,
   .metric-list {
     grid-template-columns: 1fr;
   }
@@ -1944,6 +2094,7 @@ svg {
   .trusted-panel,
   .profile-card,
   .child-flow-panel,
+  .professional-request-panel,
   .sensory-profile-panel,
   .verified-profile-card,
   .evidence-panel {

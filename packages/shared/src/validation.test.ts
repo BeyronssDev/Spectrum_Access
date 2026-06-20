@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isScore, isSensoryRating, isValidCoordinate, normalizeText } from "./validation.js";
+import {
+  isAuthProviderId,
+  isLocale,
+  isScore,
+  isSensoryRating,
+  isValidCoordinate,
+  normalizeText
+} from "./validation.js";
 
 describe("shared validation", () => {
   it("accepts only 1-5 integer scores", () => {
@@ -21,6 +28,14 @@ describe("shared validation", () => {
     assert.equal(normalizeText("  Biblioteca  "), "Biblioteca");
     assert.equal(normalizeText(""), null);
     assert.equal(normalizeText("abcd", 3), null);
+  });
+
+  it("validates supported locales and auth providers", () => {
+    assert.equal(isLocale("ca"), true);
+    assert.equal(isLocale("fr"), false);
+    assert.equal(isAuthProviderId("password"), true);
+    assert.equal(isAuthProviderId("google.com"), true);
+    assert.equal(isAuthProviderId("facebook.com"), false);
   });
 
   it("requires complete sensory ratings", () => {

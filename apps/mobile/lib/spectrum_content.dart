@@ -197,6 +197,68 @@ class AppCopy {
   final String verified;
 }
 
+class AuthCopy {
+  const AuthCopy({
+    required this.authTitle,
+    required this.authIntro,
+    required this.login,
+    required this.register,
+    required this.email,
+    required this.password,
+    required this.confirmPassword,
+    required this.publicName,
+    required this.cityOptional,
+    required this.continueWithGoogle,
+    required this.continueWithApple,
+    required this.emailLogin,
+    required this.emailRegister,
+    required this.signOut,
+    required this.passwordsMismatch,
+    required this.authFailed,
+    required this.verificationSent,
+    required this.childAlias,
+    required this.childAge,
+    required this.createChildProfile,
+    required this.childCreated,
+    required this.professionalRequestTitle,
+    required this.professionalName,
+    required this.licenseNumber,
+    required this.professionalCollege,
+    required this.specialty,
+    required this.requestVerification,
+    required this.verificationRequested,
+  });
+
+  final String authTitle;
+  final String authIntro;
+  final String login;
+  final String register;
+  final String email;
+  final String password;
+  final String confirmPassword;
+  final String publicName;
+  final String cityOptional;
+  final String continueWithGoogle;
+  final String continueWithApple;
+  final String emailLogin;
+  final String emailRegister;
+  final String signOut;
+  final String passwordsMismatch;
+  final String authFailed;
+  final String verificationSent;
+  final String childAlias;
+  final String childAge;
+  final String createChildProfile;
+  final String childCreated;
+  final String professionalRequestTitle;
+  final String professionalName;
+  final String licenseNumber;
+  final String professionalCollege;
+  final String specialty;
+  final String requestVerification;
+  final String verificationRequested;
+}
+
 const appCopies = {
   LocaleOption.ca: AppCopy(
     appName: 'Spectrum Access',
@@ -399,6 +461,102 @@ const appCopies = {
     registry: 'Registry',
     contact: 'Contact',
     verified: 'Verified',
+  ),
+};
+
+const authCopies = {
+  LocaleOption.ca: AuthCopy(
+    authTitle: 'Entra a Spectrum Access',
+    authIntro:
+        'Registra’t per consultar, aportar imatges, crear perfils tutelats i sol·licitar verificació professional.',
+    login: 'Entrar',
+    register: 'Crear compte',
+    email: 'Email',
+    password: 'Contrasenya',
+    confirmPassword: 'Repeteix la contrasenya',
+    publicName: 'Nom públic',
+    cityOptional: 'Ciutat opcional',
+    continueWithGoogle: 'Continuar amb Google',
+    continueWithApple: 'Continuar amb Apple',
+    emailLogin: 'Entrar amb email',
+    emailRegister: 'Registrar amb email',
+    signOut: 'Tancar sessió',
+    passwordsMismatch: 'Les contrasenyes no coincideixen.',
+    authFailed: 'No s’ha pogut completar l’autenticació.',
+    verificationSent: 'Compte creat. Revisa el correu de verificació.',
+    childAlias: 'Àlies infantil',
+    childAge: 'Franja d’edat',
+    createChildProfile: 'Crear perfil tutelat',
+    childCreated: 'Perfil tutelat creat.',
+    professionalRequestTitle: 'Sol·licitar perfil professional',
+    professionalName: 'Nom professional',
+    licenseNumber: 'Número de col·legiat/da',
+    professionalCollege: 'Col·legi professional',
+    specialty: 'Especialitat',
+    requestVerification: 'Enviar verificació',
+    verificationRequested: 'Sol·licitud enviada a revisió.',
+  ),
+  LocaleOption.es: AuthCopy(
+    authTitle: 'Entra en Spectrum Access',
+    authIntro:
+        'Regístrate para consultar, aportar imágenes, crear perfiles tutelados y solicitar verificación profesional.',
+    login: 'Entrar',
+    register: 'Crear cuenta',
+    email: 'Email',
+    password: 'Contraseña',
+    confirmPassword: 'Repite la contraseña',
+    publicName: 'Nombre público',
+    cityOptional: 'Ciudad opcional',
+    continueWithGoogle: 'Continuar con Google',
+    continueWithApple: 'Continuar con Apple',
+    emailLogin: 'Entrar con email',
+    emailRegister: 'Registrar con email',
+    signOut: 'Cerrar sesión',
+    passwordsMismatch: 'Las contraseñas no coinciden.',
+    authFailed: 'No se ha podido completar la autenticación.',
+    verificationSent: 'Cuenta creada. Revisa el correo de verificación.',
+    childAlias: 'Alias infantil',
+    childAge: 'Franja de edad',
+    createChildProfile: 'Crear perfil tutelado',
+    childCreated: 'Perfil tutelado creado.',
+    professionalRequestTitle: 'Solicitar perfil profesional',
+    professionalName: 'Nombre profesional',
+    licenseNumber: 'Número de colegiado/a',
+    professionalCollege: 'Colegio profesional',
+    specialty: 'Especialidad',
+    requestVerification: 'Enviar verificación',
+    verificationRequested: 'Solicitud enviada a revisión.',
+  ),
+  LocaleOption.en: AuthCopy(
+    authTitle: 'Enter Spectrum Access',
+    authIntro:
+        'Register to discover places, upload images, create tutored profiles and request professional verification.',
+    login: 'Sign in',
+    register: 'Create account',
+    email: 'Email',
+    password: 'Password',
+    confirmPassword: 'Repeat password',
+    publicName: 'Public name',
+    cityOptional: 'Optional city',
+    continueWithGoogle: 'Continue with Google',
+    continueWithApple: 'Continue with Apple',
+    emailLogin: 'Sign in with email',
+    emailRegister: 'Register with email',
+    signOut: 'Sign out',
+    passwordsMismatch: 'Passwords do not match.',
+    authFailed: 'Authentication could not be completed.',
+    verificationSent: 'Account created. Check the verification email.',
+    childAlias: 'Child alias',
+    childAge: 'Age range',
+    createChildProfile: 'Create tutored profile',
+    childCreated: 'Tutored profile created.',
+    professionalRequestTitle: 'Request professional profile',
+    professionalName: 'Professional name',
+    licenseNumber: 'License number',
+    professionalCollege: 'Professional college',
+    specialty: 'Specialty',
+    requestVerification: 'Send verification',
+    verificationRequested: 'Request sent for review.',
   ),
 };
 
