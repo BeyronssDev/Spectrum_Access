@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'firebase_services.dart';
@@ -8,7 +10,10 @@ import 'mobile_image_upload.dart';
 import 'spectrum_content.dart';
 import 'spectrum_theme.dart';
 
-const googleMapsEnabled = bool.fromEnvironment('SPECTRUM_GOOGLE_MAPS_ENABLED');
+const googleMapsRequested = bool.fromEnvironment(
+  'SPECTRUM_GOOGLE_MAPS_ENABLED',
+);
+const _nativeConfigChannel = MethodChannel('spectrum_access/native_config');
 
 class SpectrumAccessApp extends StatefulWidget {
   const SpectrumAccessApp({super.key});
@@ -55,6 +60,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _showHome = true;
   bool _focusMode = false;
   bool _anonymous = false;
+  bool _googleMapsAvailable = false;
   int _selectedPlace = 0;
   int _selectedFilter = 0;
   LocaleOption _locale = LocaleOption.ca;
@@ -75,6 +81,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
   @override
   void initState() {
     super.initState();
+    unawaited(_resolveGoogleMapsAvailability());
     unawaited(_restoreLostImages());
   }
 
@@ -93,6 +100,35 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
   void _openHome() {
     setState(() => _showHome = true);
+  }
+
+  Future<void> _resolveGoogleMapsAvailability() async {
+    if (!googleMapsRequested) {
+      return;
+    }
+
+    if (kIsWeb) {
+      setStateIfMounted(() => _googleMapsAvailable = true);
+      return;
+    }
+
+    try {
+      final hasNativeKey =
+          await _nativeConfigChannel.invokeMethod<bool>(
+            'hasGoogleMapsApiKey',
+          ) ??
+          false;
+      setStateIfMounted(() => _googleMapsAvailable = hasNativeKey);
+    } catch (_) {
+      setStateIfMounted(() => _googleMapsAvailable = false);
+    }
+  }
+
+  void setStateIfMounted(VoidCallback update) {
+    if (!mounted) {
+      return;
+    }
+    setState(update);
   }
 
   Future<void> _restoreLostImages() async {
@@ -279,6 +315,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
                   key: const ValueKey('home'),
                   labels: labels,
                   focusMode: _focusMode,
+                  googleMapsAvailable: _googleMapsAvailable,
                   selectedPlace: selectedPlace,
                   onOpenTab: _openTab,
                   onOpenPlace: (index) => setState(() {
@@ -306,6 +343,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
           labels: labels,
           selectedPlace: _selectedPlace,
           selectedFilter: _selectedFilter,
+          googleMapsAvailable: _googleMapsAvailable,
           onFilterChanged: (index) => setState(() => _selectedFilter = index),
           onPlaceChanged: (index) => setState(() => _selectedPlace = index),
           onContribute: () => _openTab(MobileTab.contribute),
@@ -348,6 +386,7 @@ class HomeScreen extends StatelessWidget {
   const HomeScreen({
     required this.labels,
     required this.focusMode,
+    required this.googleMapsAvailable,
     required this.selectedPlace,
     required this.onOpenTab,
     required this.onOpenPlace,
@@ -356,6 +395,7 @@ class HomeScreen extends StatelessWidget {
 
   final AppCopy labels;
   final bool focusMode;
+  final bool googleMapsAvailable;
   final PlaceSummary selectedPlace;
   final ValueChanged<MobileTab> onOpenTab;
   final ValueChanged<int> onOpenPlace;
@@ -383,6 +423,7 @@ class HomeScreen extends StatelessWidget {
         SensoryMapPanel(
           title: labels.nearbyMap,
           subtitle: 'Barcelona',
+          googleMapsAvailable: googleMapsAvailable,
           selectedPlace: selectedPlace,
           onOpen: () => onOpenTab(MobileTab.consult),
           onPlaceSelected: onOpenPlace,
@@ -471,6 +512,7 @@ class ConsultScreen extends StatelessWidget {
     required this.labels,
     required this.selectedPlace,
     required this.selectedFilter,
+    required this.googleMapsAvailable,
     required this.onFilterChanged,
     required this.onPlaceChanged,
     required this.onContribute,
@@ -480,6 +522,7 @@ class ConsultScreen extends StatelessWidget {
   final AppCopy labels;
   final int selectedPlace;
   final int selectedFilter;
+  final bool googleMapsAvailable;
   final ValueChanged<int> onFilterChanged;
   final ValueChanged<int> onPlaceChanged;
   final VoidCallback onContribute;
@@ -517,6 +560,7 @@ class ConsultScreen extends StatelessWidget {
         SensoryMapPanel(
           title: labels.nearbyMap,
           subtitle: 'Barcelona',
+          googleMapsAvailable: googleMapsAvailable,
           selectedPlace: place,
           onPlaceSelected: onPlaceChanged,
         ),
@@ -940,6 +984,7 @@ class SensoryMapPanel extends StatelessWidget {
   const SensoryMapPanel({
     required this.title,
     required this.subtitle,
+    required this.googleMapsAvailable,
     required this.selectedPlace,
     required this.onPlaceSelected,
     this.onOpen,
@@ -948,6 +993,7 @@ class SensoryMapPanel extends StatelessWidget {
 
   final String title;
   final String subtitle;
+  final bool googleMapsAvailable;
   final PlaceSummary selectedPlace;
   final ValueChanged<int> onPlaceSelected;
   final VoidCallback? onOpen;
@@ -994,7 +1040,7 @@ class SensoryMapPanel extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  if (googleMapsEnabled)
+                  if (googleMapsAvailable)
                     _GoogleMapLayer(
                       selectedPlace: selectedPlace,
                       onPlaceSelected: onPlaceSelected,
@@ -1008,7 +1054,9 @@ class SensoryMapPanel extends StatelessWidget {
                     left: 14,
                     top: 14,
                     child: _MapProviderBadge(
-                      label: googleMapsEnabled ? 'Google Maps' : 'Fallback map',
+                      label: googleMapsAvailable
+                          ? 'Google Maps'
+                          : 'Fallback map',
                     ),
                   ),
                   Positioned(
