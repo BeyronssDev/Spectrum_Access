@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'firebase_services.dart';
@@ -207,13 +208,14 @@ class _SpectrumShellState extends State<SpectrumShell> {
     }
 
     return _runAuthAction(() async {
-      await (_firebaseServices ??= SpectrumFirebaseServices()).registerWithEmail(
-        email: _authEmailController.text.trim(),
-        password: _authPasswordController.text,
-        publicName: _authPublicNameController.text.trim(),
-        city: _authCityController.text.trim(),
-        locale: _locale.name,
-      );
+      await (_firebaseServices ??= SpectrumFirebaseServices())
+          .registerWithEmail(
+            email: _authEmailController.text.trim(),
+            password: _authPasswordController.text,
+            publicName: _authPublicNameController.text.trim(),
+            city: _authCityController.text.trim(),
+            locale: _locale.name,
+          );
       setStateIfMounted(() => _authMessage = labels.verificationSent);
     });
   }
@@ -267,11 +269,12 @@ class _SpectrumShellState extends State<SpectrumShell> {
     });
 
     try {
-      await (_firebaseServices ??= SpectrumFirebaseServices()).createChildProfile(
-        alias: _childAliasController.text.trim(),
-        ageRange: _childAgeRange,
-        sensoryPreferences: const {},
-      );
+      await (_firebaseServices ??= SpectrumFirebaseServices())
+          .createChildProfile(
+            alias: _childAliasController.text.trim(),
+            ageRange: _childAgeRange,
+            sensoryPreferences: const {},
+          );
       _childAliasController.clear();
       setStateIfMounted(() {
         _childAgeRange = null;
@@ -279,7 +282,9 @@ class _SpectrumShellState extends State<SpectrumShell> {
       });
       await _loadUserProfile();
     } catch (_) {
-      setStateIfMounted(() => _profileMessage = authCopies[_locale]!.authFailed);
+      setStateIfMounted(
+        () => _profileMessage = authCopies[_locale]!.authFailed,
+      );
     } finally {
       setStateIfMounted(() => _profileSubmitting = false);
     }
@@ -298,18 +303,17 @@ class _SpectrumShellState extends State<SpectrumShell> {
     try {
       await (_firebaseServices ??= SpectrumFirebaseServices())
           .requestProfessionalVerification(
-        professionalName: _professionalNameController.text.trim(),
-        licenseNumber: _licenseNumberController.text.trim(),
-        professionalCollege: _professionalCollegeController.text.trim(),
-        specialty: _specialtyController.text.trim(),
-      );
+            professionalName: _professionalNameController.text.trim(),
+            licenseNumber: _licenseNumberController.text.trim(),
+            professionalCollege: _professionalCollegeController.text.trim(),
+            specialty: _specialtyController.text.trim(),
+          );
       _professionalNameController.clear();
       _licenseNumberController.clear();
       _professionalCollegeController.clear();
       _specialtyController.clear();
       setStateIfMounted(
-        () => _professionalMessage =
-            authCopies[_locale]!.verificationRequested,
+        () => _professionalMessage = authCopies[_locale]!.verificationRequested,
       );
       await _loadUserProfile();
     } catch (_) {
@@ -557,7 +561,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
                   (locale) =>
                       PopupMenuItem(value: locale, child: Text(locale.label)),
                 )
-            .toList(),
+                .toList(),
           ),
           IconButton(
             tooltip: authLabels.signOut,
@@ -788,8 +792,10 @@ class AuthScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   OutlinedButton.icon(
-                    onPressed: isSubmitting || authUnavailable ? null : onGoogle,
-                    icon: const Icon(Icons.g_mobiledata),
+                    onPressed: isSubmitting || authUnavailable
+                        ? null
+                        : onGoogle,
+                    icon: const GoogleLogo(size: 18),
                     label: Text(authLabels.continueWithGoogle),
                   ),
                   const SizedBox(height: 10),
@@ -838,8 +844,9 @@ class AuthScreen extends StatelessWidget {
                   ],
                   const SizedBox(height: 18),
                   FilledButton.icon(
-                    onPressed:
-                        isSubmitting || authUnavailable ? null : onEmailSubmit,
+                    onPressed: isSubmitting || authUnavailable
+                        ? null
+                        : onEmailSubmit,
                     icon: isSubmitting
                         ? const SizedBox.square(
                             dimension: 18,
@@ -1407,8 +1414,7 @@ class ProfilesScreen extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               FilledButton.icon(
-                onPressed:
-                    isProfileSubmitting ? null : onCreateChildProfile,
+                onPressed: isProfileSubmitting ? null : onCreateChildProfile,
                 icon: isProfileSubmitting
                     ? const SizedBox.square(
                         dimension: 18,
@@ -1440,7 +1446,9 @@ class ProfilesScreen extends StatelessWidget {
               const SizedBox(height: 12),
               TextField(
                 controller: licenseNumberController,
-                decoration: InputDecoration(labelText: authLabels.licenseNumber),
+                decoration: InputDecoration(
+                  labelText: authLabels.licenseNumber,
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -2473,6 +2481,32 @@ class PlaceIcon extends StatelessWidget {
           color: SpectrumColors.darkOnSurface,
         ),
       ),
+    );
+  }
+}
+
+class GoogleLogo extends StatelessWidget {
+  const GoogleLogo({this.size = 18, super.key});
+
+  final double size;
+
+  static const _svg = '''
+<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
+  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+  <path fill="none" d="M0 0h48v48H0z"/>
+</svg>
+''';
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.string(
+      _svg,
+      width: size,
+      height: size,
+      semanticsLabel: 'Google',
     );
   }
 }
