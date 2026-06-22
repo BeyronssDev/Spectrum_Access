@@ -8,7 +8,8 @@ export const userRoles = [
   "professional",
   "organization",
   "moderator",
-  "admin"
+  "admin",
+  "super_admin"
 ] as const;
 export type UserRole = (typeof userRoles)[number];
 
@@ -131,6 +132,7 @@ export interface Place {
   ratingCount: number;
   imageCount: number;
   averageScore: number;
+  criterionAverages?: Partial<Record<SensoryCriterion, number>>;
   updatedAt: string;
 }
 

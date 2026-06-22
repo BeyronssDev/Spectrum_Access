@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { onDocumentUpdated, onDocumentWritten } from "firebase-functions/v2/firestore";
@@ -65,13 +66,22 @@ function requireAuth(request: CallableRequest<unknown>): AuthedRequest {
 }
 
 function isModeratorRequest(request: AuthedRequest): boolean {
-  return request.auth.token.admin === true || request.auth.token.moderator === true;
+  return request.auth.token.superAdmin === true || request.auth.token.admin === true || request.auth.token.moderator === true;
 }
 
 function requireModerator(request: CallableRequest<unknown>): AuthedRequest {
   const authedRequest = requireAuth(request);
   if (!isModeratorRequest(authedRequest)) {
     throw new HttpsError("permission-denied", "Moderator privileges are required.");
+  }
+
+  return authedRequest;
+}
+
+function requireSuperAdmin(request: CallableRequest<unknown>): AuthedRequest {
+  const authedRequest = requireAuth(request);
+  if (authedRequest.auth.token.superAdmin !== true) {
+    throw new HttpsError("permission-denied", "Super admin privileges are required.");
   }
 
   return authedRequest;
@@ -149,6 +159,19 @@ function optionalEmail(data: Record<string, unknown>, key: string): string | und
   }
 
   return value.toLowerCase();
+}
+
+function optionalBoolean(data: Record<string, unknown>, key: string): boolean | undefined {
+  const value = data[key];
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "boolean") {
+    throw new HttpsError("invalid-argument", `Invalid ${key}.`);
+  }
+
+  return value;
 }
 
 function readAuthProviders(value: unknown): string[] {
@@ -371,6 +394,7 @@ export const createPlaceImageRecord = onCall(callableOptions, async (request) =>
   const data = requirePayload(request);
   const uid = authedRequest.auth.uid;
   const storagePath = requireText(data, "storagePath", 1024);
+  const thumbnailPath = optionalText(data, "thumbnailPath", 1024);
 
   if (!storagePath.startsWith(`place-images/${uid}/`)) {
     throw new HttpsError("permission-denied", "storagePath must belong to the authenticated user.");
@@ -382,7 +406,7 @@ export const createPlaceImageRecord = onCall(callableOptions, async (request) =>
     placeId: requireText(data, "placeId", 120),
     authorUid: uid,
     storagePath,
-    thumbnailPath: optionalText(data, "thumbnailPath", 1024),
+    ...(thumbnailPath ? { thumbnailPath } : {}),
     altText: readAltText(data.altText),
     status: "pending",
     scanStatus: "not_configured",
@@ -617,6 +641,95 @@ export const setVerificationStatus = onCall(callableOptions, async (request) => 
   await batch.commit();
 
   return { profileId, status };
+});
+
+export const setUserAccessClaims = onCall(callableOptions, async (request) => {
+  const adminRequest = requireSuperAdmin(request);
+  const data = requirePayload(request);
+  const targetUid = optionalText(data, "uid", 128);
+  const targetEmail = optionalEmail(data, "email");
+  const adminEnabled = optionalBoolean(data, "admin");
+  const moderatorEnabled = optionalBoolean(data, "moderator");
+
+  if (!targetUid && !targetEmail) {
+    throw new HttpsError("invalid-argument", "Expected uid or email.");
+  }
+
+  if (adminEnabled === undefined && moderatorEnabled === undefined) {
+    throw new HttpsError("invalid-argument", "Expected admin or moderator.");
+  }
+
+  const auth = getAuth();
+  const userRecord = await (targetUid ? auth.getUser(targetUid) : auth.getUserByEmail(targetEmail ?? "")).catch(() => {
+    throw new HttpsError("not-found", "User not found.");
+  });
+
+  const nextAdmin = adminEnabled ?? userRecord.customClaims?.admin === true;
+  const nextModerator = nextAdmin || (moderatorEnabled ?? userRecord.customClaims?.moderator === true);
+
+  if (userRecord.uid === adminRequest.auth.uid && !nextAdmin) {
+    throw new HttpsError("failed-precondition", "Super admins cannot remove their own admin access.");
+  }
+
+  const customClaims: Record<string, unknown> = { ...(userRecord.customClaims ?? {}) };
+  if (nextAdmin) {
+    customClaims.admin = true;
+  } else {
+    delete customClaims.admin;
+  }
+
+  if (nextModerator) {
+    customClaims.moderator = true;
+  } else {
+    delete customClaims.moderator;
+  }
+
+  await auth.setCustomUserClaims(userRecord.uid, customClaims);
+
+  const now = FieldValue.serverTimestamp();
+  const userRef = db.collection("users").doc(userRecord.uid);
+  const userSnapshot = await userRef.get();
+  let roles = ensureUserRoles(userSnapshot.data()?.roles, "admin", nextAdmin);
+  roles = ensureUserRoles(roles, "moderator", nextModerator);
+
+  const batch = db.batch();
+  batch.set(
+    userRef,
+    {
+      uid: userRecord.uid,
+      ...(userRecord.email ? { email: userRecord.email } : {}),
+      ...(userSnapshot.exists
+        ? {}
+        : {
+            displayName: userRecord.displayName ?? userRecord.email ?? userRecord.uid,
+            publicName: userRecord.displayName ?? userRecord.email ?? userRecord.uid,
+            locale: "ca",
+            authProviders: userRecord.providerData.map((provider) => provider.providerId).filter(isAuthProviderId),
+            status: "active",
+            createdAt: now
+          }),
+      roles,
+      updatedAt: now
+    },
+    { merge: true }
+  );
+  batch.set(db.collection("adminActions").doc(), {
+    action: "user_access_claims_set",
+    targetUid: userRecord.uid,
+    targetEmail: userRecord.email ?? targetEmail ?? null,
+    admin: nextAdmin,
+    moderator: nextModerator,
+    actorUid: adminRequest.auth.uid,
+    createdAt: now
+  });
+  await batch.commit();
+
+  return {
+    uid: userRecord.uid,
+    email: userRecord.email ?? targetEmail,
+    roles,
+    claims: { admin: nextAdmin, moderator: nextModerator }
+  };
 });
 
 export const recalculatePlaceReviewStats = onDocumentWritten(

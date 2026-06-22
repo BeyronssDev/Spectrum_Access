@@ -26,6 +26,7 @@ class PlaceSummary {
     required this.description,
     required this.latitude,
     required this.longitude,
+    this.criterionAverages = const {},
   });
 
   final String id;
@@ -39,8 +40,12 @@ class PlaceSummary {
   final String description;
   final double latitude;
   final double longitude;
+  final Map<SensoryKey, double> criterionAverages;
 
-  PlaceSummary copyWith({String? distance}) {
+  PlaceSummary copyWith({
+    String? distance,
+    Map<SensoryKey, double>? criterionAverages,
+  }) {
     return PlaceSummary(
       id: id,
       name: name,
@@ -53,6 +58,7 @@ class PlaceSummary {
       description: description,
       latitude: latitude,
       longitude: longitude,
+      criterionAverages: criterionAverages ?? this.criterionAverages,
     );
   }
 }
@@ -125,12 +131,15 @@ class AppCopy {
     required this.focusActive,
     required this.nearbyMap,
     required this.savedPlaces,
+    required this.availablePlaces,
     required this.pendingDraft,
     required this.continueDraft,
     required this.helpCard,
     required this.openHelpCard,
+    required this.openFullMap,
     required this.verifiedProfessionals,
     required this.viewAll,
+    required this.close,
     required this.search,
     required this.filters,
     required this.placeDetails,
@@ -163,12 +172,26 @@ class AppCopy {
     required this.profilesIntro,
     required this.adultProfile,
     required this.tutorProfile,
+    required this.tutorProfileBody,
     required this.childProfile,
     required this.sensoryProfile,
+    required this.sensoryProfileBody,
+    required this.trustedContactBody,
     required this.license,
     required this.registry,
     required this.contact,
     required this.verified,
+    required this.actionUnavailable,
+    required this.noPlacesTitle,
+    required this.noPlacesBody,
+    required this.noVerifiedProfiles,
+    required this.noChildProfiles,
+    required this.createPlace,
+    required this.placeName,
+    required this.placeCity,
+    required this.placeAddress,
+    required this.placeDescription,
+    required this.locationRequiredForPlace,
   });
 
   final String appName;
@@ -187,12 +210,15 @@ class AppCopy {
   final String focusActive;
   final String nearbyMap;
   final String savedPlaces;
+  final String availablePlaces;
   final String pendingDraft;
   final String continueDraft;
   final String helpCard;
   final String openHelpCard;
+  final String openFullMap;
   final String verifiedProfessionals;
   final String viewAll;
+  final String close;
   final String search;
   final List<String> filters;
   final String placeDetails;
@@ -225,12 +251,26 @@ class AppCopy {
   final String profilesIntro;
   final String adultProfile;
   final String tutorProfile;
+  final String tutorProfileBody;
   final String childProfile;
   final String sensoryProfile;
+  final String sensoryProfileBody;
+  final String trustedContactBody;
   final String license;
   final String registry;
   final String contact;
   final String verified;
+  final String actionUnavailable;
+  final String noPlacesTitle;
+  final String noPlacesBody;
+  final String noVerifiedProfiles;
+  final String noChildProfiles;
+  final String createPlace;
+  final String placeName;
+  final String placeCity;
+  final String placeAddress;
+  final String placeDescription;
+  final String locationRequiredForPlace;
 }
 
 class AuthCopy {
@@ -239,6 +279,9 @@ class AuthCopy {
     required this.authIntro,
     required this.login,
     required this.register,
+    required this.personalAccount,
+    required this.professionalAccount,
+    required this.professionalRegisterIntro,
     required this.email,
     required this.password,
     required this.confirmPassword,
@@ -254,9 +297,17 @@ class AuthCopy {
     required this.signInRequiredTitle,
     required this.signInRequiredIntro,
     required this.signInToContinue,
+    required this.requiredFields,
+    required this.invalidEmail,
+    required this.passwordMinLength,
     required this.passwordsMismatch,
+    required this.professionalFieldsRequired,
     required this.authFailed,
+    required this.authCancelled,
+    required this.authProviderDisabled,
+    required this.authConfigurationError,
     required this.verificationSent,
+    required this.professionalRegistrationSent,
     required this.childAlias,
     required this.childAge,
     required this.createChildProfile,
@@ -274,6 +325,9 @@ class AuthCopy {
   final String authIntro;
   final String login;
   final String register;
+  final String personalAccount;
+  final String professionalAccount;
+  final String professionalRegisterIntro;
   final String email;
   final String password;
   final String confirmPassword;
@@ -289,9 +343,17 @@ class AuthCopy {
   final String signInRequiredTitle;
   final String signInRequiredIntro;
   final String signInToContinue;
+  final String requiredFields;
+  final String invalidEmail;
+  final String passwordMinLength;
   final String passwordsMismatch;
+  final String professionalFieldsRequired;
   final String authFailed;
+  final String authCancelled;
+  final String authProviderDisabled;
+  final String authConfigurationError;
   final String verificationSent;
+  final String professionalRegistrationSent;
   final String childAlias;
   final String childAge;
   final String createChildProfile;
@@ -314,7 +376,7 @@ const appCopies = {
     contribute: 'Aportacions',
     support: 'Ajuda',
     profiles: 'Perfils',
-    greeting: 'Bon dia, Josep',
+    greeting: 'Benvingut/da',
     homeIntro:
         'Basat en el teu perfil sensorial, et suggerim espais amb baixa densitat acústica i sortides clares.',
     sessionStatus: 'Sessió protegida',
@@ -324,12 +386,15 @@ const appCopies = {
     focusActive: 'Focus actiu',
     nearbyMap: 'Mapa Sensorial',
     savedPlaces: 'Llocs desats',
+    availablePlaces: 'Espais disponibles',
     pendingDraft: 'Esborrany pendent',
     continueDraft: 'Continuar esborrany',
     helpCard: 'Targeta d’ajuda',
     openHelpCard: 'Obrir targeta',
+    openFullMap: 'Obrir mapa complet',
     verifiedProfessionals: 'Professionals verificats',
     viewAll: 'Veure tots',
+    close: 'Tancar',
     search: 'Cerca llocs, ciutat o categoria',
     filters: ['Baix soroll', 'Llum suau', 'Poca densitat'],
     placeDetails: 'Fitxa del lloc',
@@ -366,12 +431,30 @@ const appCopies = {
     profilesIntro: 'Adults, tutors i perfils tutelats dins el mateix compte.',
     adultProfile: 'Adult o persona identificada',
     tutorProfile: 'Tutor principal',
+    tutorProfileBody:
+        'Compte principal que revisa aportacions dels perfils infantils.',
     childProfile: 'Perfil infantil tutelat',
     sensoryProfile: 'Perfil sensorial',
+    sensoryProfileBody:
+        'Preferències de soroll, llum, afluència i temps d’espera.',
+    trustedContactBody: 'Configura un contacte de confiança al teu perfil.',
     license: 'Col·legiat/da',
     registry: 'Registre',
     contact: 'Contactar',
     verified: 'Verificat',
+    actionUnavailable: 'Encara no disponible',
+    noPlacesTitle: 'Encara no hi ha llocs publicats',
+    noPlacesBody:
+        'Quan facis una aportació real, el lloc i les imatges quedaran pendents de moderació.',
+    noVerifiedProfiles: 'Encara no hi ha professionals verificats.',
+    noChildProfiles: 'Encara no hi ha perfils tutelats.',
+    createPlace: 'Crear lloc nou',
+    placeName: 'Nom del lloc',
+    placeCity: 'Ciutat',
+    placeAddress: 'Adreça o zona',
+    placeDescription: 'Descripció opcional',
+    locationRequiredForPlace:
+        'Activa la ubicació per crear un lloc nou des del mòbil.',
   ),
   LocaleOption.es: AppCopy(
     appName: 'Spectrum Access',
@@ -381,7 +464,7 @@ const appCopies = {
     contribute: 'Aportaciones',
     support: 'Ayuda',
     profiles: 'Perfiles',
-    greeting: 'Buenos días, Josep',
+    greeting: 'Bienvenido/a',
     homeIntro:
         'Según tu perfil sensorial, sugerimos espacios con baja densidad acústica y salidas claras.',
     sessionStatus: 'Sesión protegida',
@@ -391,12 +474,15 @@ const appCopies = {
     focusActive: 'Focus activo',
     nearbyMap: 'Mapa Sensorial',
     savedPlaces: 'Lugares guardados',
+    availablePlaces: 'Espacios disponibles',
     pendingDraft: 'Borrador pendiente',
     continueDraft: 'Continuar borrador',
     helpCard: 'Tarjeta de ayuda',
     openHelpCard: 'Abrir tarjeta',
+    openFullMap: 'Abrir mapa completo',
     verifiedProfessionals: 'Profesionales verificados',
     viewAll: 'Ver todos',
+    close: 'Cerrar',
     search: 'Busca lugares, ciudad o categoría',
     filters: ['Bajo ruido', 'Luz suave', 'Poca densidad'],
     placeDetails: 'Ficha del lugar',
@@ -434,12 +520,30 @@ const appCopies = {
         'Adultos, tutores y perfiles tutelados dentro de la misma cuenta.',
     adultProfile: 'Adulto o persona identificada',
     tutorProfile: 'Tutor principal',
+    tutorProfileBody:
+        'Cuenta principal que revisa aportaciones de los perfiles infantiles.',
     childProfile: 'Perfil infantil tutelado',
     sensoryProfile: 'Perfil sensorial',
+    sensoryProfileBody:
+        'Preferencias de ruido, luz, afluencia y tiempo de espera.',
+    trustedContactBody: 'Configura un contacto de confianza en tu perfil.',
     license: 'Colegiado/a',
     registry: 'Registro',
     contact: 'Contactar',
     verified: 'Verificado',
+    actionUnavailable: 'Todavía no disponible',
+    noPlacesTitle: 'Todavía no hay lugares publicados',
+    noPlacesBody:
+        'Cuando hagas una aportación real, el lugar y las imágenes quedarán pendientes de moderación.',
+    noVerifiedProfiles: 'Todavía no hay profesionales verificados.',
+    noChildProfiles: 'Todavía no hay perfiles tutelados.',
+    createPlace: 'Crear lugar nuevo',
+    placeName: 'Nombre del lugar',
+    placeCity: 'Ciudad',
+    placeAddress: 'Dirección o zona',
+    placeDescription: 'Descripción opcional',
+    locationRequiredForPlace:
+        'Activa la ubicación para crear un lugar nuevo desde el móvil.',
   ),
   LocaleOption.en: AppCopy(
     appName: 'Spectrum Access',
@@ -449,7 +553,7 @@ const appCopies = {
     contribute: 'Report',
     support: 'Help',
     profiles: 'Profiles',
-    greeting: 'Good morning, Josep',
+    greeting: 'Welcome',
     homeIntro:
         'Based on your sensory profile, we suggest spaces with low acoustic density and clear exits.',
     sessionStatus: 'Protected session',
@@ -459,12 +563,15 @@ const appCopies = {
     focusActive: 'Focus active',
     nearbyMap: 'Sensory Map',
     savedPlaces: 'Saved places',
+    availablePlaces: 'Available places',
     pendingDraft: 'Pending draft',
     continueDraft: 'Continue draft',
     helpCard: 'Help card',
     openHelpCard: 'Open card',
+    openFullMap: 'Open full map',
     verifiedProfessionals: 'Verified professionals',
     viewAll: 'View all',
+    close: 'Close',
     search: 'Search places, city or category',
     filters: ['Low noise', 'Soft light', 'Low density'],
     placeDetails: 'Place details',
@@ -501,12 +608,29 @@ const appCopies = {
         'Adults, tutors and tutored profiles inside the same account.',
     adultProfile: 'Adult or identified person',
     tutorProfile: 'Main tutor',
+    tutorProfileBody:
+        'Main account that reviews contributions from child profiles.',
     childProfile: 'Tutored child profile',
     sensoryProfile: 'Sensory profile',
+    sensoryProfileBody: 'Noise, light, crowding and waiting-time preferences.',
+    trustedContactBody: 'Configure a trusted contact in your profile.',
     license: 'License',
     registry: 'Registry',
     contact: 'Contact',
     verified: 'Verified',
+    actionUnavailable: 'Not available yet',
+    noPlacesTitle: 'No published places yet',
+    noPlacesBody:
+        'When you make a real contribution, the place and images will stay pending moderation.',
+    noVerifiedProfiles: 'No verified professionals yet.',
+    noChildProfiles: 'No tutored profiles yet.',
+    createPlace: 'Create new place',
+    placeName: 'Place name',
+    placeCity: 'City',
+    placeAddress: 'Address or area',
+    placeDescription: 'Optional description',
+    locationRequiredForPlace:
+        'Enable location to create a new place from the phone.',
   ),
 };
 
@@ -517,6 +641,10 @@ const authCopies = {
         'Consulta el mapa sense compte. Registra’t només quan vulguis aportar imatges, crear perfils tutelats o sol·licitar verificació professional.',
     login: 'Entrar',
     register: 'Crear compte',
+    personalAccount: 'Usuari',
+    professionalAccount: 'Professional',
+    professionalRegisterIntro:
+        'El compte es crearà ara, però la verificació professional quedarà pendent fins que un administrador l’aprovi.',
     email: 'Email',
     password: 'Contrasenya',
     confirmPassword: 'Repeteix la contrasenya',
@@ -533,9 +661,21 @@ const authCopies = {
     signInRequiredIntro:
         'Pots consultar el mapa i la informació bàsica sense compte. Per aportar contingut, veure perfils verificats o gestionar dades personals cal registrar-se.',
     signInToContinue: 'Iniciar sessió',
+    requiredFields: 'Omple els camps obligatoris.',
+    invalidEmail: 'Introdueix un email vàlid.',
+    passwordMinLength: 'La contrasenya ha de tenir com a mínim 6 caràcters.',
     passwordsMismatch: 'Les contrasenyes no coincideixen.',
+    professionalFieldsRequired:
+        'Omple les dades professionals per enviar la verificació.',
     authFailed: 'No s’ha pogut completar l’autenticació.',
+    authCancelled: 'Has cancel·lat l’autenticació.',
+    authProviderDisabled:
+        'Aquest mètode d’accés encara no està activat a Firebase.',
+    authConfigurationError:
+        'Falta configuració nativa o OAuth per completar aquest accés.',
     verificationSent: 'Compte creat. Revisa el correu de verificació.',
+    professionalRegistrationSent:
+        'Compte creat. La verificació professional queda pendent de revisió.',
     childAlias: 'Àlies infantil',
     childAge: 'Franja d’edat',
     createChildProfile: 'Crear perfil tutelat',
@@ -554,6 +694,10 @@ const authCopies = {
         'Consulta el mapa sin cuenta. Regístrate solo cuando quieras aportar imágenes, crear perfiles tutelados o solicitar verificación profesional.',
     login: 'Entrar',
     register: 'Crear cuenta',
+    personalAccount: 'Usuario',
+    professionalAccount: 'Profesional',
+    professionalRegisterIntro:
+        'La cuenta se creará ahora, pero la verificación profesional quedará pendiente hasta que un administrador la apruebe.',
     email: 'Email',
     password: 'Contraseña',
     confirmPassword: 'Repite la contraseña',
@@ -570,9 +714,21 @@ const authCopies = {
     signInRequiredIntro:
         'Puedes consultar el mapa y la información básica sin cuenta. Para aportar contenido, ver perfiles verificados o gestionar datos personales hay que registrarse.',
     signInToContinue: 'Iniciar sesión',
+    requiredFields: 'Rellena los campos obligatorios.',
+    invalidEmail: 'Introduce un email válido.',
+    passwordMinLength: 'La contraseña debe tener como mínimo 6 caracteres.',
     passwordsMismatch: 'Las contraseñas no coinciden.',
+    professionalFieldsRequired:
+        'Rellena los datos profesionales para enviar la verificación.',
     authFailed: 'No se ha podido completar la autenticación.',
+    authCancelled: 'Has cancelado la autenticación.',
+    authProviderDisabled:
+        'Este método de acceso todavía no está activado en Firebase.',
+    authConfigurationError:
+        'Falta configuración nativa u OAuth para completar este acceso.',
     verificationSent: 'Cuenta creada. Revisa el correo de verificación.',
+    professionalRegistrationSent:
+        'Cuenta creada. La verificación profesional queda pendiente de revisión.',
     childAlias: 'Alias infantil',
     childAge: 'Franja de edad',
     createChildProfile: 'Crear perfil tutelado',
@@ -591,6 +747,10 @@ const authCopies = {
         'Browse the map without an account. Register only when you want to upload images, create tutored profiles or request professional verification.',
     login: 'Sign in',
     register: 'Create account',
+    personalAccount: 'User',
+    professionalAccount: 'Professional',
+    professionalRegisterIntro:
+        'The account will be created now, but professional verification stays pending until an administrator approves it.',
     email: 'Email',
     password: 'Password',
     confirmPassword: 'Repeat password',
@@ -607,9 +767,20 @@ const authCopies = {
     signInRequiredIntro:
         'You can browse the map and basic place information without an account. To contribute content, view verified profiles or manage personal data, registration is required.',
     signInToContinue: 'Sign in',
+    requiredFields: 'Fill in the required fields.',
+    invalidEmail: 'Enter a valid email.',
+    passwordMinLength: 'Password must be at least 6 characters.',
     passwordsMismatch: 'Passwords do not match.',
+    professionalFieldsRequired:
+        'Fill in the professional details to send verification.',
     authFailed: 'Authentication could not be completed.',
+    authCancelled: 'Authentication was cancelled.',
+    authProviderDisabled: 'This sign-in method is not enabled in Firebase yet.',
+    authConfigurationError:
+        'Native or OAuth configuration is missing for this sign-in method.',
     verificationSent: 'Account created. Check the verification email.',
+    professionalRegistrationSent:
+        'Account created. Professional verification is pending review.',
     childAlias: 'Child alias',
     childAge: 'Age range',
     createChildProfile: 'Create tutored profile',
@@ -624,84 +795,39 @@ const authCopies = {
   ),
 };
 
-const places = [
-  PlaceSummary(
-    id: 'biblioteca-veridian',
-    name: 'Biblioteca Veridian',
-    area: 'Zona silenciosa',
-    city: 'Barcelona',
-    category: 'Cultura',
-    score: 9.8,
-    distance: '0.4 km',
-    quietDb: '34dB',
-    latitude: 41.3867,
-    longitude: 2.1699,
-    description:
-        'Biblioteca amb llum difusa, plantes baixes tranquil·les i sortida visible.',
-  ),
-  PlaceSummary(
-    id: 'jardi-atrium',
-    name: 'Jardí Atrium',
-    area: 'Espai verd',
-    city: 'Barcelona',
-    category: 'Exterior',
-    score: 9.5,
-    distance: '0.8 km',
-    quietDb: '38dB',
-    latitude: 41.3921,
-    longitude: 2.1636,
-    description:
-        'Pati obert amb recorregut senzill, bancs separats i zones d’ombra.',
-  ),
-  PlaceSummary(
-    id: 'esbeteria-mar-blau',
-    name: 'Esbeteria Mar Blau',
-    area: 'Cafeteria tranquil·la',
-    city: 'Barcelona',
-    category: 'Cafeteria',
-    score: 8.9,
-    distance: '1.2 km',
-    quietDb: '42dB',
-    latitude: 41.3815,
-    longitude: 2.1871,
-    description:
-        'Interior petit amb música baixa al matí i una taula lateral amb menys estímuls.',
-  ),
-];
+String localizedPlaceArea(LocaleOption locale, PlaceSummary place) {
+  return place.area;
+}
 
-const verifiedProfiles = [
-  VerifiedProfile(
-    name: 'Marta Gómez',
-    kind: 'Psicòloga',
-    identifier: 'COPC 47145',
-    detail: 'Autisme adult i suport familiar',
-    distance: '0.7 km',
-    latitude: 41.3891,
-    longitude: 2.1706,
-    initials: 'MG',
-    icon: Icons.psychology_outlined,
-  ),
-  VerifiedProfile(
-    name: 'Centre TEA Catalunya',
-    kind: 'Entitat',
-    identifier: 'Reg. E-12345',
-    detail: 'Acompanyament per a persones autistes i famílies',
-    distance: '1.1 km',
-    latitude: 41.3878,
-    longitude: 2.1602,
-    initials: 'CT',
-    icon: Icons.apartment_outlined,
-  ),
-];
+String localizedPlaceDescription(LocaleOption locale, PlaceSummary place) {
+  return place.description;
+}
 
-const childProfiles = [
-  ChildProfile(alias: 'Aina', age: '8', state: 'Aportació pendent'),
-  ChildProfile(alias: 'Pau', age: '11', state: 'Preferències actualitzades'),
-];
+String localizedChildState(LocaleOption locale, ChildProfile profile) {
+  return switch (profile.state) {
+    'Aportació pendent' => switch (locale) {
+      LocaleOption.ca => 'Aportació pendent',
+      LocaleOption.es => 'Aportación pendiente',
+      LocaleOption.en => 'Pending contribution',
+    },
+    'Preferències actualitzades' => switch (locale) {
+      LocaleOption.ca => 'Preferències actualitzades',
+      LocaleOption.es => 'Preferencias actualizadas',
+      LocaleOption.en => 'Preferences updated',
+    },
+    _ => profile.state,
+  };
+}
 
-List<PlaceSummary> get samplePlaces => places;
-List<VerifiedProfile> get sampleVerifiedProfiles => verifiedProfiles;
-List<ChildProfile> get sampleChildProfiles => childProfiles;
+String localizedChildAgeLine(LocaleOption locale, ChildProfile profile) {
+  final ageLabel = switch (locale) {
+    LocaleOption.ca => '${profile.age} anys',
+    LocaleOption.es => '${profile.age} años',
+    LocaleOption.en => '${profile.age} years',
+  };
+
+  return '$ageLabel · ${localizedChildState(locale, profile)}';
+}
 
 String sensoryLabel(LocaleOption locale, SensoryKey key) {
   switch (locale) {

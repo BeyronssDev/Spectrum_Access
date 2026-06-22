@@ -3,8 +3,6 @@
 import {
   Bell,
   Bookmark,
-  Building2,
-  CalendarCheck,
   Check,
   ChevronRight,
   CircleHelp,
@@ -15,19 +13,16 @@ import {
   Home,
   ImagePlus,
   KeyRound,
-  Languages,
   Layers,
   LifeBuoy,
   LocateFixed,
   LogOut,
   Lock,
   Mail,
-  Map,
   MapPin,
   MessageSquare,
   Minus,
   Moon,
-  Navigation,
   Plus,
   Search,
   Send,
@@ -39,8 +34,7 @@ import {
   Upload,
   UserPlus,
   UserRound,
-  UsersRound,
-  Volume2
+  UsersRound
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { User } from "firebase/auth";
@@ -59,7 +53,8 @@ import {
   requestProfessionalVerification,
   submitReview,
   subscribeToAuthState,
-  uploadPlaceImage
+  uploadPlaceImage,
+  type ProfessionalVerificationInput
 } from "./lib/firebase-actions";
 import { loadGoogleMaps, type GoogleMarkerInstance } from "./lib/google-maps";
 
@@ -69,6 +64,7 @@ type SensoryKey = "noise" | "density" | "light" | "wait";
 type MapLayerId = "roadmap" | "satellite" | "terrain";
 type LocationState = "idle" | "locating" | "located" | "denied" | "unsupported" | "error";
 type AuthMode = "login" | "register";
+type RegisterAccountType = "user" | "professional";
 type UserLocation = { lat: number; lng: number; accuracy?: number };
 
 type ContributionDraft = {
@@ -91,6 +87,7 @@ type Place = {
   distance: string;
   description: string;
   quietDb: string;
+  criterionAverages?: FirebasePlace["criterionAverages"];
   position: {
     lat: number;
     lng: number;
@@ -152,6 +149,13 @@ const copy: Record<
     focusOn: string;
     darkMode: string;
     lightMode: string;
+    notifications: string;
+    notificationsEmptyTitle: string;
+    notificationsEmptyBody: string;
+    notificationsGuestTitle: string;
+    notificationsGuestBody: string;
+    notificationsFutureNote: string;
+    closeNotifications: string;
     mapCurrentStatus: string;
     mapLocating: string;
     mapLocated: string;
@@ -166,16 +170,23 @@ const copy: Record<
     mapLocationControl: string;
     mapLayerControl: string;
     mapYourLocation: string;
+    noPlacesTitle: string;
+    noPlacesBody: string;
+    noVerifiedProfiles: string;
+    noChildProfiles: string;
+    noSensoryProfile: string;
+    locationRequiredForPlace: string;
     greeting: string;
     homeIntro: string;
     sensoryMap: string;
     mapArea: string;
     savedPlaces: string;
+    availablePlaces: string;
+    results: string;
     viewAll: string;
+    unavailableAction: string;
     trust: string;
     professionalsAndEntities: string;
-    pendingDraft: string;
-    continueDraft: string;
     tutorReview: string;
     supportCard: string;
     openSupport: string;
@@ -200,6 +211,7 @@ const copy: Record<
     supportIntro: string;
     supportMessage: string;
     trustedContact: string;
+    trustedContactBody: string;
     focusModeTitle: string;
     focusModeBody: string;
     profilesTitle: string;
@@ -214,6 +226,11 @@ const copy: Record<
     registry: string;
     contact: string;
     verified: string;
+    adminPanel: string;
+    roleUser: string;
+    roleModerator: string;
+    roleAdmin: string;
+    roleSuperAdmin: string;
     privateEvidence: string;
   }
 > = {
@@ -231,6 +248,15 @@ const copy: Record<
     focusOn: "Focus actiu",
     darkMode: "Mode fosc",
     lightMode: "Mode clar",
+    notifications: "Notificacions",
+    notificationsEmptyTitle: "No tens notificacions pendents",
+    notificationsEmptyBody:
+      "Quan es revisin les teves fotos, llocs o aportacions, els avisos apareixeran aquí.",
+    notificationsGuestTitle: "Notificacions del compte",
+    notificationsGuestBody:
+      "Inicia sessió per veure avisos de fotos, llocs nous i canvis de moderació.",
+    notificationsFutureNote: "Preparat per mostrar fotos noves, llocs creats i respostes de moderació.",
+    closeNotifications: "Tancar notificacions",
     mapCurrentStatus: "Estat actual",
     mapLocating: "Buscant ubicació",
     mapLocated: "Ubicació detectada",
@@ -245,17 +271,25 @@ const copy: Record<
     mapLocationControl: "Trobar la meva ubicació",
     mapLayerControl: "Canviar capa del mapa",
     mapYourLocation: "La teva ubicació",
-    greeting: "Bon dia, Josep",
+    noPlacesTitle: "Encara no hi ha llocs publicats",
+    noPlacesBody:
+      "Quan facis una aportació real, el lloc i les imatges quedaran pendents de moderació abans de publicar-se.",
+    noVerifiedProfiles: "Encara no hi ha professionals o entitats verificades.",
+    noChildProfiles: "Encara no hi ha perfils tutelats.",
+    noSensoryProfile: "Encara no hi ha preferències sensorials guardades.",
+    locationRequiredForPlace: "Activa la ubicació per crear un lloc nou amb coordenades reals.",
+    greeting: "Benvingut/da",
     homeIntro:
-      "Basat en el teu perfil sensorial, et suggerim visitar espais amb baixa densitat acústica i sortides clares.",
+      "Consulta llocs reals, crea aportacions i deixa que la moderació publiqui només contingut validat.",
     sensoryMap: "Mapa Sensorial",
-    mapArea: "Barcelona, districtes de pau",
+    mapArea: "Llocs publicats",
     savedPlaces: "Llocs desats",
+    availablePlaces: "Espais disponibles",
+    results: "Resultats",
     viewAll: "Veure tots",
+    unavailableAction: "Encara no disponible",
     trust: "Confiança",
     professionalsAndEntities: "Professionals i entitats",
-    pendingDraft: "Esborrany pendent",
-    continueDraft: "Continuar esborrany",
     tutorReview: "Revisió del tutor",
     supportCard: "Targeta d'ajuda",
     openSupport: "Obrir targeta",
@@ -283,6 +317,7 @@ const copy: Record<
     supportMessage:
       "Soc una persona autista. Ara mateix em costa parlar o respondre. Necessito uns minuts, un lloc tranquil o contactar amb una persona de confiança.",
     trustedContact: "Contacte de confiança",
+    trustedContactBody: "Configura un contacte de confiança al teu perfil.",
     focusModeTitle: "Focus mode",
     focusModeBody: "Redueix informació secundària, manté accions crítiques i fa la navegació més tranquil·la.",
     profilesTitle: "Perfils",
@@ -299,6 +334,11 @@ const copy: Record<
     registry: "Registre",
     contact: "Contactar",
     verified: "Verificat",
+    adminPanel: "Administració",
+    roleUser: "Usuari",
+    roleModerator: "Moderador",
+    roleAdmin: "Admin",
+    roleSuperAdmin: "Super admin",
     privateEvidence: "L'evidència documental queda privada per administració."
   },
   es: {
@@ -315,6 +355,15 @@ const copy: Record<
     focusOn: "Focus activo",
     darkMode: "Modo oscuro",
     lightMode: "Modo claro",
+    notifications: "Notificaciones",
+    notificationsEmptyTitle: "No tienes notificaciones pendientes",
+    notificationsEmptyBody:
+      "Cuando se revisen tus fotos, lugares o aportaciones, los avisos aparecerán aquí.",
+    notificationsGuestTitle: "Notificaciones de la cuenta",
+    notificationsGuestBody:
+      "Inicia sesión para ver avisos de fotos, lugares nuevos y cambios de moderación.",
+    notificationsFutureNote: "Preparado para mostrar fotos nuevas, lugares creados y respuestas de moderación.",
+    closeNotifications: "Cerrar notificaciones",
     mapCurrentStatus: "Estado actual",
     mapLocating: "Buscando ubicación",
     mapLocated: "Ubicación detectada",
@@ -329,17 +378,25 @@ const copy: Record<
     mapLocationControl: "Encontrar mi ubicación",
     mapLayerControl: "Cambiar capa del mapa",
     mapYourLocation: "Tu ubicación",
-    greeting: "Buenos días, Josep",
+    noPlacesTitle: "Todavía no hay lugares publicados",
+    noPlacesBody:
+      "Cuando hagas una aportación real, el lugar y las imágenes quedarán pendientes de moderación antes de publicarse.",
+    noVerifiedProfiles: "Todavía no hay profesionales o entidades verificadas.",
+    noChildProfiles: "Todavía no hay perfiles tutelados.",
+    noSensoryProfile: "Todavía no hay preferencias sensoriales guardadas.",
+    locationRequiredForPlace: "Activa la ubicación para crear un lugar nuevo con coordenadas reales.",
+    greeting: "Bienvenido/a",
     homeIntro:
-      "Según tu perfil sensorial, sugerimos visitar espacios con baja densidad acústica y salidas claras.",
+      "Consulta lugares reales, crea aportaciones y deja que la moderación publique solo contenido validado.",
     sensoryMap: "Mapa Sensorial",
-    mapArea: "Barcelona, distritos de paz",
+    mapArea: "Lugares publicados",
     savedPlaces: "Lugares guardados",
+    availablePlaces: "Espacios disponibles",
+    results: "Resultados",
     viewAll: "Ver todos",
+    unavailableAction: "Todavía no disponible",
     trust: "Confianza",
     professionalsAndEntities: "Profesionales y entidades",
-    pendingDraft: "Borrador pendiente",
-    continueDraft: "Continuar borrador",
     tutorReview: "Revisión del tutor",
     supportCard: "Tarjeta de ayuda",
     openSupport: "Abrir tarjeta",
@@ -367,6 +424,7 @@ const copy: Record<
     supportMessage:
       "Soy una persona autista. Ahora mismo me cuesta hablar o responder. Necesito unos minutos, un lugar tranquilo o contactar con una persona de confianza.",
     trustedContact: "Contacto de confianza",
+    trustedContactBody: "Configura un contacto de confianza en tu perfil.",
     focusModeTitle: "Focus mode",
     focusModeBody: "Reduce información secundaria, mantiene acciones críticas y hace la navegación más tranquila.",
     profilesTitle: "Perfiles",
@@ -383,6 +441,11 @@ const copy: Record<
     registry: "Registro",
     contact: "Contactar",
     verified: "Verificado",
+    adminPanel: "Administración",
+    roleUser: "Usuario",
+    roleModerator: "Moderador",
+    roleAdmin: "Admin",
+    roleSuperAdmin: "Super admin",
     privateEvidence: "La evidencia documental queda privada para administración."
   },
   en: {
@@ -399,6 +462,15 @@ const copy: Record<
     focusOn: "Focus active",
     darkMode: "Dark mode",
     lightMode: "Light mode",
+    notifications: "Notifications",
+    notificationsEmptyTitle: "You have no pending notifications",
+    notificationsEmptyBody:
+      "When your photos, places or reports are reviewed, alerts will appear here.",
+    notificationsGuestTitle: "Account notifications",
+    notificationsGuestBody:
+      "Sign in to see photo, new place and moderation updates.",
+    notificationsFutureNote: "Ready to show new photos, created places and moderation responses.",
+    closeNotifications: "Close notifications",
     mapCurrentStatus: "Current status",
     mapLocating: "Finding location",
     mapLocated: "Location detected",
@@ -413,17 +485,25 @@ const copy: Record<
     mapLocationControl: "Find my location",
     mapLayerControl: "Change map layer",
     mapYourLocation: "Your location",
-    greeting: "Good morning, Josep",
+    noPlacesTitle: "No published places yet",
+    noPlacesBody:
+      "When you make a real contribution, the place and images will stay pending moderation before publication.",
+    noVerifiedProfiles: "No verified professionals or entities yet.",
+    noChildProfiles: "No tutored profiles yet.",
+    noSensoryProfile: "No sensory preferences have been saved yet.",
+    locationRequiredForPlace: "Enable location to create a new place with real coordinates.",
+    greeting: "Welcome",
     homeIntro:
-      "Based on your sensory profile, we suggest spaces with low acoustic density and clear exits.",
+      "Browse real places, create contributions and let moderation publish only validated content.",
     sensoryMap: "Sensory Map",
-    mapArea: "Barcelona, calm districts",
+    mapArea: "Published places",
     savedPlaces: "Saved places",
+    availablePlaces: "Available places",
+    results: "Results",
     viewAll: "View all",
+    unavailableAction: "Not available yet",
     trust: "Trust",
     professionalsAndEntities: "Professionals and entities",
-    pendingDraft: "Pending draft",
-    continueDraft: "Continue draft",
     tutorReview: "Tutor review",
     supportCard: "Help card",
     openSupport: "Open card",
@@ -450,6 +530,7 @@ const copy: Record<
     supportMessage:
       "I am autistic. Right now it is hard for me to speak or answer. I need a few minutes, a quiet place or a trusted contact.",
     trustedContact: "Trusted contact",
+    trustedContactBody: "Configure a trusted contact in your profile.",
     focusModeTitle: "Focus mode",
     focusModeBody: "Reduces secondary information, keeps critical actions and makes navigation calmer.",
     profilesTitle: "Profiles",
@@ -466,6 +547,11 @@ const copy: Record<
     registry: "Registry",
     contact: "Contact",
     verified: "Verified",
+    adminPanel: "Administration",
+    roleUser: "User",
+    roleModerator: "Moderator",
+    roleAdmin: "Admin",
+    roleSuperAdmin: "Super admin",
     privateEvidence: "Documentary evidence remains private for administration."
   }
 };
@@ -482,6 +568,10 @@ const authCopy: Record<
     confirmPassword: string;
     publicName: string;
     cityOptional: string;
+    accountType: string;
+    registerAsUser: string;
+    registerAsProfessional: string;
+    professionalRegistrationTitle: string;
     continueWithGoogle: string;
     continueWithApple: string;
     emailLogin: string;
@@ -494,9 +584,12 @@ const authCopy: Record<
     signInRequiredTitle: string;
     signInRequiredIntro: string;
     signInToContinue: string;
+    requiredFields: string;
     passwordsMismatch: string;
     authFailed: string;
     emailVerificationSent: string;
+    professionalVerificationSent: string;
+    professionalFieldsRequired: string;
     contributionSent: string;
     createNewPlace: string;
     useSelectedPlace: string;
@@ -512,6 +605,7 @@ const authCopy: Record<
     professionalName: string;
     licenseNumber: string;
     professionalCollege: string;
+    professionalType: string;
     specialty: string;
     requestVerification: string;
     verificationRequested: string;
@@ -528,6 +622,10 @@ const authCopy: Record<
     confirmPassword: "Repeteix la contrasenya",
     publicName: "Nom públic",
     cityOptional: "Ciutat opcional",
+    accountType: "Tipus de compte",
+    registerAsUser: "Usuari",
+    registerAsProfessional: "Professional",
+    professionalRegistrationTitle: "Dades professionals",
     continueWithGoogle: "Continuar amb Google",
     continueWithApple: "Continuar amb Apple",
     emailLogin: "Entrar amb email",
@@ -541,9 +639,12 @@ const authCopy: Record<
     signInRequiredIntro:
       "Pots consultar el mapa i la informació bàsica sense compte. Per aportar contingut, veure perfils verificats o gestionar dades personals cal registrar-se.",
     signInToContinue: "Iniciar sessió",
+    requiredFields: "Omple els camps obligatoris.",
     passwordsMismatch: "Les contrasenyes no coincideixen.",
     authFailed: "No s'ha pogut completar l'autenticació. Revisa Firebase Auth i torna-ho a provar.",
     emailVerificationSent: "Compte creat. T'hem enviat un correu de verificació.",
+    professionalVerificationSent: "Compte professional creat. T'hem enviat el correu de verificació i la sol·licitud queda pendent de revisió.",
+    professionalFieldsRequired: "Omple les dades professionals abans de crear el compte.",
     contributionSent: "Aportació enviada a moderació.",
     createNewPlace: "Crear lloc nou",
     useSelectedPlace: "Usar el lloc seleccionat",
@@ -559,6 +660,7 @@ const authCopy: Record<
     professionalName: "Nom professional",
     licenseNumber: "Número de col·legiat/da",
     professionalCollege: "Col·legi professional",
+    professionalType: "Tipus de professional",
     specialty: "Especialitat",
     requestVerification: "Enviar verificació",
     verificationRequested: "Sol·licitud enviada. Queda pendent de revisió manual."
@@ -574,6 +676,10 @@ const authCopy: Record<
     confirmPassword: "Repite la contraseña",
     publicName: "Nombre público",
     cityOptional: "Ciudad opcional",
+    accountType: "Tipo de cuenta",
+    registerAsUser: "Usuario",
+    registerAsProfessional: "Profesional",
+    professionalRegistrationTitle: "Datos profesionales",
     continueWithGoogle: "Continuar con Google",
     continueWithApple: "Continuar con Apple",
     emailLogin: "Entrar con email",
@@ -587,9 +693,12 @@ const authCopy: Record<
     signInRequiredIntro:
       "Puedes consultar el mapa y la información básica sin cuenta. Para aportar contenido, ver perfiles verificados o gestionar datos personales hay que registrarse.",
     signInToContinue: "Iniciar sesión",
+    requiredFields: "Rellena los campos obligatorios.",
     passwordsMismatch: "Las contraseñas no coinciden.",
     authFailed: "No se ha podido completar la autenticación. Revisa Firebase Auth e inténtalo de nuevo.",
     emailVerificationSent: "Cuenta creada. Te hemos enviado un correo de verificación.",
+    professionalVerificationSent: "Cuenta profesional creada. Te hemos enviado el correo de verificación y la solicitud queda pendiente de revisión.",
+    professionalFieldsRequired: "Rellena los datos profesionales antes de crear la cuenta.",
     contributionSent: "Aportación enviada a moderación.",
     createNewPlace: "Crear lugar nuevo",
     useSelectedPlace: "Usar el lugar seleccionado",
@@ -605,6 +714,7 @@ const authCopy: Record<
     professionalName: "Nombre profesional",
     licenseNumber: "Número de colegiado/a",
     professionalCollege: "Colegio profesional",
+    professionalType: "Tipo de profesional",
     specialty: "Especialidad",
     requestVerification: "Enviar verificación",
     verificationRequested: "Solicitud enviada. Queda pendiente de revisión manual."
@@ -620,6 +730,10 @@ const authCopy: Record<
     confirmPassword: "Repeat password",
     publicName: "Public name",
     cityOptional: "Optional city",
+    accountType: "Account type",
+    registerAsUser: "User",
+    registerAsProfessional: "Professional",
+    professionalRegistrationTitle: "Professional details",
     continueWithGoogle: "Continue with Google",
     continueWithApple: "Continue with Apple",
     emailLogin: "Sign in with email",
@@ -633,9 +747,12 @@ const authCopy: Record<
     signInRequiredIntro:
       "You can browse the map and basic place information without an account. To contribute content, view verified profiles or manage personal data, registration is required.",
     signInToContinue: "Sign in",
+    requiredFields: "Fill in the required fields.",
     passwordsMismatch: "Passwords do not match.",
     authFailed: "Authentication could not be completed. Check Firebase Auth and try again.",
     emailVerificationSent: "Account created. We sent you a verification email.",
+    professionalVerificationSent: "Professional account created. We sent you a verification email and the request is pending review.",
+    professionalFieldsRequired: "Fill in the professional details before creating the account.",
     contributionSent: "Contribution sent to moderation.",
     createNewPlace: "Create new place",
     useSelectedPlace: "Use selected place",
@@ -651,56 +768,14 @@ const authCopy: Record<
     professionalName: "Professional name",
     licenseNumber: "License number",
     professionalCollege: "Professional college",
+    professionalType: "Professional type",
     specialty: "Specialty",
     requestVerification: "Send verification",
     verificationRequested: "Request sent. It remains pending manual review."
   }
 };
 
-const places: Place[] = [
-  {
-    id: "biblioteca-veridian",
-    name: "Biblioteca Veridian",
-    area: "Zona silenciosa",
-    city: "Barcelona",
-    category: "Cultura",
-    score: 9.8,
-    distance: "0.4 km",
-    quietDb: "34dB",
-    position: { lat: 41.3867, lng: 2.1699 },
-    filterIds: [0, 1, 3],
-    description:
-      "Biblioteca amb llum difusa, plantes baixes tranquil·les i sortida principal visible des de la sala de lectura."
-  },
-  {
-    id: "atrium-garden",
-    name: "Jardí Atrium",
-    area: "Espai verd",
-    city: "Barcelona",
-    category: "Exterior",
-    score: 9.5,
-    distance: "0.8 km",
-    quietDb: "38dB",
-    position: { lat: 41.3921, lng: 2.1636 },
-    filterIds: [1, 2, 3],
-    description:
-      "Pati obert amb recorregut senzill, bancs separats i zones d'ombra. Recomanat en hores de baixa afluència."
-  },
-  {
-    id: "mar-blau",
-    name: "Esbeteria Mar Blau",
-    area: "Cafeteria tranquil·la",
-    city: "Barcelona",
-    category: "Cafeteria",
-    score: 8.9,
-    distance: "1.2 km",
-    quietDb: "42dB",
-    position: { lat: 41.3815, lng: 2.1871 },
-    filterIds: [0, 2],
-    description:
-      "Interior petit amb música baixa al matí, personal amable i una taula lateral amb menys estímuls visuals."
-  }
-];
+const places: Place[] = [];
 
 const googleMapStyles: Array<Record<string, unknown>> = [
   { elementType: "geometry", stylers: [{ color: "#f6f3f2" }] },
@@ -715,6 +790,38 @@ const googleMapStyles: Array<Record<string, unknown>> = [
   { featureType: "water", elementType: "geometry", stylers: [{ color: "#bcc7dd" }] }
 ];
 
+function criterionAtMost(place: FirebasePlace, criterion: keyof SensoryRating, maximum: number) {
+  const score = place.criterionAverages?.[criterion];
+  return typeof score === "number" && score > 0 && score <= maximum;
+}
+
+function criterionAtLeast(place: FirebasePlace, criterion: keyof SensoryRating, minimum: number) {
+  const score = place.criterionAverages?.[criterion];
+  return typeof score === "number" && score >= minimum;
+}
+
+function filterIdsForPlace(place: FirebasePlace) {
+  if (place.ratingCount <= 0 || !place.criterionAverages) {
+    return [];
+  }
+
+  const ids: number[] = [];
+  if (criterionAtMost(place, "noise", 3)) {
+    ids.push(0);
+  }
+  if (criterionAtMost(place, "lighting", 3)) {
+    ids.push(1);
+  }
+  if (criterionAtMost(place, "crowd", 3)) {
+    ids.push(2);
+  }
+  if (criterionAtLeast(place, "exitEase", 4)) {
+    ids.push(3);
+  }
+
+  return ids;
+}
+
 function toUiPlace(place: FirebasePlace): Place {
   return {
     id: place.id,
@@ -726,11 +833,12 @@ function toUiPlace(place: FirebasePlace): Place {
     distance: "Live",
     quietDb: place.ratingCount > 0 ? `${place.ratingCount} reviews` : "New",
     description: place.description,
+    criterionAverages: place.criterionAverages,
     position: {
       lat: place.position.latitude,
       lng: place.position.longitude
     },
-    filterIds: [0, 1, 2, 3]
+    filterIds: filterIdsForPlace(place)
   };
 }
 
@@ -801,60 +909,11 @@ function rankLocatedItemsByDistance<T extends { distance: string; position: { la
     }));
 }
 
-const professionals: Professional[] = [
-  {
-    id: "marta-gomez",
-    name: "Marta Gómez",
-    role: "Psicòloga",
-    license: "COPC 47145",
-    college: "Col·legi Oficial de Psicologia de Catalunya",
-    specialty: "Autisme adult i suport familiar",
-    city: "Barcelona",
-    distance: "0.7 km",
-    position: { lat: 41.3891, lng: 2.1706 },
-    initials: "MG"
-  },
-  {
-    id: "pau-ferrer",
-    name: "Pau Ferrer",
-    role: "Psicòleg",
-    license: "COPC 50218",
-    college: "Col·legi Oficial de Psicologia de Catalunya",
-    specialty: "Infància, tutors i regulació sensorial",
-    city: "Barcelona",
-    distance: "1.4 km",
-    position: { lat: 41.3928, lng: 2.1649 },
-    initials: "PF"
-  }
-];
+const professionals: Professional[] = [];
 
-const organizations: Organization[] = [
-  {
-    id: "centre-tea",
-    name: "Centre TEA Catalunya",
-    city: "Barcelona",
-    registry: "Reg. E-12345",
-    description: "Centre d'acompanyament per a persones autistes i famílies.",
-    distance: "1.1 km",
-    position: { lat: 41.3878, lng: 2.1602 },
-    initials: "CT"
-  },
-  {
-    id: "tea-valles",
-    name: "Associació TEA Vallès",
-    city: "Sabadell",
-    registry: "Reg. E-98765",
-    description: "Associació local amb activitats de suport i orientació.",
-    distance: "19 km",
-    position: { lat: 41.5489, lng: 2.1079 },
-    initials: "TV"
-  }
-];
+const organizations: Organization[] = [];
 
-const childProfiles = [
-  { alias: "Aina", age: "8", state: "Aportació pendent" },
-  { alias: "Pau", age: "11", state: "Preferències actualitzades" }
-];
+const childProfiles: Array<{ alias: string; age: string; state: string }> = [];
 
 const sensoryKeys: Array<{ key: SensoryKey; low: string; high: string }> = [
   { key: "noise", low: "Silenci", high: "Actiu" },
@@ -918,22 +977,22 @@ export function PlatformApp() {
   const [focusMode, setFocusMode] = useState(false);
   const [availablePlaces, setAvailablePlaces] = useState<Place[]>(places);
   const [query, setQuery] = useState("");
-  const [selectedPlaceId, setSelectedPlaceId] = useState(places[0].id);
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<number | null>(null);
   const [locationState, setLocationState] = useState<LocationState>("idle");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-  const [anonymous, setAnonymous] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [notes, setNotes] = useState("");
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [authPanelOpen, setAuthPanelOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [isSubmittingContribution, setIsSubmittingContribution] = useState(false);
   const [contributionMessage, setContributionMessage] = useState<string | null>(null);
   const [contributionDraft, setContributionDraft] = useState<ContributionDraft>({
-    createNewPlace: false,
+    createNewPlace: true,
     placeName: "",
     city: "",
     addressOrArea: "",
@@ -1036,19 +1095,20 @@ export function PlatformApp() {
 
     listActivePlaces()
       .then((firebasePlaces) => {
-        if (!active || firebasePlaces.length === 0) {
+        if (!active) {
           return;
         }
 
         const mappedPlaces = firebasePlaces.map(toUiPlace);
         setAvailablePlaces(mappedPlaces);
         setSelectedPlaceId((current) =>
-          mappedPlaces.some((place) => place.id === current) ? current : mappedPlaces[0].id
+          mappedPlaces.some((place) => place.id === current) ? current : (mappedPlaces[0]?.id ?? null)
         );
       })
       .catch(() => {
         if (active) {
-          setAvailablePlaces(places);
+          setAvailablePlaces([]);
+          setSelectedPlaceId(null);
         }
       });
 
@@ -1082,9 +1142,9 @@ export function PlatformApp() {
     });
   }, [rankedPlaces, query, selectedFilter]);
 
-  const selectedPlace = rankedPlaces.find((place) => place.id === selectedPlaceId) ?? rankedPlaces[0] ?? places[0];
+  const selectedPlace = rankedPlaces.find((place) => place.id === selectedPlaceId) ?? rankedPlaces[0] ?? null;
   const visibleSelectedPlace =
-    filteredPlaces.find((place) => place.id === selectedPlaceId) ?? filteredPlaces[0] ?? selectedPlace;
+    filteredPlaces.find((place) => place.id === selectedPlaceId) ?? filteredPlaces[0] ?? null;
 
   useEffect(() => {
     if (!userLocation || rankedPlaces.length === 0) {
@@ -1128,6 +1188,7 @@ export function PlatformApp() {
 
   const navigateToView = (view: ViewId) => {
     setActiveView(view);
+    setNotificationsOpen(false);
     if (authRequiredViews.has(view)) {
       setAuthPanelOpen(false);
     }
@@ -1138,11 +1199,21 @@ export function PlatformApp() {
     password: string;
     publicName: string;
     city?: string;
+    professional?: ProfessionalVerificationInput;
   }) => {
-    await registerWithEmailPassword({ ...input, locale });
+    await registerWithEmailPassword({
+      email: input.email,
+      password: input.password,
+      publicName: input.publicName,
+      city: input.city,
+      locale
+    });
+    if (input.professional) {
+      await requestProfessionalVerification(input.professional);
+    }
     await refreshAppProfile();
     setAuthPanelOpen(false);
-    setAuthMessage(authCopy[locale].emailVerificationSent);
+    setAuthMessage(input.professional ? authCopy[locale].professionalVerificationSent : authCopy[locale].emailVerificationSent);
   };
 
   const handleEmailLogin = async (input: { email: string; password: string }) => {
@@ -1167,9 +1238,15 @@ export function PlatformApp() {
     await logout();
     setAuthUser(null);
     setAppUser(null);
+    setNotificationsOpen(false);
     if (authRequiredViews.has(activeView)) {
       setActiveView("home");
     }
+  };
+
+  const openAuthPanel = () => {
+    setNotificationsOpen(false);
+    setAuthPanelOpen(true);
   };
 
   const updateContributionDraft = (patch: Partial<ContributionDraft>) => {
@@ -1191,18 +1268,39 @@ export function PlatformApp() {
     setContributionMessage(null);
 
     try {
-      let placeId = selectedPlace.id;
-      if (contributionDraft.createNewPlace) {
+      const shouldCreatePlace = contributionDraft.createNewPlace || !selectedPlace;
+      let placeId = selectedPlace?.id ?? null;
+
+      if (shouldCreatePlace) {
+        const placeName = contributionDraft.placeName.trim();
+        const city = contributionDraft.city.trim();
+        const addressOrArea = contributionDraft.addressOrArea.trim();
+
+        if (!placeName || !city || !addressOrArea) {
+          setContributionMessage(authCopy[locale].requiredFields);
+          return;
+        }
+
+        if (!userLocation) {
+          setContributionMessage(c.locationRequiredForPlace);
+          return;
+        }
+
         const created = await createPlace({
-          name: contributionDraft.placeName.trim(),
+          name: placeName,
           category: "other",
-          city: contributionDraft.city.trim(),
-          addressOrArea: contributionDraft.addressOrArea.trim(),
+          city,
+          addressOrArea,
           description: contributionDraft.description.trim() || undefined,
-          latitude: userLocation?.lat ?? selectedPlace.position.lat,
-          longitude: userLocation?.lng ?? selectedPlace.position.lng
+          latitude: userLocation.lat,
+          longitude: userLocation.lng
         });
         placeId = created.data.placeId;
+      }
+
+      if (!placeId) {
+        setContributionMessage(authCopy[locale].requiredFields);
+        return;
       }
 
       await submitReview({
@@ -1218,7 +1316,7 @@ export function PlatformApp() {
       setNotes("");
       setUploadedFiles([]);
       setContributionDraft({
-        createNewPlace: false,
+        createNewPlace: availablePlaces.length === 0,
         placeName: "",
         city: "",
         addressOrArea: "",
@@ -1239,6 +1337,18 @@ export function PlatformApp() {
       ? c.status
       : authCopy[locale].publicMode;
   const gatedViewNeedsAuth = !isAuthenticated && authRequiredViews.has(activeView);
+  const notificationItems: Array<{ id: string; title: string; body: string; meta?: string }> = [];
+  const appUserRoles = appUser?.roles ?? [];
+  const canAccessAdmin = appUserRoles.some((role) => role === "super_admin" || role === "admin" || role === "moderator");
+  const accountRoleLabel = appUserRoles.includes("super_admin")
+    ? c.roleSuperAdmin
+    : appUserRoles.includes("admin")
+      ? c.roleAdmin
+      : appUserRoles.includes("moderator")
+        ? c.roleModerator
+        : appUserRoles.includes("tutor")
+          ? "Tutor"
+          : c.roleUser;
 
   return (
     <main
@@ -1282,9 +1392,18 @@ export function PlatformApp() {
               <span className="avatar avatar-small">{(appUser?.publicName ?? authUser?.displayName ?? authCopy[locale].guestName).slice(0, 2).toUpperCase()}</span>
               <div>
                 <strong>{appUser?.publicName ?? authUser?.displayName ?? authUser?.email ?? authCopy[locale].guestName}</strong>
-                <span>{authUser ? (appUser?.roles.includes("tutor") ? "Tutor" : "Usuari") : authCopy[locale].guestRole}</span>
+                <span>{authUser ? accountRoleLabel : authCopy[locale].guestRole}</span>
               </div>
             </div>
+            {canAccessAdmin ? (
+              <a className="admin-entry-card" href="/admin">
+                <ShieldCheck aria-hidden="true" size={22} />
+                <div>
+                  <span>{accountRoleLabel}</span>
+                  <strong>{c.adminPanel}</strong>
+                </div>
+              </a>
+            ) : null}
             <div className="security-card">
               <ShieldCheck aria-hidden="true" size={22} />
               <div>
@@ -1303,6 +1422,12 @@ export function PlatformApp() {
             </div>
 
             <div className="top-actions">
+              {canAccessAdmin ? (
+                <a className="secondary-action admin-top-action" href="/admin">
+                  <ShieldCheck aria-hidden="true" size={17} />
+                  {c.adminPanel}
+                </a>
+              ) : null}
               <span className="health-pill">
                 <Check aria-hidden="true" size={15} />
                 {sessionStatusLabel}
@@ -1335,15 +1460,63 @@ export function PlatformApp() {
                 inactiveIcon={Moon}
                 onClick={() => setDarkMode((value) => !value)}
               />
-              <button type="button" className="icon-button" aria-label="Notificacions">
-                <Bell aria-hidden="true" size={22} />
-              </button>
+              <div className="notification-menu">
+                <button
+                  type="button"
+                  className="icon-button notification-trigger"
+                  aria-label={c.notifications}
+                  aria-controls="notification-panel"
+                  aria-expanded={notificationsOpen}
+                  onClick={() => setNotificationsOpen((open) => !open)}
+                >
+                  <Bell aria-hidden="true" size={22} />
+                </button>
+                {notificationsOpen ? (
+                  <section id="notification-panel" className="notification-popover panel" aria-label={c.notifications}>
+                    <div className="notification-heading">
+                      <div>
+                        <span>{c.notifications}</span>
+                        <strong>{notificationItems.length}</strong>
+                      </div>
+                      <button type="button" className="icon-button" aria-label={c.closeNotifications} onClick={() => setNotificationsOpen(false)}>
+                        <Minus aria-hidden="true" size={18} />
+                      </button>
+                    </div>
+
+                    {notificationItems.length > 0 ? (
+                      <div className="notification-list">
+                        {notificationItems.map((item) => (
+                          <article key={item.id} className="notification-item">
+                            <strong>{item.title}</strong>
+                            <p>{item.body}</p>
+                            {item.meta ? <span>{item.meta}</span> : null}
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="notification-empty">
+                        <Bell aria-hidden="true" size={24} />
+                        <strong>{authUser ? c.notificationsEmptyTitle : c.notificationsGuestTitle}</strong>
+                        <p>{authUser ? c.notificationsEmptyBody : c.notificationsGuestBody}</p>
+                        {authUser ? (
+                          <span>{c.notificationsFutureNote}</span>
+                        ) : (
+                          <button type="button" className="secondary-action" onClick={openAuthPanel}>
+                            <KeyRound aria-hidden="true" size={16} />
+                            {authCopy[locale].signInToContinue}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                ) : null}
+              </div>
               {authUser ? (
                 <button type="button" className="icon-button" aria-label={authCopy[locale].logout} onClick={handleLogout}>
                   <LogOut aria-hidden="true" size={20} />
                 </button>
               ) : (
-                <button type="button" className="secondary-action top-login-action" onClick={() => setAuthPanelOpen(true)}>
+                <button type="button" className="secondary-action top-login-action" onClick={openAuthPanel}>
                   <KeyRound aria-hidden="true" size={17} />
                   {authCopy[locale].signInToContinue}
                 </button>
@@ -1414,7 +1587,6 @@ export function PlatformApp() {
               locale={locale}
               ratings={ratings}
               notes={notes}
-              anonymous={anonymous}
               uploadedFiles={uploadedFiles}
               draft={contributionDraft}
               statusMessage={contributionMessage}
@@ -1422,7 +1594,6 @@ export function PlatformApp() {
               selectedPlace={selectedPlace}
               onRating={updateRating}
               onNotes={setNotes}
-              onAnonymous={setAnonymous}
               onFiles={setUploadedFiles}
               onDraft={updateContributionDraft}
               onSubmit={submitContribution}
@@ -1443,6 +1614,7 @@ export function PlatformApp() {
               organizations={rankedOrganizations}
               isAuthenticated={isAuthenticated}
               onRequireAuth={() => setAuthPanelOpen(true)}
+              onNavigate={navigateToView}
               onRefreshProfile={refreshAppProfile}
             />
           ) : null}
@@ -1583,16 +1755,29 @@ function AuthGate({
   onLocale: (locale: Locale) => void;
   onDarkMode: (enabled: boolean) => void;
   onEmailLogin: (input: { email: string; password: string }) => Promise<void>;
-  onEmailRegister: (input: { email: string; password: string; publicName: string; city?: string }) => Promise<void>;
+  onEmailRegister: (input: {
+    email: string;
+    password: string;
+    publicName: string;
+    city?: string;
+    professional?: ProfessionalVerificationInput;
+  }) => Promise<void>;
   onGoogle: () => Promise<void>;
   onApple: () => Promise<void>;
 }) {
   const [mode, setMode] = useState<AuthMode>("register");
+  const [accountType, setAccountType] = useState<RegisterAccountType>("user");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
   const [publicName, setPublicName] = useState("");
   const [city, setCity] = useState("");
+  const [professionalForm, setProfessionalForm] = useState<ProfessionalVerificationInput>({
+    professionalName: "",
+    licenseNumber: "",
+    professionalCollege: "",
+    specialty: ""
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localMessage, setLocalMessage] = useState<string | null>(null);
 
@@ -1620,7 +1805,22 @@ function AuthGate({
           return;
         }
 
-        await onEmailRegister({ email, password, publicName, city });
+        const professional =
+          accountType === "professional"
+            ? {
+                professionalName: professionalForm.professionalName.trim(),
+                licenseNumber: professionalForm.licenseNumber.trim(),
+                professionalCollege: professionalForm.professionalCollege.trim(),
+                specialty: professionalForm.specialty.trim()
+              }
+            : undefined;
+
+        if (professional && Object.values(professional).some((value) => !value)) {
+          setLocalMessage(c.professionalFieldsRequired);
+          return;
+        }
+
+        await onEmailRegister({ email, password, publicName, city, professional });
         return;
       }
 
@@ -1679,10 +1879,29 @@ function AuthGate({
         </div>
         <div className="auth-form">
           {mode === "register" ? (
-            <label>
-              <span>{c.publicName}</span>
-              <input value={publicName} onChange={(event) => setPublicName(event.target.value)} />
-            </label>
+            <>
+              <div className="auth-field-group">
+                <span>{c.accountType}</span>
+                <div className="auth-mode-tabs account-type-tabs" role="radiogroup" aria-label={c.accountType}>
+                  <button type="button" data-active={accountType === "user"} onClick={() => setAccountType("user")}>
+                    <UserRound aria-hidden="true" size={17} />
+                    {c.registerAsUser}
+                  </button>
+                  <button
+                    type="button"
+                    data-active={accountType === "professional"}
+                    onClick={() => setAccountType("professional")}
+                  >
+                    <ShieldCheck aria-hidden="true" size={17} />
+                    {c.registerAsProfessional}
+                  </button>
+                </div>
+              </div>
+              <label>
+                <span>{c.publicName}</span>
+                <input value={publicName} onChange={(event) => setPublicName(event.target.value)} />
+              </label>
+            </>
           ) : null}
           <label>
             <span>{c.email}</span>
@@ -1702,6 +1921,47 @@ function AuthGate({
                 <span>{c.cityOptional}</span>
                 <input value={city} onChange={(event) => setCity(event.target.value)} />
               </label>
+              {accountType === "professional" ? (
+                <div className="auth-professional-fields">
+                  <span>{c.professionalRegistrationTitle}</span>
+                  <div className="compact-form-grid">
+                    <label>
+                      <span>{c.professionalName}</span>
+                      <input
+                        value={professionalForm.professionalName}
+                        onChange={(event) =>
+                          setProfessionalForm((current) => ({ ...current, professionalName: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{c.licenseNumber}</span>
+                      <input
+                        value={professionalForm.licenseNumber}
+                        onChange={(event) =>
+                          setProfessionalForm((current) => ({ ...current, licenseNumber: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{c.professionalCollege}</span>
+                      <input
+                        value={professionalForm.professionalCollege}
+                        onChange={(event) =>
+                          setProfessionalForm((current) => ({ ...current, professionalCollege: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{c.professionalType}</span>
+                      <input
+                        value={professionalForm.specialty}
+                        onChange={(event) => setProfessionalForm((current) => ({ ...current, specialty: event.target.value }))}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ) : null}
             </>
           ) : null}
         </div>
@@ -1784,7 +2044,7 @@ function HomeView({
   locale: Locale;
   places: Place[];
   selectedFilter: number | null;
-  selectedPlace: Place;
+  selectedPlace: Place | null;
   locationState: LocationState;
   userLocation: UserLocation | null;
   professionals: Professional[];
@@ -1819,44 +2079,44 @@ function HomeView({
       />
 
       <section className="panel saved-panel">
-        <PanelHeading title={c.savedPlaces} action={c.viewAll} onAction={() => onNavigate("consult")} />
+        <PanelHeading title={c.availablePlaces} action={c.viewAll} onAction={() => onNavigate("consult")} />
         <div className="saved-list">
-          {availablePlaces.map((place) => (
-            <button key={place.id} type="button" className="saved-row" onClick={() => onNavigate("consult")}>
-              <PlaceSymbol />
-              <span>
-                <strong>{place.name}</strong>
-                <small>
-                  {place.area} · {place.distance}
-                </small>
-              </span>
-              <em>{place.score.toFixed(1)}</em>
-              <ChevronRight aria-hidden="true" size={16} />
-            </button>
-          ))}
+          {availablePlaces.length > 0 ? (
+            availablePlaces.map((place) => (
+              <button key={place.id} type="button" className="saved-row" onClick={() => onNavigate("consult")}>
+                <PlaceSymbol />
+                <span>
+                  <strong>{place.name}</strong>
+                  <small>
+                    {place.area} · {place.distance}
+                  </small>
+                </span>
+                <em>{place.score.toFixed(1)}</em>
+                <ChevronRight aria-hidden="true" size={16} />
+              </button>
+            ))
+          ) : (
+            <EmptyState icon={MapPin} title={c.noPlacesTitle} body={c.noPlacesBody} />
+          )}
         </div>
       </section>
 
       {isAuthenticated ? (
         <section className="panel draft-panel">
-          <PanelHeading title={c.pendingDraft} action={c.continueDraft} onAction={() => onNavigate("contribute")} />
+          <PanelHeading title={c.contributionTitle} action={c.nav.contribute} onAction={() => onNavigate("contribute")} />
           <div className="draft-layout">
             <PlaceSymbol large />
             <div>
-              <h3>Esbeteria Mar Blau</h3>
-              <p>Avinguda del Mar, 25 · Barcelona</p>
+              <h3>{c.noPlacesTitle}</h3>
+              <p>{c.noPlacesBody}</p>
               <span>
-                <CalendarCheck aria-hidden="true" size={15} />
-                Creat: 18/06/2026
-              </span>
-              <span>
-                <Lock aria-hidden="true" size={15} />
+                <ShieldCheck aria-hidden="true" size={15} />
                 {c.tutorReview}
               </span>
             </div>
           </div>
           <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
-            {c.continueDraft}
+            {c.nav.contribute}
           </button>
         </section>
       ) : (
@@ -1874,22 +2134,30 @@ function HomeView({
       <section className="panel trust-panel">
         <PanelHeading title={`${c.trust} · ${c.professionalsAndEntities}`} action={c.viewAll} onAction={() => onNavigate("verified")} />
         <div className="trust-strip">
-          {verifiedProfessionals.slice(0, 1).map((professional) => (
-            <VerifiedMiniCard
-              key={professional.id}
-              title={professional.name}
-              meta={`${professional.license} · ${professional.distance}`}
-              initials={professional.initials}
-            />
-          ))}
-          {verifiedOrganizations.map((organization) => (
-            <VerifiedMiniCard
-              key={organization.id}
-              title={organization.name}
-              meta={`${organization.registry} · ${organization.distance}`}
-              initials={organization.initials}
-            />
-          ))}
+          {verifiedProfessionals.length > 0 || verifiedOrganizations.length > 0 ? (
+            <>
+              {verifiedProfessionals.slice(0, 1).map((professional) => (
+                <VerifiedMiniCard
+                  key={professional.id}
+                  title={professional.name}
+                  meta={`${professional.license} · ${professional.distance}`}
+                  initials={professional.initials}
+                  label={c.verified}
+                />
+              ))}
+              {verifiedOrganizations.map((organization) => (
+                <VerifiedMiniCard
+                  key={organization.id}
+                  title={organization.name}
+                  meta={`${organization.registry} · ${organization.distance}`}
+                  initials={organization.initials}
+                  label={c.verified}
+                />
+              ))}
+            </>
+          ) : (
+            <EmptyState icon={ShieldCheck} title={c.verifiedTitle} body={c.noVerifiedProfiles} />
+          )}
         </div>
       </section>
 
@@ -1907,17 +2175,21 @@ function HomeView({
         <section className="panel profile-panel">
           <PanelHeading title={c.profilesTitle} action={c.nav.profiles} onAction={() => onNavigate("profiles")} />
           <div className="child-list">
-            {childProfiles.map((profile) => (
-              <div key={profile.alias} className="child-chip">
-                <span className="avatar">{profile.alias.slice(0, 1)}</span>
-                <div>
-                  <strong>{profile.alias}</strong>
-                  <small>
-                    {profile.age} · {profile.state}
-                  </small>
+            {childProfiles.length > 0 ? (
+              childProfiles.map((profile) => (
+                <div key={profile.alias} className="child-chip">
+                  <span className="avatar">{profile.alias.slice(0, 1)}</span>
+                  <div>
+                    <strong>{profile.alias}</strong>
+                    <small>
+                      {profile.age} · {profile.state}
+                    </small>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <EmptyState icon={UsersRound} title={c.childProfile} body={c.noChildProfiles} />
+            )}
           </div>
           <p className="fineprint">{locale === "en" ? c.childApproval : c.childApproval}</p>
         </section>
@@ -1950,7 +2222,7 @@ function ConsultView({
   locale: Locale;
   query: string;
   selectedFilter: number | null;
-  selectedPlace: Place;
+  selectedPlace: Place | null;
   places: Place[];
   locationState: LocationState;
   userLocation: UserLocation | null;
@@ -2016,26 +2288,30 @@ function ConsultView({
       />
 
       <section className="panel results-panel">
-        <PanelHeading title={c.savedPlaces} />
+        <PanelHeading title={c.results} />
         <div className="saved-list">
-          {visiblePlaces.map((place) => (
-            <button
-              key={place.id}
-              type="button"
-              className="saved-row"
-              data-active={selectedPlace.id === place.id}
-              onClick={() => onSelectPlace(place.id)}
-            >
-              <PlaceSymbol />
-              <span>
-                <strong>{place.name}</strong>
-                <small>
-                  {place.city} · {place.distance}
-                </small>
-              </span>
-              <em>{place.score.toFixed(1)}</em>
-            </button>
-          ))}
+          {visiblePlaces.length > 0 ? (
+            visiblePlaces.map((place) => (
+              <button
+                key={place.id}
+                type="button"
+                className="saved-row"
+                data-active={selectedPlace?.id === place.id}
+                onClick={() => onSelectPlace(place.id)}
+              >
+                <PlaceSymbol />
+                <span>
+                  <strong>{place.name}</strong>
+                  <small>
+                    {place.city} · {place.distance}
+                  </small>
+                </span>
+                <em>{place.score.toFixed(1)}</em>
+              </button>
+            ))
+          ) : (
+            <EmptyState icon={MapPin} title={c.noPlacesTitle} body={c.noPlacesBody} />
+          )}
         </div>
       </section>
     </div>
@@ -2047,7 +2323,6 @@ function ContributeView({
   locale,
   ratings,
   notes,
-  anonymous,
   uploadedFiles,
   draft,
   statusMessage,
@@ -2055,7 +2330,6 @@ function ContributeView({
   selectedPlace,
   onRating,
   onNotes,
-  onAnonymous,
   onFiles,
   onDraft,
   onSubmit
@@ -2064,20 +2338,20 @@ function ContributeView({
   locale: Locale;
   ratings: Record<SensoryKey, number>;
   notes: string;
-  anonymous: boolean;
   uploadedFiles: File[];
   draft: ContributionDraft;
   statusMessage: string | null;
   isSubmitting: boolean;
-  selectedPlace: Place;
+  selectedPlace: Place | null;
   onRating: (key: SensoryKey, value: number) => void;
   onNotes: (notes: string) => void;
-  onAnonymous: (anonymous: boolean) => void;
   onFiles: (files: File[]) => void;
   onDraft: (draft: Partial<ContributionDraft>) => void;
   onSubmit: () => void;
 }) {
   const ac = authCopy[locale];
+  const isCreatingNewPlace = draft.createNewPlace || !selectedPlace;
+
   return (
     <div className="report-grid">
       <section className="section-intro report-intro">
@@ -2089,9 +2363,9 @@ function ContributeView({
         <div className="place-context">
           <PlaceSymbol />
           <div>
-            <strong>{draft.createNewPlace ? ac.createNewPlace : selectedPlace.name}</strong>
+            <strong>{isCreatingNewPlace ? ac.createNewPlace : (selectedPlace?.name ?? ac.createNewPlace)}</strong>
             <span>
-              {draft.createNewPlace ? ac.placeAddress : `${selectedPlace.area} · ${selectedPlace.quietDb}`}
+              {isCreatingNewPlace ? ac.placeAddress : `${selectedPlace?.area ?? ""} · ${selectedPlace?.quietDb ?? ""}`}
             </span>
           </div>
           <em>{c.pendingModeration}</em>
@@ -2101,12 +2375,13 @@ function ContributeView({
           <label className="checkbox-row">
             <input
               type="checkbox"
-              checked={draft.createNewPlace}
+              checked={isCreatingNewPlace}
+              disabled={!selectedPlace}
               onChange={(event) => onDraft({ createNewPlace: event.target.checked })}
             />
-            <span>{draft.createNewPlace ? ac.createNewPlace : ac.useSelectedPlace}</span>
+            <span>{isCreatingNewPlace ? ac.createNewPlace : ac.useSelectedPlace}</span>
           </label>
-          {draft.createNewPlace ? (
+          {isCreatingNewPlace ? (
             <div className="compact-form-grid">
               <label>
                 <span>{ac.placeName}</span>
@@ -2148,10 +2423,6 @@ function ContributeView({
         </label>
 
         <div className="form-footer">
-          <label className="checkbox-row">
-            <input type="checkbox" checked={anonymous} onChange={(event) => onAnonymous(event.target.checked)} />
-            <span>{c.anonymous}</span>
-          </label>
           <button type="button" className="primary-action" disabled={isSubmitting} onClick={onSubmit}>
             <Send aria-hidden="true" size={17} />
             {isSubmitting ? "..." : c.submit}
@@ -2207,6 +2478,8 @@ function SupportView({
   focusMode: boolean;
   onFocus: () => void;
 }) {
+  const [cardOpen, setCardOpen] = useState(false);
+
   return (
     <div className="support-grid">
       <section className="section-intro">
@@ -2218,7 +2491,7 @@ function SupportView({
         <LifeBuoy aria-hidden="true" size={30} />
         <h3>{c.supportCard}</h3>
         <blockquote>{c.supportMessage}</blockquote>
-        <button type="button" className="primary-action">
+        <button type="button" className="primary-action" onClick={() => setCardOpen(true)}>
           <MessageSquare aria-hidden="true" size={17} />
           {c.openSupport}
         </button>
@@ -2236,11 +2509,23 @@ function SupportView({
       <section className="panel trusted-panel">
         <HeartHandshake aria-hidden="true" size={30} />
         <h3>{c.trustedContact}</h3>
-        <p>Tutor principal · Josep B.</p>
-        <button type="button" className="secondary-action">
+        <p>{c.trustedContactBody}</p>
+        <button type="button" className="secondary-action" disabled title={c.unavailableAction}>
           {c.contact}
         </button>
       </section>
+      {cardOpen ? (
+        <div className="auth-modal-backdrop" role="dialog" aria-modal="true" aria-label={c.supportCard}>
+          <div className="auth-modal support-card-dialog">
+            <LifeBuoy aria-hidden="true" size={30} />
+            <h3>{c.supportCard}</h3>
+            <blockquote>{c.supportMessage}</blockquote>
+            <button type="button" className="secondary-action" onClick={() => setCardOpen(false)}>
+              {c.closeNotifications}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2254,6 +2539,7 @@ function ProfilesView({
   organizations: verifiedOrganizations,
   isAuthenticated,
   onRequireAuth,
+  onNavigate,
   onRefreshProfile
 }: {
   copy: (typeof copy)[Locale];
@@ -2264,20 +2550,13 @@ function ProfilesView({
   organizations: Organization[];
   isAuthenticated: boolean;
   onRequireAuth: () => void;
+  onNavigate: (view: ViewId) => void;
   onRefreshProfile: () => Promise<void>;
 }) {
   const [childAlias, setChildAlias] = useState("");
   const [childAge, setChildAge] = useState<"0-5" | "6-9" | "10-13" | "14-17" | "">("");
   const [childStatus, setChildStatus] = useState<string | null>(null);
-  const [professionalForm, setProfessionalForm] = useState({
-    professionalName: "",
-    licenseNumber: "",
-    professionalCollege: "",
-    specialty: ""
-  });
-  const [professionalStatus, setProfessionalStatus] = useState<string | null>(null);
   const [isSavingChild, setIsSavingChild] = useState(false);
-  const [isSavingProfessional, setIsSavingProfessional] = useState(false);
 
   const submitChildProfile = async () => {
     if (isSavingChild) {
@@ -2303,30 +2582,6 @@ function ProfilesView({
     }
   };
 
-  const submitProfessionalVerification = async () => {
-    if (isSavingProfessional) {
-      return;
-    }
-
-    setIsSavingProfessional(true);
-    setProfessionalStatus(null);
-    try {
-      await requestProfessionalVerification(professionalForm);
-      setProfessionalForm({
-        professionalName: "",
-        licenseNumber: "",
-        professionalCollege: "",
-        specialty: ""
-      });
-      setProfessionalStatus(ac.verificationRequested);
-      await onRefreshProfile();
-    } catch {
-      setProfessionalStatus(ac.authFailed);
-    } finally {
-      setIsSavingProfessional(false);
-    }
-  };
-
   return (
     <div className="profiles-grid">
       <section className="section-intro">
@@ -2335,24 +2590,32 @@ function ProfilesView({
       </section>
 
       <section className="panel profiles-public-trust">
-        <PanelHeading title={c.verifiedTitle} action={c.viewAll} />
+        <PanelHeading title={c.verifiedTitle} action={c.viewAll} onAction={() => onNavigate("verified")} />
         <div className="trust-strip">
-          {verifiedProfessionals.map((professional) => (
-            <VerifiedMiniCard
-              key={professional.id}
-              title={professional.name}
-              meta={`${professional.license} · ${professional.distance}`}
-              initials={professional.initials}
-            />
-          ))}
-          {verifiedOrganizations.map((organization) => (
-            <VerifiedMiniCard
-              key={organization.id}
-              title={organization.name}
-              meta={`${organization.registry} · ${organization.distance}`}
-              initials={organization.initials}
-            />
-          ))}
+          {verifiedProfessionals.length > 0 || verifiedOrganizations.length > 0 ? (
+            <>
+              {verifiedProfessionals.map((professional) => (
+                <VerifiedMiniCard
+                  key={professional.id}
+                  title={professional.name}
+                  meta={`${professional.license} · ${professional.distance}`}
+                  initials={professional.initials}
+                  label={c.verified}
+                />
+              ))}
+              {verifiedOrganizations.map((organization) => (
+                <VerifiedMiniCard
+                  key={organization.id}
+                  title={organization.name}
+                  meta={`${organization.registry} · ${organization.distance}`}
+                  initials={organization.initials}
+                  label={c.verified}
+                />
+              ))}
+            </>
+          ) : (
+            <EmptyState icon={ShieldCheck} title={c.verifiedTitle} body={c.noVerifiedProfiles} />
+          )}
         </div>
       </section>
 
@@ -2381,17 +2644,21 @@ function ProfilesView({
       <section className="panel child-flow-panel">
         <PanelHeading title={c.childProfile} />
         <div className="child-list child-list-large">
-          {childProfiles.map((profile) => (
-            <article key={profile.alias} className="child-chip">
-              <span className="avatar">{profile.alias.slice(0, 1)}</span>
-              <div>
-                <strong>{profile.alias}</strong>
-                <small>
-                  {profile.age} anys · {profile.state}
-                </small>
-              </div>
-            </article>
-          ))}
+          {childProfiles.length > 0 ? (
+            childProfiles.map((profile) => (
+              <article key={profile.alias} className="child-chip">
+                <span className="avatar">{profile.alias.slice(0, 1)}</span>
+                <div>
+                  <strong>{profile.alias}</strong>
+                  <small>
+                    {profile.age} anys · {profile.state}
+                  </small>
+                </div>
+              </article>
+            ))
+          ) : (
+            <EmptyState icon={UsersRound} title={c.childProfile} body={c.noChildProfiles} />
+          )}
         </div>
         <div className="compact-form-grid profile-form">
           <label>
@@ -2416,53 +2683,9 @@ function ProfilesView({
         {childStatus ? <p className="form-status">{childStatus}</p> : null}
       </section>
 
-      <section className="panel professional-request-panel">
-        <PanelHeading title={ac.professionalRequestTitle} />
-        <div className="compact-form-grid profile-form">
-          <label>
-            <span>{ac.professionalName}</span>
-            <input
-              value={professionalForm.professionalName}
-              onChange={(event) => setProfessionalForm((current) => ({ ...current, professionalName: event.target.value }))}
-            />
-          </label>
-          <label>
-            <span>{ac.licenseNumber}</span>
-            <input
-              value={professionalForm.licenseNumber}
-              onChange={(event) => setProfessionalForm((current) => ({ ...current, licenseNumber: event.target.value }))}
-            />
-          </label>
-          <label>
-            <span>{ac.professionalCollege}</span>
-            <input
-              value={professionalForm.professionalCollege}
-              onChange={(event) => setProfessionalForm((current) => ({ ...current, professionalCollege: event.target.value }))}
-            />
-          </label>
-          <label>
-            <span>{ac.specialty}</span>
-            <input
-              value={professionalForm.specialty}
-              onChange={(event) => setProfessionalForm((current) => ({ ...current, specialty: event.target.value }))}
-            />
-          </label>
-        </div>
-        <button type="button" className="primary-action" disabled={isSavingProfessional} onClick={submitProfessionalVerification}>
-          <ShieldCheck aria-hidden="true" size={17} />
-          {isSavingProfessional ? "..." : ac.requestVerification}
-        </button>
-        {professionalStatus ? <p className="form-status">{professionalStatus}</p> : null}
-      </section>
-
       <section className="panel sensory-profile-panel">
         <PanelHeading title={c.sensoryProfile} />
-        <div className="preference-bars">
-          <PreferenceBar label={sensoryLabels[locale].noise} value={35} />
-          <PreferenceBar label={sensoryLabels[locale].density} value={28} />
-          <PreferenceBar label={sensoryLabels[locale].light} value={42} />
-          <PreferenceBar label={sensoryLabels[locale].wait} value={25} />
-        </div>
+        <EmptyState icon={SlidersHorizontal} title={c.sensoryProfile} body={c.noSensoryProfile} />
       </section>
         </>
       ) : null}
@@ -2487,46 +2710,54 @@ function VerifiedView({
       </section>
 
       <section className="verified-list">
-        {verifiedProfessionals.map((professional) => (
-          <article key={professional.id} className="panel verified-profile-card">
-            <span className="portrait">{professional.initials}</span>
-            <div>
-              <h3>{professional.name}</h3>
-              <p>
-                {professional.role} · {professional.city} · {professional.distance}
-              </p>
-              <strong>
-                {c.license}: {professional.license}
-              </strong>
-              <span>{professional.college}</span>
-              <em>{professional.specialty}</em>
-            </div>
-            <VerifiedBadge label={c.verified} />
-            <button type="button" className="secondary-action">
-              {c.contact}
-            </button>
-          </article>
-        ))}
+        {verifiedProfessionals.length > 0 || verifiedOrganizations.length > 0 ? (
+          <>
+            {verifiedProfessionals.map((professional) => (
+              <article key={professional.id} className="panel verified-profile-card">
+                <span className="portrait">{professional.initials}</span>
+                <div>
+                  <h3>{professional.name}</h3>
+                  <p>
+                    {professional.role} · {professional.city} · {professional.distance}
+                  </p>
+                  <strong>
+                    {c.license}: {professional.license}
+                  </strong>
+                  <span>{professional.college}</span>
+                  <em>{professional.specialty}</em>
+                </div>
+                <VerifiedBadge label={c.verified} />
+                <button type="button" className="secondary-action" disabled title={c.unavailableAction}>
+                  {c.contact}
+                </button>
+              </article>
+            ))}
 
-        {verifiedOrganizations.map((organization) => (
-          <article key={organization.id} className="panel verified-profile-card">
-            <span className="portrait entity">{organization.initials}</span>
-            <div>
-              <h3>{organization.name}</h3>
-              <p>
-                {organization.city} · {organization.distance}
-              </p>
-              <strong>
-                {c.registry}: {organization.registry}
-              </strong>
-              <span>{organization.description}</span>
-            </div>
-            <VerifiedBadge label={c.verified} />
-            <button type="button" className="secondary-action">
-              {c.contact}
-            </button>
+            {verifiedOrganizations.map((organization) => (
+              <article key={organization.id} className="panel verified-profile-card">
+                <span className="portrait entity">{organization.initials}</span>
+                <div>
+                  <h3>{organization.name}</h3>
+                  <p>
+                    {organization.city} · {organization.distance}
+                  </p>
+                  <strong>
+                    {c.registry}: {organization.registry}
+                  </strong>
+                  <span>{organization.description}</span>
+                </div>
+                <VerifiedBadge label={c.verified} />
+                <button type="button" className="secondary-action" disabled title={c.unavailableAction}>
+                  {c.contact}
+                </button>
+              </article>
+            ))}
+          </>
+        ) : (
+          <article className="panel verified-profile-card">
+            <EmptyState icon={ShieldCheck} title={c.verifiedTitle} body={c.noVerifiedProfiles} />
           </article>
-        ))}
+        )}
       </section>
 
       <aside className="panel evidence-panel">
@@ -2560,6 +2791,24 @@ function PanelHeading({
   );
 }
 
+function EmptyState({
+  icon: Icon,
+  title,
+  body
+}: {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="empty-state">
+      <Icon aria-hidden="true" size={24} />
+      <strong>{title}</strong>
+      <p>{body}</p>
+    </div>
+  );
+}
+
 function MapPanel({
   title,
   subtitle,
@@ -2582,7 +2831,7 @@ function MapPanel({
   places: Place[];
   filters: string[];
   selectedFilter: number | null;
-  selectedPlace: Place;
+  selectedPlace: Place | null;
   locationState: LocationState;
   userLocation: UserLocation | null;
   tall?: boolean;
@@ -2611,6 +2860,7 @@ function MapPanel({
     activeFilterLabel,
     layerLabels[mapLayer]
   ].filter(Boolean).join(" · ");
+  const hasMapAnchor = Boolean(selectedPlace || userLocation);
 
   const cycleLayer = () => {
     setMapLayer((current) => {
@@ -2667,7 +2917,9 @@ function MapPanel({
         </div>
       </div>
       <div className="map-canvas" role="img" aria-label={title}>
-        {googleMapsKey ? (
+        {!hasMapAnchor ? (
+          <EmptyMapCanvas body={copyText.noPlacesBody} label={providerLabel} />
+        ) : googleMapsKey ? (
           <GoogleMapCanvas
             apiKey={googleMapsKey}
             label={providerLabel}
@@ -2692,9 +2944,9 @@ function MapPanel({
           <span />
           <div>
             <small>{mapStatus}</small>
-            <strong>{locationState === "located" ? copyText.mapYourLocation : selectedPlace.area}</strong>
+            <strong>{locationState === "located" ? copyText.mapYourLocation : (selectedPlace?.area ?? copyText.noPlacesTitle)}</strong>
           </div>
-          <em>{locationState === "located" ? layerLabels[mapLayer] : selectedPlace.quietDb}</em>
+          <em>{locationState === "located" ? layerLabels[mapLayer] : (selectedPlace?.quietDb ?? layerLabels[mapLayer])}</em>
         </div>
       </div>
       {onOpen ? (
@@ -2745,7 +2997,7 @@ function GoogleMapCanvas({
   label: string;
   mapLayer: MapLayerId;
   places: Place[];
-  selectedPlace: Place;
+  selectedPlace: Place | null;
   userLocation: UserLocation | null;
   userLocationLabel: string;
   onSelectPlace: (id: string) => void;
@@ -2764,7 +3016,7 @@ function GoogleMapCanvas({
         }
 
         const map = new google.maps.Map(mapElementRef.current, {
-          center: selectedPlace.position,
+          center: userLocation ?? selectedPlace?.position ?? { lat: 41.3851, lng: 2.1734 },
           zoom: 13,
           mapTypeId: mapLayer,
           disableDefaultUI: true,
@@ -2776,7 +3028,7 @@ function GoogleMapCanvas({
 
         visiblePlaces.forEach((place) => {
           bounds.extend(place.position);
-          const active = selectedPlace.id === place.id;
+          const active = selectedPlace?.id === place.id;
           const marker = new google.maps.Marker({
             map,
             position: place.position,
@@ -2813,7 +3065,7 @@ function GoogleMapCanvas({
           map.setZoom(14);
         } else if (visiblePlaces.length > 1) {
           map.fitBounds(bounds);
-        } else {
+        } else if (selectedPlace) {
           map.panTo(selectedPlace.position);
         }
       })
@@ -2859,7 +3111,7 @@ function FallbackMapCanvas({
   label
 }: {
   places: Place[];
-  selectedPlace: Place;
+  selectedPlace: Place | null;
   onSelectPlace: (id: string) => void;
   userLocation: UserLocation | null;
   userLocationLabel: string;
@@ -2887,14 +3139,26 @@ function FallbackMapCanvas({
           key={place.id}
           type="button"
           className="map-pin"
-          data-active={selectedPlace.id === place.id}
+          data-active={selectedPlace?.id === place.id}
           style={pinLayout[index % pinLayout.length]}
           aria-label={place.name}
-          aria-pressed={selectedPlace.id === place.id}
+          aria-pressed={selectedPlace?.id === place.id}
           onClick={() => onSelectPlace(place.id)}
         />
       ))}
       {userLocation ? <span className="user-location-pin" aria-label={userLocationLabel} /> : null}
+      <span className="map-provider-note">{label}</span>
+    </>
+  );
+}
+
+function EmptyMapCanvas({ body, label }: { body: string; label: string }) {
+  return (
+    <>
+      <div className="empty-map-layer">
+        <MapPin aria-hidden="true" size={34} />
+        <p>{body}</p>
+      </div>
       <span className="map-provider-note">{label}</span>
     </>
   );
@@ -2912,11 +3176,36 @@ function PlaceDetailCard({
   copy: (typeof copy)[Locale];
   authLabels: (typeof authCopy)[Locale];
   locale: Locale;
-  place: Place;
+  place: Place | null;
   isAuthenticated: boolean;
   onRequireAuth: () => void;
   onContribute: () => void;
 }) {
+  if (!place) {
+    return (
+      <aside className="panel place-detail">
+        <PlaceSymbol large />
+        <h3>{c.noPlacesTitle}</h3>
+        <p>{c.noPlacesBody}</p>
+        {isAuthenticated ? (
+          <button type="button" className="primary-action" onClick={onContribute}>
+            <Plus aria-hidden="true" size={17} />
+            {c.nav.contribute}
+          </button>
+        ) : (
+          <div className="locked-detail">
+            <Lock aria-hidden="true" size={18} />
+            <p>{authLabels.signInRequiredIntro}</p>
+            <button type="button" className="secondary-action" onClick={onRequireAuth}>
+              <KeyRound aria-hidden="true" size={17} />
+              {authLabels.signInToContinue}
+            </button>
+          </div>
+        )}
+      </aside>
+    );
+  }
+
   return (
     <aside className="panel place-detail">
       <PlaceSymbol large />
@@ -2940,11 +3229,11 @@ function PlaceDetailCard({
             ))}
           </div>
           <div className="detail-actions">
-            <button type="button" className="secondary-action">
+            <button type="button" className="secondary-action" disabled title={c.unavailableAction}>
               <Bookmark aria-hidden="true" size={17} />
               {c.favorite}
             </button>
-            <button type="button" className="secondary-action">
+            <button type="button" className="secondary-action" disabled title={c.unavailableAction}>
               <Flag aria-hidden="true" size={17} />
               {c.reportPlace}
             </button>
@@ -3019,24 +3308,13 @@ function ProfileCard({
   );
 }
 
-function PreferenceBar({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="preference-row">
-      <span>{label}</span>
-      <div>
-        <i style={{ width: `${value}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function VerifiedMiniCard({ title, meta, initials }: { title: string; meta: string; initials: string }) {
+function VerifiedMiniCard({ title, meta, initials, label }: { title: string; meta: string; initials: string; label: string }) {
   return (
     <article className="verified-mini">
       <span className="avatar">{initials}</span>
       <strong>{title}</strong>
       <small>{meta}</small>
-      <VerifiedBadge label="Verificat" />
+      <VerifiedBadge label={label} />
     </article>
   );
 }

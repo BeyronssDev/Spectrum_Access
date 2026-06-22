@@ -11,11 +11,12 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return signedIn() && request.auth.token.admin == true;
+      return signedIn() && (request.auth.token.superAdmin == true || request.auth.token.admin == true);
     }
 
     function isModerator() {
-      return signedIn() && (request.auth.token.moderator == true || request.auth.token.admin == true);
+      return signedIn()
+        && (request.auth.token.superAdmin == true || request.auth.token.moderator == true || request.auth.token.admin == true);
     }
 
     function isActive() {

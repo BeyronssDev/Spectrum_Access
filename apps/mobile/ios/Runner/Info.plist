@@ -10,30 +10,45 @@
 	<string>Spectrum Access</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>sensory_access</string>
-	<key>GoogleMapsApiKey</key>
-	<string>$(GOOGLE_MAPS_API_KEY)</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Spectrum Access necesita acceder a la cámara para crear aportaciones sensoriales con imágenes.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Spectrum Access necesita acceder a la galería para adjuntar imágenes de lugares sensoriales.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Spectrum Access necesita acceder a tu ubicación para mostrar lugares y profesionales cercanos a tu zona.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.992685844395-is2iije0scarhsvjc5aqfbrlnn2p4n9i</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>GIDClientID</key>
+	<string>992685844395-is2iije0scarhsvjc5aqfbrlnn2p4n9i.apps.googleusercontent.com</string>
+	<key>GoogleMapsApiKey</key>
+	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Spectrum Access necesita acceder a la cámara para crear aportaciones sensoriales con imágenes.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Spectrum Access necesita acceder a tu ubicación para mostrar lugares y profesionales cercanos a tu zona.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Spectrum Access necesita acceder a la galería para adjuntar imágenes de lugares sensoriales.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

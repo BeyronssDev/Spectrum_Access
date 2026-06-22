@@ -34,8 +34,8 @@ describe("Firestore security rules", () => {
     await assertSucceeds(
       userDb.collection("users").doc("user-a").set({
         uid: "user-a",
-        displayName: "Josep Baro",
-        publicName: "Josep",
+        displayName: "Test User",
+        publicName: "Test User",
         authProviders: ["password"],
         roles: ["user"],
         status: "active",
@@ -52,8 +52,8 @@ describe("Firestore security rules", () => {
     await assertFails(
       userDb.collection("users").doc("user-a").set({
         uid: "user-a",
-        displayName: "Josep Baro",
-        publicName: "Josep",
+        displayName: "Test User",
+        publicName: "Test User",
         authProviders: ["password"],
         roles: ["user", "professional", "admin"],
         status: "active",
@@ -68,7 +68,7 @@ describe("Firestore security rules", () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await context.firestore().collection("places").doc("active").set({
         status: "active",
-        name: "Biblioteca",
+        name: "Test Place",
         category: "culture",
         updatedAt: "2026-06-19T00:00:00.000Z"
       });
@@ -178,10 +178,10 @@ describe("Firestore security rules", () => {
     await assertSucceeds(
       userDb.collection("professionalProfiles").doc("professional-a").set({
         ownerUid: "professional-a",
-        professionalName: "Marta Gomez",
-        licenseNumber: "COPC 47145",
-        professionalCollege: "Col.legi Oficial de Psicologia de Catalunya",
-        specialty: "Autisme adult",
+        professionalName: "Test Professional",
+        licenseNumber: "TEST 10001",
+        professionalCollege: "Test Professional College",
+        specialty: "Test specialty",
         verificationStatus: "pending_verification"
       })
     );
@@ -189,10 +189,10 @@ describe("Firestore security rules", () => {
     await assertFails(
       userDb.collection("professionalProfiles").doc("professional-b").set({
         ownerUid: "professional-a",
-        professionalName: "Pau Ferrer",
-        licenseNumber: "COPC 50218",
-        professionalCollege: "Col.legi Oficial de Psicologia de Catalunya",
-        specialty: "Infancia",
+        professionalName: "Second Test Professional",
+        licenseNumber: "TEST 10002",
+        professionalCollege: "Test Professional College",
+        specialty: "Second test specialty",
         verificationStatus: "verified"
       })
     );

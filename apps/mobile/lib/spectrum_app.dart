@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_services.dart';
 import 'mobile_image_upload.dart';
@@ -20,7 +21,49 @@ const googleMapsRequested = bool.fromEnvironment(
 );
 const _nativeConfigChannel = MethodChannel('spectrum_access/native_config');
 
+class SpectrumThemePreferences {
+  static const themeModeKey = 'spectrum_access.theme_mode';
+
+  static Future<ThemeMode> loadThemeMode() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+
+      return _themeModeFromPreference(preferences.getString(themeModeKey));
+    } catch (_) {
+      return ThemeMode.light;
+    }
+  }
+
+  static Future<void> saveThemeMode(ThemeMode themeMode) async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(
+        themeModeKey,
+        _themeModeToPreference(themeMode),
+      );
+    } catch (_) {}
+  }
+
+  static ThemeMode _themeModeFromPreference(String? value) {
+    return switch (value) {
+      'dark' => ThemeMode.dark,
+      'system' => ThemeMode.system,
+      _ => ThemeMode.light,
+    };
+  }
+
+  static String _themeModeToPreference(ThemeMode themeMode) {
+    return switch (themeMode) {
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+      ThemeMode.light => 'light',
+    };
+  }
+}
+
 enum LocationStatus { idle, locating, located, denied, unavailable, error }
+
+enum RegistrationKind { user, professional }
 
 class DeviceLocation {
   const DeviceLocation({
@@ -64,6 +107,31 @@ List<PlaceSummary> rankPlacesByDeviceLocation(
             entry.place.copyWith(distance: formatDistance(entry.distanceKm)),
       )
       .toList();
+}
+
+List<PlaceSummary> filterPlacesBySensory(
+  List<PlaceSummary> source,
+  int? selectedFilter,
+) {
+  if (selectedFilter == null) {
+    return source;
+  }
+
+  return source
+      .where((place) {
+        return switch (selectedFilter) {
+          0 => _criterionAtMost(place, SensoryKey.noise, 3),
+          1 => _criterionAtMost(place, SensoryKey.light, 3),
+          2 => _criterionAtMost(place, SensoryKey.density, 3),
+          _ => true,
+        };
+      })
+      .toList(growable: false);
+}
+
+bool _criterionAtMost(PlaceSummary place, SensoryKey key, double maximum) {
+  final score = place.criterionAverages[key];
+  return score != null && score > 0 && score <= maximum;
 }
 
 List<VerifiedProfile> rankVerifiedProfilesByDeviceLocation(
@@ -136,14 +204,36 @@ String formatDistance(double distanceKm) {
 }
 
 class SpectrumAccessApp extends StatefulWidget {
-  const SpectrumAccessApp({super.key});
+  const SpectrumAccessApp({
+    super.key,
+    this.firebaseInitialization,
+    this.initialThemeMode = ThemeMode.light,
+  });
+
+  final Future<void>? firebaseInitialization;
+  final ThemeMode initialThemeMode;
 
   @override
   State<SpectrumAccessApp> createState() => _SpectrumAccessAppState();
 }
 
 class _SpectrumAccessAppState extends State<SpectrumAccessApp> {
-  ThemeMode _themeMode = ThemeMode.light;
+  late ThemeMode _themeMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _themeMode = widget.initialThemeMode;
+  }
+
+  void _changeThemeMode(ThemeMode themeMode) {
+    if (_themeMode == themeMode) {
+      return;
+    }
+
+    setState(() => _themeMode = themeMode);
+    unawaited(SpectrumThemePreferences.saveThemeMode(themeMode));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,9 +244,9 @@ class _SpectrumAccessAppState extends State<SpectrumAccessApp> {
       theme: buildSpectrumTheme(Brightness.light),
       darkTheme: buildSpectrumTheme(Brightness.dark),
       home: SpectrumShell(
+        firebaseInitialization: widget.firebaseInitialization,
         themeMode: _themeMode,
-        onThemeModeChanged: (themeMode) =>
-            setState(() => _themeMode = themeMode),
+        onThemeModeChanged: _changeThemeMode,
       ),
     );
   }
@@ -164,11 +254,13 @@ class _SpectrumAccessAppState extends State<SpectrumAccessApp> {
 
 class SpectrumShell extends StatefulWidget {
   const SpectrumShell({
+    required this.firebaseInitialization,
     required this.themeMode,
     required this.onThemeModeChanged,
     super.key,
   });
 
+  final Future<void>? firebaseInitialization;
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
 
@@ -179,14 +271,15 @@ class SpectrumShell extends StatefulWidget {
 class _SpectrumShellState extends State<SpectrumShell> {
   bool _showHome = true;
   bool _focusMode = false;
-  bool _anonymous = false;
   bool _googleMapsAvailable = false;
-  bool _authUnavailable = false;
+  bool _firebaseReady = false;
+  bool _authUnavailable = true;
   bool _authSubmitting = false;
   bool _profileSubmitting = false;
   bool _professionalSubmitting = false;
+  bool _placesLoading = false;
   int _selectedPlace = 0;
-  int _selectedFilter = 0;
+  int? _selectedFilter;
   LocationStatus _locationStatus = LocationStatus.idle;
   DeviceLocation? _deviceLocation;
   LocaleOption _locale = LocaleOption.ca;
@@ -195,6 +288,9 @@ class _SpectrumShellState extends State<SpectrumShell> {
   StreamSubscription<User?>? _authSubscription;
   User? _authUser;
   SpectrumUserProfile? _userProfile;
+  List<PlaceSummary> _places = const [];
+  final List<VerifiedProfile> _verifiedProfiles = const [];
+  final List<ChildProfile> _childProfiles = const [];
   final PlaceImagePicker _imagePicker = PlaceImagePicker();
   final List<PreparedPlaceImage> _selectedImages = [];
   final TextEditingController _authEmailController = TextEditingController();
@@ -213,7 +309,13 @@ class _SpectrumShellState extends State<SpectrumShell> {
   final TextEditingController _professionalCollegeController =
       TextEditingController();
   final TextEditingController _specialtyController = TextEditingController();
+  final TextEditingController _placeNameController = TextEditingController();
+  final TextEditingController _placeCityController = TextEditingController();
+  final TextEditingController _placeAddressController = TextEditingController();
+  final TextEditingController _placeDescriptionController =
+      TextEditingController();
   bool _showRegister = true;
+  RegistrationKind _registrationKind = RegistrationKind.user;
   String? _childAgeRange;
   String? _authMessage;
   String? _profileMessage;
@@ -230,7 +332,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
   @override
   void initState() {
     super.initState();
-    _listenToAuth();
+    _startFirebaseInitialization();
     unawaited(_resolveGoogleMapsAvailability());
     unawaited(_locateDeviceOnLaunch());
     unawaited(_restoreLostImages());
@@ -250,6 +352,10 @@ class _SpectrumShellState extends State<SpectrumShell> {
     _licenseNumberController.dispose();
     _professionalCollegeController.dispose();
     _specialtyController.dispose();
+    _placeNameController.dispose();
+    _placeCityController.dispose();
+    _placeAddressController.dispose();
+    _placeDescriptionController.dispose();
     super.dispose();
   }
 
@@ -277,6 +383,50 @@ class _SpectrumShellState extends State<SpectrumShell> {
     }
   }
 
+  void _startFirebaseInitialization() {
+    final initialization = widget.firebaseInitialization;
+    if (initialization == null) {
+      return;
+    }
+
+    unawaited(
+      initialization
+          .then((_) {
+            if (!mounted) {
+              return;
+            }
+            setState(() {
+              _firebaseReady = true;
+              _authUnavailable = false;
+            });
+            _listenToAuth();
+            unawaited(_loadPlaces());
+          })
+          .catchError((Object error, StackTrace stackTrace) {
+            if (kDebugMode || kProfileMode) {
+              debugPrint('Spectrum Firebase initialization error: $error');
+              debugPrintStack(stackTrace: stackTrace);
+            }
+            if (!mounted) {
+              return;
+            }
+            setState(() {
+              _firebaseReady = false;
+              _authUnavailable = true;
+            });
+          }),
+    );
+
+    unawaited(
+      Future<void>.delayed(const Duration(seconds: 8), () {
+        if (!mounted || _firebaseReady) {
+          return;
+        }
+        setState(() => _authUnavailable = true);
+      }),
+    );
+  }
+
   Future<void> _loadUserProfile() async {
     try {
       final profile = await (_firebaseServices ??= SpectrumFirebaseServices())
@@ -287,6 +437,34 @@ class _SpectrumShellState extends State<SpectrumShell> {
     }
   }
 
+  Future<void> _loadPlaces() async {
+    if (_placesLoading) {
+      return;
+    }
+
+    setStateIfMounted(() {
+      _placesLoading = true;
+    });
+
+    try {
+      final places = await (_firebaseServices ??= SpectrumFirebaseServices())
+          .loadActivePlaces();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _places = places;
+        _selectedPlace = places.isEmpty
+            ? 0
+            : _selectedPlace.clamp(0, places.length - 1).toInt();
+      });
+    } catch (_) {
+      // Keep the production UI empty if Firestore cannot be read.
+    } finally {
+      setStateIfMounted(() => _placesLoading = false);
+    }
+  }
+
   void _openTab(MobileTab tab) {
     setState(() {
       _selectedTab = tab;
@@ -294,8 +472,21 @@ class _SpectrumShellState extends State<SpectrumShell> {
     });
   }
 
+  void _openAuthScreen({bool showRegister = false}) {
+    setState(() {
+      _selectedTab = MobileTab.contribute;
+      _showHome = false;
+      _showRegister = showRegister;
+      _authMessage = null;
+    });
+  }
+
   void _openHome() {
     setState(() => _showHome = true);
+  }
+
+  bool _isValidEmail(String value) {
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim());
   }
 
   Future<void> _runAuthAction(Future<void> Function() action) async {
@@ -311,38 +502,148 @@ class _SpectrumShellState extends State<SpectrumShell> {
     try {
       await action();
       await _loadUserProfile();
-    } catch (_) {
-      setStateIfMounted(() => _authMessage = authCopies[_locale]!.authFailed);
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Spectrum auth error: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      setStateIfMounted(() => _authMessage = _authMessageForError(error));
     } finally {
       setStateIfMounted(() => _authSubmitting = false);
     }
   }
 
+  String _authMessageForError(Object error) {
+    final labels = authCopies[_locale]!;
+    if (error is FirebaseAuthException) {
+      return switch (error.code) {
+        'operation-not-allowed' => labels.authProviderDisabled,
+        'account-exists-with-different-credential' =>
+          labels.authProviderDisabled,
+        'invalid-credential' ||
+        'invalid-oauth-provider' ||
+        'missing-or-invalid-nonce' => labels.authConfigurationError,
+        'network-request-failed' => labels.authFailed,
+        _ => labels.authFailed,
+      };
+    }
+    if (error is PlatformException) {
+      final code = error.code.toLowerCase();
+      final message = '${error.message ?? ''} ${error.details ?? ''}'
+          .toLowerCase();
+      if (code.contains('cancel') || message.contains('cancel')) {
+        return labels.authCancelled;
+      }
+      if (code.contains('config') ||
+          code.contains('sign_in_failed') ||
+          message.contains('client_id') ||
+          message.contains('url scheme') ||
+          message.contains('entitlement') ||
+          message.contains('configuration')) {
+        return labels.authConfigurationError;
+      }
+    }
+    final text = error.toString().toLowerCase();
+    if (text.contains('cancel')) {
+      return labels.authCancelled;
+    }
+    if (text.contains('client_id') ||
+        text.contains('url scheme') ||
+        text.contains('entitlement') ||
+        text.contains('configuration')) {
+      return labels.authConfigurationError;
+    }
+    return labels.authFailed;
+  }
+
   Future<void> _registerWithEmail() {
     final labels = authCopies[_locale]!;
-    if (_authPasswordController.text != _authPasswordRepeatController.text) {
+    final publicName = _authPublicNameController.text.trim();
+    final email = _authEmailController.text.trim();
+    final password = _authPasswordController.text;
+    final confirmPassword = _authPasswordRepeatController.text;
+    final professionalName = _professionalNameController.text.trim();
+    final licenseNumber = _licenseNumberController.text.trim();
+    final professionalCollege = _professionalCollegeController.text.trim();
+    final specialty = _specialtyController.text.trim();
+    final isProfessional = _registrationKind == RegistrationKind.professional;
+
+    if (publicName.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      setState(() => _authMessage = labels.requiredFields);
+      return Future<void>.value();
+    }
+
+    if (!_isValidEmail(email)) {
+      setState(() => _authMessage = labels.invalidEmail);
+      return Future<void>.value();
+    }
+
+    if (password.length < 6) {
+      setState(() => _authMessage = labels.passwordMinLength);
+      return Future<void>.value();
+    }
+
+    if (password != confirmPassword) {
       setState(() => _authMessage = labels.passwordsMismatch);
       return Future<void>.value();
     }
 
+    if (isProfessional &&
+        (professionalName.isEmpty ||
+            licenseNumber.isEmpty ||
+            professionalCollege.isEmpty ||
+            specialty.isEmpty)) {
+      setState(() => _authMessage = labels.professionalFieldsRequired);
+      return Future<void>.value();
+    }
+
     return _runAuthAction(() async {
-      await (_firebaseServices ??= SpectrumFirebaseServices())
-          .registerWithEmail(
-            email: _authEmailController.text.trim(),
-            password: _authPasswordController.text,
-            publicName: _authPublicNameController.text.trim(),
-            city: _authCityController.text.trim(),
-            locale: _locale.name,
-          );
-      setStateIfMounted(() => _authMessage = labels.verificationSent);
+      final service = _firebaseServices ??= SpectrumFirebaseServices();
+      await service.registerWithEmail(
+        email: email,
+        password: password,
+        publicName: publicName,
+        city: _authCityController.text.trim(),
+        locale: _locale.name,
+      );
+      if (isProfessional) {
+        await service.requestProfessionalVerification(
+          professionalName: professionalName,
+          licenseNumber: licenseNumber,
+          professionalCollege: professionalCollege,
+          specialty: specialty,
+        );
+        setStateIfMounted(
+          () => _authMessage = labels.professionalRegistrationSent,
+        );
+      } else {
+        setStateIfMounted(() => _authMessage = labels.verificationSent);
+      }
     });
   }
 
   Future<void> _signInWithEmail() {
+    final labels = authCopies[_locale]!;
+    final email = _authEmailController.text.trim();
+    final password = _authPasswordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _authMessage = labels.requiredFields);
+      return Future<void>.value();
+    }
+
+    if (!_isValidEmail(email)) {
+      setState(() => _authMessage = labels.invalidEmail);
+      return Future<void>.value();
+    }
+
     return _runAuthAction(() async {
       await (_firebaseServices ??= SpectrumFirebaseServices()).signInWithEmail(
-        email: _authEmailController.text.trim(),
-        password: _authPasswordController.text,
+        email: email,
+        password: password,
         locale: _locale.name,
       );
     });
@@ -413,6 +714,20 @@ class _SpectrumShellState extends State<SpectrumShell> {
       return;
     }
 
+    final labels = authCopies[_locale]!;
+    final professionalName = _professionalNameController.text.trim();
+    final licenseNumber = _licenseNumberController.text.trim();
+    final professionalCollege = _professionalCollegeController.text.trim();
+    final specialty = _specialtyController.text.trim();
+
+    if (professionalName.isEmpty ||
+        licenseNumber.isEmpty ||
+        professionalCollege.isEmpty ||
+        specialty.isEmpty) {
+      setState(() => _professionalMessage = labels.professionalFieldsRequired);
+      return;
+    }
+
     setState(() {
       _professionalSubmitting = true;
       _professionalMessage = null;
@@ -421,10 +736,10 @@ class _SpectrumShellState extends State<SpectrumShell> {
     try {
       await (_firebaseServices ??= SpectrumFirebaseServices())
           .requestProfessionalVerification(
-            professionalName: _professionalNameController.text.trim(),
-            licenseNumber: _licenseNumberController.text.trim(),
-            professionalCollege: _professionalCollegeController.text.trim(),
-            specialty: _specialtyController.text.trim(),
+            professionalName: professionalName,
+            licenseNumber: licenseNumber,
+            professionalCollege: professionalCollege,
+            specialty: specialty,
           );
       _professionalNameController.clear();
       _licenseNumberController.clear();
@@ -511,7 +826,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
     }
   }
 
-  String _mapSubtitleFor(PlaceSummary selectedPlace) {
+  String _mapSubtitleFor(PlaceSummary? selectedPlace) {
     return switch (_locationStatus) {
       LocationStatus.locating => switch (_locale) {
         LocaleOption.ca => 'Buscant ubicació',
@@ -519,7 +834,9 @@ class _SpectrumShellState extends State<SpectrumShell> {
         LocaleOption.en => 'Finding location',
       },
       LocationStatus.located =>
-        '${selectedPlace.distance} · ${selectedPlace.city}',
+        selectedPlace == null
+            ? appCopies[_locale]!.noPlacesTitle
+            : '${selectedPlace.distance} · ${selectedPlace.city}',
       LocationStatus.denied => switch (_locale) {
         LocaleOption.ca => 'Permís d’ubicació bloquejat',
         LocaleOption.es => 'Permiso de ubicación bloqueado',
@@ -535,7 +852,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
         LocaleOption.es => 'No se ha podido obtener la ubicación',
         LocaleOption.en => 'Could not get location',
       },
-      LocationStatus.idle => selectedPlace.city,
+      LocationStatus.idle =>
+        selectedPlace?.city ?? appCopies[_locale]!.noPlacesTitle,
     };
   }
 
@@ -606,24 +924,68 @@ class _SpectrumShellState extends State<SpectrumShell> {
         return;
       }
 
-      final visiblePlaces = rankPlacesByDeviceLocation(
-        samplePlaces,
-        _deviceLocation,
+      final visiblePlaces = filterPlacesBySensory(
+        rankPlacesByDeviceLocation(_places, _deviceLocation),
+        _selectedFilter,
       );
-      final place =
-          visiblePlaces[_selectedPlace
-              .clamp(0, visiblePlaces.length - 1)
-              .toInt()];
+      final place = visiblePlaces.isEmpty
+          ? null
+          : visiblePlaces[_selectedPlace
+                .clamp(0, visiblePlaces.length - 1)
+                .toInt()];
+      var placeId = place?.id;
+      if (placeId == null) {
+        final placeName = _placeNameController.text.trim();
+        final city = _placeCityController.text.trim();
+        final addressOrArea = _placeAddressController.text.trim();
+        if (placeName.isEmpty || city.isEmpty || addressOrArea.isEmpty) {
+          if (mounted) {
+            setState(
+              () => _reportMessage = authCopies[_locale]!.requiredFields,
+            );
+          }
+          return;
+        }
+
+        if (_deviceLocation == null) {
+          await _locateDeviceOnLaunch();
+        }
+        final location = _deviceLocation;
+        if (location == null) {
+          if (mounted) {
+            setState(() => _reportMessage = labels.locationRequiredForPlace);
+          }
+          return;
+        }
+
+        final created = await service.createPlace(
+          name: placeName,
+          category: 'other',
+          city: city,
+          addressOrArea: addressOrArea,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          description: _placeDescriptionController.text.trim(),
+        );
+        final data = created.data;
+        if (data is Map && data['placeId'] is String) {
+          placeId = data['placeId'] as String;
+        }
+      }
+
+      if (placeId == null) {
+        throw StateError('place-id-missing');
+      }
       final comment = _notesController.text.trim();
       await service.submitReview(
-        placeId: place.id,
+        placeId: placeId,
         ratings: _ratings,
         comment: comment.isEmpty ? null : comment,
       );
 
       for (final image in _selectedImages) {
         await service.uploadPlaceImage(
-          placeId: place.id,
+          placeId: placeId,
           bytes: image.bytes,
           fileName: image.fileName,
           contentType: image.contentType,
@@ -637,6 +999,10 @@ class _SpectrumShellState extends State<SpectrumShell> {
       setState(() {
         _selectedImages.clear();
         _notesController.clear();
+        _placeNameController.clear();
+        _placeCityController.clear();
+        _placeAddressController.clear();
+        _placeDescriptionController.clear();
         _reportMessage = labels.submitSuccess;
       });
     } catch (_) {
@@ -656,18 +1022,20 @@ class _SpectrumShellState extends State<SpectrumShell> {
     final labels = appCopies[_locale]!;
     final authLabels = authCopies[_locale]!;
     final isDark = widget.themeMode == ThemeMode.dark;
-    final visiblePlaces = rankPlacesByDeviceLocation(
-      samplePlaces,
-      _deviceLocation,
+    final visiblePlaces = filterPlacesBySensory(
+      rankPlacesByDeviceLocation(_places, _deviceLocation),
+      _selectedFilter,
     );
     final visibleVerifiedProfiles = rankVerifiedProfilesByDeviceLocation(
-      sampleVerifiedProfiles,
+      _verifiedProfiles,
       _deviceLocation,
     );
-    final selectedPlaceIndex = _selectedPlace
-        .clamp(0, visiblePlaces.length - 1)
-        .toInt();
-    final selectedPlace = visiblePlaces[selectedPlaceIndex];
+    final selectedPlaceIndex = visiblePlaces.isEmpty
+        ? -1
+        : _selectedPlace.clamp(0, visiblePlaces.length - 1).toInt();
+    final selectedPlace = selectedPlaceIndex < 0
+        ? null
+        : visiblePlaces[selectedPlaceIndex];
     final mapSubtitle = _mapSubtitleFor(selectedPlace);
 
     return Scaffold(
@@ -735,9 +1103,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
             tooltip: _authUser == null
                 ? authLabels.signInToContinue
                 : authLabels.signOut,
-            onPressed: _authUser == null
-                ? () => _openTab(MobileTab.profiles)
-                : _signOut,
+            onPressed: _authUser == null ? () => _openAuthScreen() : _signOut,
             icon: Icon(
               _authUser == null ? Icons.login_outlined : Icons.logout_outlined,
             ),
@@ -753,6 +1119,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
                   key: const ValueKey('home'),
                   labels: labels,
                   authLabels: authLabels,
+                  locale: _locale,
                   isAuthenticated: _authUser != null,
                   focusMode: _focusMode,
                   googleMapsAvailable: _googleMapsAvailable,
@@ -790,7 +1157,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
   Widget _screenForTab(
     AppCopy labels,
-    PlaceSummary selectedPlace,
+    PlaceSummary? selectedPlace,
     List<PlaceSummary> places,
     List<VerifiedProfile> verifiedProfiles,
     int selectedPlaceIndex,
@@ -805,6 +1172,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
           key: const ValueKey('consult'),
           labels: labels,
           authLabels: authLabels,
+          locale: _locale,
           places: places,
           selectedPlace: selectedPlaceIndex,
           selectedFilter: _selectedFilter,
@@ -813,7 +1181,10 @@ class _SpectrumShellState extends State<SpectrumShell> {
           locationStatus: _locationStatus,
           deviceLocation: _deviceLocation,
           isAuthenticated: isAuthenticated,
-          onFilterChanged: (index) => setState(() => _selectedFilter = index),
+          onFilterChanged: (index) => setState(() {
+            _selectedFilter = index;
+            _selectedPlace = 0;
+          }),
           onPlaceChanged: (index) => setState(() => _selectedPlace = index),
           onLocate: _locateDeviceOnLaunch,
           onContribute: () => _openTab(MobileTab.contribute),
@@ -827,13 +1198,15 @@ class _SpectrumShellState extends State<SpectrumShell> {
           labels: labels,
           locale: _locale,
           place: selectedPlace,
+          placeNameController: _placeNameController,
+          placeCityController: _placeCityController,
+          placeAddressController: _placeAddressController,
+          placeDescriptionController: _placeDescriptionController,
           ratings: _ratings,
           notesController: _notesController,
-          anonymous: _anonymous,
           selectedImages: _selectedImages,
           isSubmitting: _isSubmittingReport,
           reportMessage: _reportMessage,
-          onAnonymousChanged: (value) => setState(() => _anonymous = value),
           onRatingChanged: (key, value) =>
               setState(() => _ratings[key] = value),
           onPickFromGallery: _pickReportImageFromGallery,
@@ -854,9 +1227,11 @@ class _SpectrumShellState extends State<SpectrumShell> {
           key: const ValueKey('profiles'),
           labels: labels,
           authLabels: authLabels,
+          locale: _locale,
           isAuthenticated: isAuthenticated,
           userProfile: _userProfile,
           verifiedProfiles: verifiedProfiles,
+          childProfiles: _childProfiles,
           childAliasController: _childAliasController,
           childAgeRange: _childAgeRange,
           profileMessage: _profileMessage,
@@ -890,8 +1265,15 @@ class _SpectrumShellState extends State<SpectrumShell> {
       passwordRepeatController: _authPasswordRepeatController,
       publicNameController: _authPublicNameController,
       cityController: _authCityController,
+      professionalNameController: _professionalNameController,
+      licenseNumberController: _licenseNumberController,
+      professionalCollegeController: _professionalCollegeController,
+      specialtyController: _specialtyController,
+      registrationKind: _registrationKind,
       standalone: false,
       onToggleMode: () => setState(() => _showRegister = !_showRegister),
+      onRegistrationKindChanged: (kind) =>
+          setState(() => _registrationKind = kind),
       onLocaleChanged: (locale) => setState(() => _locale = locale),
       onThemeModeChanged: widget.onThemeModeChanged,
       onEmailSubmit: _showRegister ? _registerWithEmail : _signInWithEmail,
@@ -916,7 +1298,13 @@ class AuthScreen extends StatelessWidget {
     required this.passwordRepeatController,
     required this.publicNameController,
     required this.cityController,
+    required this.professionalNameController,
+    required this.licenseNumberController,
+    required this.professionalCollegeController,
+    required this.specialtyController,
+    required this.registrationKind,
     required this.onToggleMode,
+    required this.onRegistrationKindChanged,
     required this.onLocaleChanged,
     required this.onThemeModeChanged,
     required this.onEmailSubmit,
@@ -939,7 +1327,13 @@ class AuthScreen extends StatelessWidget {
   final TextEditingController passwordRepeatController;
   final TextEditingController publicNameController;
   final TextEditingController cityController;
+  final TextEditingController professionalNameController;
+  final TextEditingController licenseNumberController;
+  final TextEditingController professionalCollegeController;
+  final TextEditingController specialtyController;
+  final RegistrationKind registrationKind;
   final VoidCallback onToggleMode;
+  final ValueChanged<RegistrationKind> onRegistrationKindChanged;
   final ValueChanged<LocaleOption> onLocaleChanged;
   final ValueChanged<ThemeMode> onThemeModeChanged;
   final VoidCallback onEmailSubmit;
@@ -949,6 +1343,8 @@ class AuthScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final professionalRegister =
+        showRegister && registrationKind == RegistrationKind.professional;
     final content = SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
@@ -1027,18 +1423,45 @@ class AuthScreen extends StatelessWidget {
                   onSelectionChanged: (_) => onToggleMode(),
                 ),
                 const SizedBox(height: 18),
-                OutlinedButton.icon(
-                  onPressed: isSubmitting || authUnavailable ? null : onGoogle,
-                  icon: const GoogleLogo(size: 18),
-                  label: Text(authLabels.continueWithGoogle),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: isSubmitting || authUnavailable ? null : onApple,
-                  icon: const AppleLogo(size: 18),
-                  label: Text(authLabels.continueWithApple),
-                ),
-                const SizedBox(height: 18),
+                if (showRegister) ...[
+                  SegmentedButton<RegistrationKind>(
+                    segments: [
+                      ButtonSegment(
+                        value: RegistrationKind.user,
+                        label: Text(authLabels.personalAccount),
+                        icon: const Icon(Icons.person_outline),
+                      ),
+                      ButtonSegment(
+                        value: RegistrationKind.professional,
+                        label: Text(authLabels.professionalAccount),
+                        icon: const Icon(Icons.verified_user_outlined),
+                      ),
+                    ],
+                    selected: {registrationKind},
+                    onSelectionChanged: (values) =>
+                        onRegistrationKindChanged(values.first),
+                  ),
+                  const SizedBox(height: 18),
+                ],
+                if (professionalRegister) ...[
+                  StatusMessage(message: authLabels.professionalRegisterIntro),
+                  const SizedBox(height: 18),
+                ] else ...[
+                  OutlinedButton.icon(
+                    onPressed: isSubmitting || authUnavailable
+                        ? null
+                        : onGoogle,
+                    icon: const GoogleLogo(size: 18),
+                    label: Text(authLabels.continueWithGoogle),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: isSubmitting || authUnavailable ? null : onApple,
+                    icon: const AppleLogo(size: 18),
+                    label: Text(authLabels.continueWithApple),
+                  ),
+                  const SizedBox(height: 18),
+                ],
                 if (showRegister) ...[
                   TextField(
                     controller: publicNameController,
@@ -1075,6 +1498,36 @@ class AuthScreen extends StatelessWidget {
                       labelText: authLabels.cityOptional,
                     ),
                   ),
+                  if (professionalRegister) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: professionalNameController,
+                      decoration: InputDecoration(
+                        labelText: authLabels.professionalName,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: licenseNumberController,
+                      decoration: InputDecoration(
+                        labelText: authLabels.licenseNumber,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: professionalCollegeController,
+                      decoration: InputDecoration(
+                        labelText: authLabels.professionalCollege,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: specialtyController,
+                      decoration: InputDecoration(
+                        labelText: authLabels.specialty,
+                      ),
+                    ),
+                  ],
                 ],
                 const SizedBox(height: 18),
                 FilledButton.icon(
@@ -1113,6 +1566,7 @@ class HomeScreen extends StatelessWidget {
   const HomeScreen({
     required this.labels,
     required this.authLabels,
+    required this.locale,
     required this.isAuthenticated,
     required this.focusMode,
     required this.googleMapsAvailable,
@@ -1130,12 +1584,13 @@ class HomeScreen extends StatelessWidget {
 
   final AppCopy labels;
   final AuthCopy authLabels;
+  final LocaleOption locale;
   final bool isAuthenticated;
   final bool focusMode;
   final bool googleMapsAvailable;
   final List<PlaceSummary> places;
   final List<VerifiedProfile> verifiedProfiles;
-  final PlaceSummary selectedPlace;
+  final PlaceSummary? selectedPlace;
   final String mapSubtitle;
   final LocationStatus locationStatus;
   final DeviceLocation? deviceLocation;
@@ -1169,11 +1624,14 @@ class HomeScreen extends StatelessWidget {
         SensoryMapPanel(
           title: labels.nearbyMap,
           subtitle: mapSubtitle,
+          locale: locale,
+          openFullMapLabel: labels.openFullMap,
           googleMapsAvailable: googleMapsAvailable,
           places: places,
           selectedPlace: selectedPlace,
           locationStatus: locationStatus,
           deviceLocation: deviceLocation,
+          emptyBody: labels.noPlacesBody,
           onLocate: onLocate,
           onOpen: () => onOpenTab(MobileTab.consult),
           onPlaceSelected: onOpenPlace,
@@ -1183,32 +1641,25 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SectionHeading(title: labels.savedPlaces, action: labels.viewAll),
+              SectionHeading(
+                title: labels.availablePlaces,
+                action: labels.viewAll,
+              ),
               const SizedBox(height: 10),
-              for (final entry in places.indexed)
-                SavedPlaceRow(
-                  place: entry.$2,
-                  onTap: () => onOpenPlace(entry.$1),
-                ),
+              if (places.isEmpty)
+                StatusMessage(message: labels.noPlacesBody)
+              else
+                for (final entry in places.indexed)
+                  SavedPlaceRow(
+                    locale: locale,
+                    place: entry.$2,
+                    onTap: () => onOpenPlace(entry.$1),
+                  ),
             ],
           ),
         ),
         const SizedBox(height: 18),
-        if (isAuthenticated) ...[
-          SpectrumPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionHeading(
-                  title: labels.pendingDraft,
-                  action: labels.continueDraft,
-                ),
-                const SizedBox(height: 12),
-                DraftPreview(labels: labels),
-              ],
-            ),
-          ),
-        ] else ...[
+        if (!isAuthenticated) ...[
           SpectrumPanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1244,8 +1695,11 @@ class HomeScreen extends StatelessWidget {
                 action: labels.viewAll,
               ),
               const SizedBox(height: 12),
-              for (final profile in verifiedProfiles)
-                VerifiedRow(profile: profile, labels: labels),
+              if (verifiedProfiles.isEmpty)
+                StatusMessage(message: labels.noVerifiedProfiles)
+              else
+                for (final profile in verifiedProfiles)
+                  VerifiedRow(profile: profile, labels: labels),
             ],
           ),
         ),
@@ -1288,6 +1742,7 @@ class ConsultScreen extends StatelessWidget {
   const ConsultScreen({
     required this.labels,
     required this.authLabels,
+    required this.locale,
     required this.places,
     required this.selectedPlace,
     required this.selectedFilter,
@@ -1305,22 +1760,25 @@ class ConsultScreen extends StatelessWidget {
 
   final AppCopy labels;
   final AuthCopy authLabels;
+  final LocaleOption locale;
   final List<PlaceSummary> places;
   final int selectedPlace;
-  final int selectedFilter;
+  final int? selectedFilter;
   final bool googleMapsAvailable;
   final String mapSubtitle;
   final LocationStatus locationStatus;
   final DeviceLocation? deviceLocation;
   final bool isAuthenticated;
-  final ValueChanged<int> onFilterChanged;
+  final ValueChanged<int?> onFilterChanged;
   final ValueChanged<int> onPlaceChanged;
   final Future<void> Function() onLocate;
   final VoidCallback onContribute;
 
   @override
   Widget build(BuildContext context) {
-    final place = places[selectedPlace];
+    final place = places.isEmpty
+        ? null
+        : places[selectedPlace.clamp(0, places.length - 1).toInt()];
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       children: [
@@ -1342,7 +1800,8 @@ class ConsultScreen extends StatelessWidget {
                 (entry) => ChoiceChip(
                   selected: selectedFilter == entry.$1,
                   label: Text(entry.$2),
-                  onSelected: (_) => onFilterChanged(entry.$1),
+                  onSelected: (selected) =>
+                      onFilterChanged(selected ? entry.$1 : null),
                 ),
               )
               .toList(),
@@ -1351,27 +1810,61 @@ class ConsultScreen extends StatelessWidget {
         SensoryMapPanel(
           title: labels.nearbyMap,
           subtitle: mapSubtitle,
+          locale: locale,
+          openFullMapLabel: labels.openFullMap,
           googleMapsAvailable: googleMapsAvailable,
           places: places,
           selectedPlace: place,
           locationStatus: locationStatus,
           deviceLocation: deviceLocation,
+          emptyBody: labels.noPlacesBody,
           onLocate: onLocate,
           onPlaceSelected: onPlaceChanged,
         ),
         const SizedBox(height: 18),
-        PlaceDetailsCard(
-          labels: labels,
-          authLabels: authLabels,
-          place: place,
-          isAuthenticated: isAuthenticated,
-          onContribute: onContribute,
-        ),
+        if (place == null)
+          SpectrumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeading(title: labels.noPlacesTitle),
+                const SizedBox(height: 8),
+                Text(
+                  labels.noPlacesBody,
+                  style: TextStyle(color: mutedColor(context), height: 1.45),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: onContribute,
+                  icon: Icon(
+                    isAuthenticated
+                        ? Icons.add_location_alt_outlined
+                        : Icons.login_outlined,
+                  ),
+                  label: Text(
+                    isAuthenticated
+                        ? labels.createPlace
+                        : authLabels.signInToContinue,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          PlaceDetailsCard(
+            labels: labels,
+            authLabels: authLabels,
+            locale: locale,
+            place: place,
+            isAuthenticated: isAuthenticated,
+            onContribute: onContribute,
+          ),
         const SizedBox(height: 18),
         for (final entry in places.indexed)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: SavedPlaceRow(
+              locale: locale,
               place: entry.$2,
               selected: selectedPlace == entry.$1,
               onTap: () => onPlaceChanged(entry.$1),
@@ -1387,13 +1880,15 @@ class ReportScreen extends StatelessWidget {
     required this.labels,
     required this.locale,
     required this.place,
+    required this.placeNameController,
+    required this.placeCityController,
+    required this.placeAddressController,
+    required this.placeDescriptionController,
     required this.ratings,
     required this.notesController,
-    required this.anonymous,
     required this.selectedImages,
     required this.isSubmitting,
     required this.reportMessage,
-    required this.onAnonymousChanged,
     required this.onRatingChanged,
     required this.onPickFromGallery,
     required this.onTakePhoto,
@@ -1404,14 +1899,16 @@ class ReportScreen extends StatelessWidget {
 
   final AppCopy labels;
   final LocaleOption locale;
-  final PlaceSummary place;
+  final PlaceSummary? place;
+  final TextEditingController placeNameController;
+  final TextEditingController placeCityController;
+  final TextEditingController placeAddressController;
+  final TextEditingController placeDescriptionController;
   final Map<SensoryKey, double> ratings;
   final TextEditingController notesController;
-  final bool anonymous;
   final List<PreparedPlaceImage> selectedImages;
   final bool isSubmitting;
   final String? reportMessage;
-  final ValueChanged<bool> onAnonymousChanged;
   final void Function(SensoryKey key, double value) onRatingChanged;
   final VoidCallback onPickFromGallery;
   final VoidCallback onTakePhoto;
@@ -1441,7 +1938,16 @@ class ReportScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PlaceContext(place: place, labels: labels),
+              if (place == null)
+                NewPlaceContext(
+                  labels: labels,
+                  placeNameController: placeNameController,
+                  placeCityController: placeCityController,
+                  placeAddressController: placeAddressController,
+                  placeDescriptionController: placeDescriptionController,
+                )
+              else
+                PlaceContext(place: place!, labels: labels, locale: locale),
               const SizedBox(height: 18),
               InlineUploadBox(
                 labels: labels,
@@ -1466,14 +1972,6 @@ class ReportScreen extends StatelessWidget {
                 minLines: 5,
                 maxLines: 8,
                 decoration: InputDecoration(hintText: labels.notesHint),
-              ),
-              const SizedBox(height: 16),
-              CheckboxListTile(
-                value: anonymous,
-                onChanged: (value) => onAnonymousChanged(value ?? false),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-                title: Text(labels.anonymous),
               ),
               if (reportMessage != null) ...[
                 const SizedBox(height: 8),
@@ -1510,6 +2008,73 @@ class HelpScreen extends StatelessWidget {
   final AppCopy labels;
   final bool focusMode;
   final VoidCallback onEnableFocus;
+
+  void _showHelpCard(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.volunteer_activism_outlined),
+            const SizedBox(width: 10),
+            Expanded(child: Text(labels.helpCard)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                labels.communicationMessage,
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineSmall?.copyWith(height: 1.35),
+              ),
+              const SizedBox(height: 18),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: softPanelColor(context),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.phone_outlined, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              labels.trustedContact,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(labels.trustedContactBody),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(labels.close),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1557,7 +2122,10 @@ class HelpScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              FilledButton(onPressed: () {}, child: Text(labels.openHelpCard)),
+              FilledButton(
+                onPressed: () => _showHelpCard(context),
+                child: Text(labels.openHelpCard),
+              ),
             ],
           ),
         ),
@@ -1591,8 +2159,11 @@ class HelpScreen extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.phone_outlined),
             title: Text(labels.trustedContact),
-            subtitle: const Text('Tutor principal · Josep B.'),
-            trailing: TextButton(onPressed: () {}, child: Text(labels.contact)),
+            subtitle: Text(labels.trustedContactBody),
+            trailing: Tooltip(
+              message: labels.actionUnavailable,
+              child: TextButton(onPressed: null, child: Text(labels.contact)),
+            ),
           ),
         ),
       ],
@@ -1604,9 +2175,11 @@ class ProfilesScreen extends StatelessWidget {
   const ProfilesScreen({
     required this.labels,
     required this.authLabels,
+    required this.locale,
     required this.isAuthenticated,
     required this.userProfile,
     required this.verifiedProfiles,
+    required this.childProfiles,
     required this.childAliasController,
     required this.childAgeRange,
     required this.profileMessage,
@@ -1625,9 +2198,11 @@ class ProfilesScreen extends StatelessWidget {
 
   final AppCopy labels;
   final AuthCopy authLabels;
+  final LocaleOption locale;
   final bool isAuthenticated;
   final SpectrumUserProfile? userProfile;
   final List<VerifiedProfile> verifiedProfiles;
+  final List<ChildProfile> childProfiles;
   final TextEditingController childAliasController;
   final String? childAgeRange;
   final String? profileMessage;
@@ -1670,8 +2245,11 @@ class ProfilesScreen extends StatelessWidget {
                 action: labels.viewAll,
               ),
               const SizedBox(height: 10),
-              for (final profile in verifiedProfiles)
-                VerifiedRow(profile: profile, labels: labels),
+              if (verifiedProfiles.isEmpty)
+                StatusMessage(message: labels.noVerifiedProfiles)
+              else
+                for (final profile in verifiedProfiles)
+                  VerifiedRow(profile: profile, labels: labels),
             ],
           ),
         ),
@@ -1707,8 +2285,7 @@ class ProfilesScreen extends StatelessWidget {
           ProfilePanel(
             icon: Icons.supervisor_account_outlined,
             title: labels.tutorProfile,
-            body:
-                'Compte principal que revisa aportacions dels perfils infantils.',
+            body: labels.tutorProfileBody,
           ),
           const SizedBox(height: 14),
           SpectrumPanel(
@@ -1717,11 +2294,14 @@ class ProfilesScreen extends StatelessWidget {
               children: [
                 SectionHeading(title: labels.childProfile),
                 const SizedBox(height: 10),
-                for (final child in sampleChildProfiles)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: ChildProfileTile(profile: child),
-                  ),
+                if (childProfiles.isEmpty)
+                  StatusMessage(message: labels.noChildProfiles)
+                else
+                  for (final child in childProfiles)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: ChildProfileTile(profile: child, locale: locale),
+                    ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: childAliasController,
@@ -1813,7 +2393,7 @@ class ProfilesScreen extends StatelessWidget {
           ProfilePanel(
             icon: Icons.tune_outlined,
             title: labels.sensoryProfile,
-            body: 'Preferències de soroll, llum, afluència i temps d’espera.',
+            body: labels.sensoryProfileBody,
           ),
         ],
       ],
@@ -1925,11 +2505,14 @@ class SensoryMapPanel extends StatelessWidget {
   const SensoryMapPanel({
     required this.title,
     required this.subtitle,
+    required this.locale,
+    required this.openFullMapLabel,
     required this.googleMapsAvailable,
     required this.places,
     required this.selectedPlace,
     required this.locationStatus,
     required this.deviceLocation,
+    required this.emptyBody,
     required this.onLocate,
     required this.onPlaceSelected,
     this.onOpen,
@@ -1938,11 +2521,14 @@ class SensoryMapPanel extends StatelessWidget {
 
   final String title;
   final String subtitle;
+  final LocaleOption locale;
+  final String openFullMapLabel;
   final bool googleMapsAvailable;
   final List<PlaceSummary> places;
-  final PlaceSummary selectedPlace;
+  final PlaceSummary? selectedPlace;
   final LocationStatus locationStatus;
   final DeviceLocation? deviceLocation;
+  final String emptyBody;
   final Future<void> Function() onLocate;
   final ValueChanged<int> onPlaceSelected;
   final VoidCallback? onOpen;
@@ -1969,10 +2555,12 @@ class SensoryMapPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.tune_outlined),
-              ),
+              if (onOpen != null)
+                IconButton(
+                  tooltip: openFullMapLabel,
+                  onPressed: onOpen,
+                  icon: const Icon(Icons.tune_outlined),
+                ),
               IconButton(
                 tooltip: subtitle,
                 onPressed: () => unawaited(onLocate()),
@@ -1994,7 +2582,9 @@ class SensoryMapPanel extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  if (googleMapsAvailable)
+                  if (selectedPlace == null && deviceLocation == null)
+                    _EmptyMapLayer(body: emptyBody)
+                  else if (googleMapsAvailable)
                     _GoogleMapLayer(
                       places: places,
                       selectedPlace: selectedPlace,
@@ -2018,48 +2608,49 @@ class SensoryMapPanel extends StatelessWidget {
                           : 'Fallback map',
                     ),
                   ),
-                  Positioned(
-                    left: 18,
-                    right: 18,
-                    bottom: 18,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: panelColor(context).withValues(alpha: 0.92),
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 14,
+                  if (selectedPlace != null)
+                    Positioned(
+                      left: 18,
+                      right: 18,
+                      bottom: 18,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: panelColor(context).withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(22),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.circle,
-                              size: 10,
-                              color: SpectrumColors.tertiary,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                selectedPlace.area,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 14,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.circle,
+                                size: 10,
+                                color: SpectrumColors.tertiary,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  localizedPlaceArea(locale, selectedPlace!),
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Text(
-                              selectedPlace.quietDb,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
+                              Text(
+                                selectedPlace!.quietDb,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -2069,7 +2660,7 @@ class SensoryMapPanel extends StatelessWidget {
             TextButton.icon(
               onPressed: onOpen,
               icon: const Icon(Icons.arrow_forward),
-              label: const Text('Obrir mapa complet'),
+              label: Text(openFullMapLabel),
             ),
           ],
         ],
@@ -2088,7 +2679,7 @@ class _GoogleMapLayer extends StatelessWidget {
   });
 
   final List<PlaceSummary> places;
-  final PlaceSummary selectedPlace;
+  final PlaceSummary? selectedPlace;
   final DeviceLocation? deviceLocation;
   final LocationStatus locationStatus;
   final ValueChanged<int> onPlaceSelected;
@@ -2096,19 +2687,20 @@ class _GoogleMapLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = places.indexWhere(
-      (place) => place.id == selectedPlace.id,
+      (place) => place.id == selectedPlace?.id,
     );
     final deviceLatLng = deviceLocation == null
         ? null
         : LatLng(deviceLocation!.latitude, deviceLocation!.longitude);
     final cameraTarget =
-        deviceLatLng ?? LatLng(selectedPlace.latitude, selectedPlace.longitude);
+        deviceLatLng ??
+        LatLng(selectedPlace!.latitude, selectedPlace!.longitude);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: GoogleMap(
         key: ValueKey(
-          '${selectedPlace.id}-${deviceLocation?.latitude}-${deviceLocation?.longitude}',
+          '${selectedPlace?.id ?? 'device'}-${deviceLocation?.latitude}-${deviceLocation?.longitude}',
         ),
         initialCameraPosition: CameraPosition(
           target: cameraTarget,
@@ -2154,7 +2746,7 @@ class _FallbackMapLayer extends StatelessWidget {
   });
 
   final List<PlaceSummary> places;
-  final PlaceSummary selectedPlace;
+  final PlaceSummary? selectedPlace;
   final DeviceLocation? deviceLocation;
   final ValueChanged<int> onPlaceSelected;
 
@@ -2181,7 +2773,7 @@ class _FallbackMapLayer extends StatelessWidget {
           _MapPin(
             left: pinLayout[entry.$1 % pinLayout.length].left,
             top: pinLayout[entry.$1 % pinLayout.length].top,
-            active: selectedPlace.id == entry.$2.id,
+            active: selectedPlace?.id == entry.$2.id,
             onTap: () => onPlaceSelected(entry.$1),
           ),
         if (deviceLocation != null)
@@ -2198,6 +2790,37 @@ class _FallbackMapLayer extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _EmptyMapLayer extends StatelessWidget {
+  const _EmptyMapLayer({required this.body});
+
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.add_location_alt_outlined,
+              color: SpectrumColors.tertiary,
+              size: 42,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: mutedColor(context), height: 1.45),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -2228,12 +2851,14 @@ class _MapProviderBadge extends StatelessWidget {
 
 class SavedPlaceRow extends StatelessWidget {
   const SavedPlaceRow({
+    required this.locale,
     required this.place,
     required this.onTap,
     this.selected = false,
     super.key,
   });
 
+  final LocaleOption locale;
   final PlaceSummary place;
   final VoidCallback onTap;
   final bool selected;
@@ -2262,7 +2887,7 @@ class SavedPlaceRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${place.area} · ${place.distance}',
+                      '${localizedPlaceArea(locale, place)} · ${place.distance}',
                       style: TextStyle(
                         color: mutedColor(context),
                         fontSize: 12,
@@ -2280,48 +2905,11 @@ class SavedPlaceRow extends StatelessWidget {
   }
 }
 
-class DraftPreview extends StatelessWidget {
-  const DraftPreview({required this.labels, super.key});
-
-  final AppCopy labels;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const PlaceIcon(size: 74),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Esbeteria Mar Blau',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Avinguda del Mar, 25 · Barcelona',
-                style: TextStyle(color: mutedColor(context)),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                labels.tutorReview,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class PlaceDetailsCard extends StatelessWidget {
   const PlaceDetailsCard({
     required this.labels,
     required this.authLabels,
+    required this.locale,
     required this.place,
     required this.isAuthenticated,
     required this.onContribute,
@@ -2330,6 +2918,7 @@ class PlaceDetailsCard extends StatelessWidget {
 
   final AppCopy labels;
   final AuthCopy authLabels;
+  final LocaleOption locale;
   final PlaceSummary place;
   final bool isAuthenticated;
   final VoidCallback onContribute;
@@ -2345,7 +2934,7 @@ class PlaceDetailsCard extends StatelessWidget {
           Text(place.name, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
           Text(
-            '${place.area} · ${place.city}',
+            '${localizedPlaceArea(locale, place)} · ${place.city}',
             style: TextStyle(color: mutedColor(context)),
           ),
           const SizedBox(height: 14),
@@ -2360,22 +2949,31 @@ class PlaceDetailsCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(place.description, style: const TextStyle(height: 1.45)),
+          Text(
+            localizedPlaceDescription(locale, place),
+            style: const TextStyle(height: 1.45),
+          ),
           const SizedBox(height: 16),
           if (isAuthenticated) ...[
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {},
-                    child: Text(labels.save),
+                  child: Tooltip(
+                    message: labels.actionUnavailable,
+                    child: OutlinedButton(
+                      onPressed: null,
+                      child: Text(labels.save),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {},
-                    child: Text(labels.report),
+                  child: Tooltip(
+                    message: labels.actionUnavailable,
+                    child: OutlinedButton(
+                      onPressed: null,
+                      child: Text(labels.report),
+                    ),
                   ),
                 ),
               ],
@@ -2425,11 +3023,71 @@ class PlaceDetailsCard extends StatelessWidget {
   }
 }
 
+class NewPlaceContext extends StatelessWidget {
+  const NewPlaceContext({
+    required this.labels,
+    required this.placeNameController,
+    required this.placeCityController,
+    required this.placeAddressController,
+    required this.placeDescriptionController,
+    super.key,
+  });
+
+  final AppCopy labels;
+  final TextEditingController placeNameController;
+  final TextEditingController placeCityController;
+  final TextEditingController placeAddressController;
+  final TextEditingController placeDescriptionController;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeading(title: labels.createPlace),
+        const SizedBox(height: 10),
+        Text(
+          labels.noPlacesBody,
+          style: TextStyle(color: mutedColor(context), height: 1.45),
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: placeNameController,
+          decoration: InputDecoration(labelText: labels.placeName),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: placeCityController,
+          decoration: InputDecoration(labelText: labels.placeCity),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: placeAddressController,
+          decoration: InputDecoration(labelText: labels.placeAddress),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: placeDescriptionController,
+          minLines: 2,
+          maxLines: 4,
+          decoration: InputDecoration(labelText: labels.placeDescription),
+        ),
+      ],
+    );
+  }
+}
+
 class PlaceContext extends StatelessWidget {
-  const PlaceContext({required this.place, required this.labels, super.key});
+  const PlaceContext({
+    required this.place,
+    required this.labels,
+    required this.locale,
+    super.key,
+  });
 
   final PlaceSummary place;
   final AppCopy labels;
+  final LocaleOption locale;
 
   @override
   Widget build(BuildContext context) {
@@ -2446,7 +3104,7 @@ class PlaceContext extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
               Text(
-                '${place.area} · ${place.quietDb}',
+                '${localizedPlaceArea(locale, place)} · ${place.quietDb}',
                 style: TextStyle(color: mutedColor(context)),
               ),
             ],
@@ -2814,9 +3472,14 @@ class ProfilePanel extends StatelessWidget {
 }
 
 class ChildProfileTile extends StatelessWidget {
-  const ChildProfileTile({required this.profile, super.key});
+  const ChildProfileTile({
+    required this.profile,
+    required this.locale,
+    super.key,
+  });
 
   final ChildProfile profile;
+  final LocaleOption locale;
 
   @override
   Widget build(BuildContext context) {
@@ -2840,7 +3503,7 @@ class ChildProfileTile extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                   Text(
-                    '${profile.age} anys · ${profile.state}',
+                    localizedChildAgeLine(locale, profile),
                     style: TextStyle(color: mutedColor(context), fontSize: 12),
                   ),
                 ],

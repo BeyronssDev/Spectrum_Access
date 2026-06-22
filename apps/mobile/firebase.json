@@ -1,1 +1,47 @@
-{"flutter":{"platforms":{"android":{"buildConfigurations":{".":{"projectId":"spectrum-access-499918","appId":"1:992685844395:android:529958f0da7204c04554ee","fileOutput":"android/app/google-services.json"}}},"ios":{"buildConfigurations":{"Debug":{"projectId":"spectrum-access-499918","appId":"1:992685844395:ios:65139c0cf127590a4554ee","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}}},"dart":{"lib/firebase_options.dart":{"projectId":"spectrum-access-499918","configurations":{"android":"1:992685844395:android:529958f0da7204c04554ee","ios":"1:992685844395:ios:65139c0cf127590a4554ee","web":"1:992685844395:web:5b9a39c79f7f6d1f4554ee"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "buildConfigurations": {
+          ".": {
+            "projectId": "spectrum-access-499918",
+            "appId": "1:992685844395:android:529958f0da7204c04554ee",
+            "fileOutput": "android/app/google-services.json"
+          }
+        }
+      },
+      "ios": {
+        "buildConfigurations": {
+          "Debug": {
+            "projectId": "spectrum-access-499918",
+            "appId": "1:992685844395:ios:65139c0cf127590a4554ee",
+            "uploadDebugSymbols": false,
+            "fileOutput": "ios/Runner/GoogleService-Info.plist"
+          },
+          "Profile": {
+            "projectId": "spectrum-access-499918",
+            "appId": "1:992685844395:ios:65139c0cf127590a4554ee",
+            "uploadDebugSymbols": false,
+            "fileOutput": "ios/Runner/GoogleService-Info.plist"
+          },
+          "Release": {
+            "projectId": "spectrum-access-499918",
+            "appId": "1:992685844395:ios:65139c0cf127590a4554ee",
+            "uploadDebugSymbols": false,
+            "fileOutput": "ios/Runner/GoogleService-Info.plist"
+          }
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "spectrum-access-499918",
+          "configurations": {
+            "android": "1:992685844395:android:529958f0da7204c04554ee",
+            "ios": "1:992685844395:ios:65139c0cf127590a4554ee",
+            "web": "1:992685844395:web:5b9a39c79f7f6d1f4554ee"
+          }
+        }
+      }
+    }
+  }
+}

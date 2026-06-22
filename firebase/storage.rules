@@ -11,7 +11,8 @@ service firebase.storage {
     }
 
     function isModerator() {
-      return signedIn() && (request.auth.token.moderator == true || request.auth.token.admin == true);
+      return signedIn()
+        && (request.auth.token.superAdmin == true || request.auth.token.moderator == true || request.auth.token.admin == true);
     }
 
     function validImage() {

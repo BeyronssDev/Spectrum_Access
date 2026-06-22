@@ -7,6 +7,17 @@ import 'spectrum_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final initialThemeMode = await SpectrumThemePreferences.loadThemeMode();
+
+  runApp(
+    SpectrumAccessApp(
+      firebaseInitialization: _initializeFirebase(),
+      initialThemeMode: initialThemeMode,
+    ),
+  );
+}
+
+Future<void> _initializeFirebase() async {
   try {
     if (Firebase.apps.isEmpty) {
       if (kIsWeb) {
@@ -22,5 +33,4 @@ Future<void> main() async {
       rethrow;
     }
   }
-  runApp(const SpectrumAccessApp());
 }

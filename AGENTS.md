@@ -41,9 +41,19 @@ Només són acceptables les imatges estrictament necessàries per compilar o pub
 
 ## Context del projecte
 
-Aquest repo és la plataforma oberta d'accessibilitat sensorial `Spectrum Access`, un MVP web i mòbil per consultar, valorar i documentar espais segons criteris d'accessibilitat sensorial per a persones autistes, famílies, tutors, associacions i professionals verificats.
+Aquest repo és la plataforma oberta d'accessibilitat sensorial `Spectrum Access`, una versió de producció controlada amb testers per consultar, valorar i documentar espais segons criteris d'accessibilitat sensorial per a persones autistes, famílies, tutors, associacions i professionals verificats.
+
+Ja no s'ha de tractar com un prototip o MVP amb dades fictícies dins del codi. El projecte està en fase de validació real abans del llançament públic: el propietari el prova en dispositius físics, amb Firebase al núvol, fluxos reals d'autenticació, pujada d'imatges, moderació i permisos. Les dades de demo, professionals falsos, associacions inventades o llocs ficticis no s'han de reintroduir al codi de producció.
 
 La plataforma no ofereix diagnòstics, recomanacions clíniques ni IA mèdica. Tracta les dades sensorials com a preferències funcionals i informació comunitària, no com a historial mèdic.
+
+## Estat actual de producció controlada
+
+- L'entorn de dades és Firebase al núvol, no emuladors locals per defecte. Els emuladors continuen sent útils per tests de Rules i proves aïllades, però la validació funcional del producte ha de respectar el projecte Firebase real `spectrum-access-499918`.
+- La web encara no s'ha de desplegar públicament fins que el domini definitiu estigui decidit. Ha de poder funcionar en local com a experiència connectada al núvol, sense dades fictícies ni comportaments simulats que substitueixin fluxos reals.
+- La mobile app s'està provant en dispositius físics iOS/Android. Per instal·lar-la en un iPhone per ús real fora de casa, usa una build `Release` o `Profile` signada; no deixis una build `Debug` com a instal·lació principal perquè pot tancar-se si s'obre sense Flutter/Xcode connectat.
+- TestFlight és un pas posterior. De moment, la prioritat és que el dispositiu físic del propietari i els futurs testers interns puguin validar registre, login, ubicació, mapa, aportacions, fotos, valoracions i moderació.
+- El codi ha de quedar net de dades fictícies de demostració. Els únics textos o dades artificials acceptables són fixtures de test, empty states, placeholders no persistents i exemples clarament no funcionals en documentació permesa.
 
 ## Estructura
 
@@ -72,7 +82,8 @@ Per a comandes directes de Flutter, entra a `apps/mobile` i usa `flutter pub get
 
 ## Git i publicació a GitHub
 
-- Es poden preparar commits locals quan el canvi estigui tancat i verificat, si la petició ho requereix o el flux de treball ho justifica.
+- Quan un canvi quedi tancat i verificat, prepara un commit local amb els fitxers corresponents abans d'acabar el torn, excepte si el propietari demana explícitament no commitejar encara.
+- Si hi ha canvis locals previs que formen part del mateix estat de treball acordat amb el propietari, inclou-los al commit només després de revisar que no siguin secrets, documents interns ni artefactes prohibits.
 - No facis mai `git push` sense una ordre explícita del propietari del projecte en el torn actual.
 - No assumeixis que un commit local s'ha de publicar. Si el propietari no ha demanat push, deixa el commit només en local i informa del hash.
 - Si cal obrir una PR, crear una branca o publicar canvis a GitHub, pregunta o espera confirmació explícita abans de fer cap operació remota d'escriptura.
@@ -91,7 +102,7 @@ Per a comandes directes de Flutter, entra a `apps/mobile` i usa `flutter pub get
 
 - Web i app mòbil han de mantenir paritat funcional: mapa, cerca, fitxes, valoracions, comentaris, imatges, favorits, reports i perfil sensorial.
 - Mantingues el suport per `ca`, `es` i `en` quan afegeixis text visible.
-- Els perfils infantils no tenen email ni login propi en l'MVP; viuen dins el compte del tutor.
+- Els perfils infantils no tenen email ni login propi en aquesta fase; viuen dins el compte del tutor.
 - Les aportacions d'un perfil infantil han de requerir revisió del tutor abans d'enviar-se a moderació o publicació.
 - Professionals i entitats verificades han de separar la informació pública de l'evidència documental privada.
 - Tot contingut públic de risc, especialment imatges i comentaris, ha de tenir estat de moderació. Les imatges d'usuari entren com `pending`.
@@ -107,7 +118,8 @@ Per a comandes directes de Flutter, entra a `apps/mobile` i usa `flutter pub get
 ## Web
 
 - La ruta principal renderitza `PlatformApp` a `apps/web/app/platform-app.tsx`.
-- La web és una experiència de client amb estats mock/MVP; no introdueixis accessos Firebase sense respectar `apps/web/app/lib/firebase.ts`.
+- La web és una experiència de producció local connectada a Firebase quan la configuració existeix; no introdueixis accessos Firebase sense respectar `apps/web/app/lib/firebase.ts`.
+- No afegeixis noves dades mock, professionals falsos, associacions inventades ni llocs ficticis per omplir pantalles. Usa empty states, càrrega des del núvol o fixtures de test fora del flux de producció.
 - Usa `lucide-react` per a icones quan ja existeixi una icona equivalent.
 - Mantingues el logo oficial des de `apps/web/public/brand/accessibilitat-logo.svg`.
 - Respecta la paleta i criteris de `docs/design/brand.md`: warm alabaster, deep charcoal, slate blue-grey i champagne gold.
@@ -119,8 +131,9 @@ Per a comandes directes de Flutter, entra a `apps/mobile` i usa `flutter pub get
 - L'app arrenca a `apps/mobile/lib/main.dart` i inicialitza Firebase amb `firebase_options.dart`.
 - La UI principal viu a `apps/mobile/lib/spectrum_app.dart`.
 - Reutilitza `spectrum_theme.dart` per colors, tipografia, logo i panels.
-- Reutilitza `spectrum_content.dart` per textos, enums i dades mock.
+- Reutilitza `spectrum_content.dart` per textos, enums i constants de UI, però no hi afegeixis dades fictícies de producció.
 - Mantingues el logo oficial des de `apps/mobile/assets/brand/accessibilitat-logo.svg`.
+- Les preferències locals de l'usuari, com el mode fosc, s'han de persistir al dispositiu i no s'han de perdre en tancar i reobrir l'app.
 - Quan canviïs UI o navegació mòbil, actualitza `apps/mobile/test/widget_test.dart` si cal.
 
 ## Firebase, seguretat i moderació
@@ -128,6 +141,7 @@ Per a comandes directes de Flutter, entra a `apps/mobile` i usa `flutter pub get
 - Firestore Rules viuen a `firebase/firestore.rules`; Storage Rules a `firebase/storage.rules`.
 - Si canvies regles, afegeix o actualitza tests a `packages/functions/tests/rules.test.ts` i executa `pnpm rules:test` quan l'entorn tingui Java i emuladors.
 - Les claims `admin` i `moderator` governen permisos elevats; no confiïs en rols editables pel client.
+- El propietari del projecte ha de poder actuar com a nivell superior d'administració per gestionar moderadors i administradors. Qualsevol elevació de permisos s'ha de fer des de backend, claims o eines administratives controlades, mai confiant en valors modificables pel client.
 - Els usuaris normals només poden crear contingut propi i normalment en estat `pending`.
 - Les imatges a Storage han de quedar sota rutes d'usuari i passar validació de tipus `image/*` i mida.
 - No facis públic accés a documents o fitxers privats sense revisar Rules i tests.

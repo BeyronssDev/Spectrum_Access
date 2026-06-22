@@ -173,11 +173,7 @@ class SpectrumFirebaseServices {
     if (fullName.isNotEmpty && userCredential.user?.displayName == null) {
       await userCredential.user?.updateDisplayName(fullName);
     }
-    await _completeOnboardingFromUser(
-      userCredential.user,
-      locale,
-      'apple.com',
-    );
+    await _completeOnboardingFromUser(userCredential.user, locale, 'apple.com');
     return userCredential;
   }
 
@@ -206,12 +202,11 @@ class SpectrumFirebaseServices {
       throw StateError('auth-user-missing');
     }
 
-    final publicName =
-        user.displayName?.trim().isNotEmpty == true
-            ? user.displayName!.trim()
-            : (user.email?.split('@').first.trim().isNotEmpty == true
-                  ? user.email!.split('@').first.trim()
-                  : 'Spectrum user');
+    final publicName = user.displayName?.trim().isNotEmpty == true
+        ? user.displayName!.trim()
+        : (user.email?.split('@').first.trim().isNotEmpty == true
+              ? user.email!.split('@').first.trim()
+              : 'Spectrum user');
     final authProviders = user.providerData
         .map((provider) => provider.providerId)
         .where(
@@ -228,9 +223,7 @@ class SpectrumFirebaseServices {
       displayName: user.displayName ?? publicName,
       email: user.email,
       locale: locale,
-      authProviders: authProviders.isEmpty
-          ? [fallbackProvider]
-          : authProviders,
+      authProviders: authProviders.isEmpty ? [fallbackProvider] : authProviders,
     );
   }
 
@@ -412,7 +405,27 @@ PlaceSummary _placeFromDocument(
     latitude: latitude ?? 41.3851,
     longitude: longitude ?? 2.1734,
     description: (data['description'] as String?) ?? '',
+    criterionAverages: _criterionAveragesFromMap(data['criterionAverages']),
   );
+}
+
+Map<SensoryKey, double> _criterionAveragesFromMap(Object? value) {
+  if (value is! Map) {
+    return const {};
+  }
+
+  double? readScore(String key) {
+    final score = value[key];
+    return score is num ? score.toDouble() : null;
+  }
+
+  return {
+    if (readScore('noise') != null) SensoryKey.noise: readScore('noise')!,
+    if (readScore('crowd') != null) SensoryKey.density: readScore('crowd')!,
+    if (readScore('lighting') != null) SensoryKey.light: readScore('lighting')!,
+    if (readScore('waitingTime') != null)
+      SensoryKey.wait: readScore('waitingTime')!,
+  };
 }
 
 Map<String, int> _ratingsPayload(Map<SensoryKey, double> ratings) {

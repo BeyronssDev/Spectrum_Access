@@ -24,7 +24,15 @@ import {
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getStorage, ref, uploadBytes } from "firebase/storage";
-import type { AppUser, AuthProviderId, Locale, Place, SensoryRating } from "@accessibilitat/shared";
+import {
+  sensoryCriteria,
+  type AppUser,
+  type AuthProviderId,
+  type Locale,
+  type Place,
+  type SensoryCriterion,
+  type SensoryRating
+} from "@accessibilitat/shared";
 import { requireFirebaseApp } from "./firebase";
 
 const functionsRegion = "europe-west1";
@@ -99,7 +107,26 @@ function requireSignedInUid(): string {
   return user.uid;
 }
 
+function mapCriterionAverages(value: unknown): Partial<Record<SensoryCriterion, number>> | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const source = value as Record<string, unknown>;
+  const averages: Partial<Record<SensoryCriterion, number>> = {};
+  for (const criterion of sensoryCriteria) {
+    const score = source[criterion];
+    if (typeof score === "number" && Number.isFinite(score)) {
+      averages[criterion] = score;
+    }
+  }
+
+  return Object.keys(averages).length > 0 ? averages : undefined;
+}
+
 function mapPlaceDocument(id: string, data: DocumentData): Place {
+  const criterionAverages = mapCriterionAverages(data.criterionAverages);
+
   return {
     id,
     name: String(data.name ?? ""),
@@ -116,6 +143,7 @@ function mapPlaceDocument(id: string, data: DocumentData): Place {
     ratingCount: Number(data.ratingCount ?? 0),
     imageCount: Number(data.imageCount ?? 0),
     averageScore: Number(data.averageScore ?? 0),
+    ...(criterionAverages ? { criterionAverages } : {}),
     updatedAt: String(data.updatedAt ?? "")
   };
 }

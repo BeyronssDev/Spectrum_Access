@@ -25,7 +25,7 @@ describe("shared validation", () => {
   });
 
   it("normalizes bounded text", () => {
-    assert.equal(normalizeText("  Biblioteca  "), "Biblioteca");
+    assert.equal(normalizeText("  Test Place  "), "Test Place");
     assert.equal(normalizeText(""), null);
     assert.equal(normalizeText("abcd", 3), null);
   });
