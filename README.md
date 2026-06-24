@@ -292,10 +292,14 @@ Next.js, React and TypeScript web application.
 Relevant files:
 
 - `apps/web/app/page.tsx`: main web entry.
-- `apps/web/app/platform-app.tsx`: main Spectrum Access interface.
+- `apps/web/app/platform-app.tsx`: web orchestration component.
+- `apps/web/app/platform/`: UI copy, navigation, types, mappers, distance helpers, map config and hooks.
 - `apps/web/app/admin/page.tsx`: administration area.
 - `apps/web/app/lib/firebase.ts`: Firebase web initialization.
-- `apps/web/app/lib/firebase-actions.ts`: web actions connected to Firestore, Storage and Cloud Functions.
+- `apps/web/app/lib/accessibilitat-api.ts`: client-side application API port.
+- `apps/web/app/lib/firebase-api.ts`: Firebase adapter for the client-side API port.
+- `apps/web/app/lib/firebase-actions.ts`: compatibility facade for existing web actions.
+- `apps/web/app/lib/firebase-place-mappers.ts`: Firestore-to-shared-model mappers.
 - `apps/web/app/lib/google-maps.ts`: Google Maps JavaScript API loader.
 - `apps/web/public/brand/accessibilitat-logo.svg`: official web logo.
 
@@ -306,10 +310,17 @@ Flutter application for iOS and Android.
 Relevant files:
 
 - `apps/mobile/lib/main.dart`: Flutter entry point.
-- `apps/mobile/lib/spectrum_app.dart`: main mobile UI.
+- `apps/mobile/lib/spectrum_app.dart`: public `SpectrumAccessApp` entry point.
+- `apps/mobile/lib/spectrum_shell.dart`: mobile shell, navigation and screens.
+- `apps/mobile/lib/spectrum_application_service.dart`: mobile application service port.
+- `apps/mobile/lib/firebase_services.dart`: Firebase adapter for the mobile service port.
+- `apps/mobile/lib/mobile_state.dart`: mobile UI state models.
+- `apps/mobile/lib/place_helpers.dart`: distance, ranking and sensory filtering helpers.
+- `apps/mobile/lib/theme_preferences.dart`: persisted theme preferences.
+- `apps/mobile/lib/mobile_google_maps.dart`: native Google Maps availability helper.
+- `apps/mobile/lib/mobile_image_upload.dart`: image selection and metadata normalization.
 - `apps/mobile/lib/spectrum_theme.dart`: theme, colors and components.
-- `apps/mobile/lib/spectrum_content.dart`: texts, mock data and UI content.
-- `apps/mobile/lib/firebase_services.dart`: Firebase service layer for Flutter.
+- `apps/mobile/lib/spectrum_content.dart`: texts, enums and UI constants.
 - `apps/mobile/lib/firebase_options.dart`: generated Firebase options.
 - `apps/mobile/assets/brand/accessibilitat-logo.svg`: official mobile logo.
 
@@ -331,6 +342,18 @@ Includes:
 #### `packages/functions`
 
 Firebase Cloud Functions backend.
+
+The backend is organized as a modular monolith with internal Clean Architecture / hexagonal boundaries:
+
+- `packages/functions/src/domain`: pure domain rules, review aggregate calculations, roles and domain errors.
+- `packages/functions/src/application`: callable use cases and event handlers.
+- `packages/functions/src/ports`: repository, auth, clock and logger contracts.
+- `packages/functions/src/infrastructure/firebase`: Firestore/Auth/Functions adapters and mappers.
+- `packages/functions/src/interfaces`: HTTPS callable and Firestore trigger adapters.
+- `packages/functions/src/composition`: dependency wiring.
+- `packages/functions/src/index.ts`: thin public Cloud Functions entry point.
+
+Firestore triggers are treated as Firebase event adapters. They delegate to application handlers for review aggregate recalculation, image moderation notifications and verification audit events without introducing an external broker.
 
 Main responsibilities:
 
@@ -482,6 +505,7 @@ Data that must not be committed:
 Available now:
 
 - Production-style monorepo structure.
+- Modular monolith architecture with internal Clean/Hexagonal boundaries and Firebase adapters.
 - Working Next.js web application.
 - Working Flutter app prepared for iOS and Android.
 - Shared domain models and validations.
@@ -791,10 +815,14 @@ Aplicació web Next.js, React i TypeScript.
 Fitxers rellevants:
 
 - `apps/web/app/page.tsx`: entrada principal de la web.
-- `apps/web/app/platform-app.tsx`: interfície principal de Spectrum Access.
+- `apps/web/app/platform-app.tsx`: component d'orquestració de la web.
+- `apps/web/app/platform/`: còpia de UI, navegació, tipus, mappers, helpers de distància, configuració de mapa i hooks.
 - `apps/web/app/admin/page.tsx`: zona d'administració.
 - `apps/web/app/lib/firebase.ts`: inicialització Firebase web.
-- `apps/web/app/lib/firebase-actions.ts`: accions web connectades a Firestore, Storage i Cloud Functions.
+- `apps/web/app/lib/accessibilitat-api.ts`: port d'API d'aplicació del client web.
+- `apps/web/app/lib/firebase-api.ts`: adaptador Firebase del port d'API del client.
+- `apps/web/app/lib/firebase-actions.ts`: façana de compatibilitat per a les accions web existents.
+- `apps/web/app/lib/firebase-place-mappers.ts`: mappers de Firestore cap als models compartits.
 - `apps/web/app/lib/google-maps.ts`: carregador de Google Maps JavaScript API.
 - `apps/web/public/brand/accessibilitat-logo.svg`: logo oficial web.
 
@@ -805,10 +833,17 @@ Aplicació Flutter per iOS i Android.
 Fitxers rellevants:
 
 - `apps/mobile/lib/main.dart`: punt d'entrada de Flutter.
-- `apps/mobile/lib/spectrum_app.dart`: UI mòbil principal.
+- `apps/mobile/lib/spectrum_app.dart`: punt d'entrada públic `SpectrumAccessApp`.
+- `apps/mobile/lib/spectrum_shell.dart`: shell mòbil, navegació i pantalles.
+- `apps/mobile/lib/spectrum_application_service.dart`: port del servei d'aplicació mòbil.
+- `apps/mobile/lib/firebase_services.dart`: adaptador Firebase del port mòbil.
+- `apps/mobile/lib/mobile_state.dart`: models d'estat de UI mòbil.
+- `apps/mobile/lib/place_helpers.dart`: helpers de distància, rànquing i filtratge sensorial.
+- `apps/mobile/lib/theme_preferences.dart`: preferències de tema persistides.
+- `apps/mobile/lib/mobile_google_maps.dart`: helper de disponibilitat de Google Maps natiu.
+- `apps/mobile/lib/mobile_image_upload.dart`: selecció d'imatges i normalització de metadades.
 - `apps/mobile/lib/spectrum_theme.dart`: tema, colors i components.
-- `apps/mobile/lib/spectrum_content.dart`: textos, dades mock i contingut de UI.
-- `apps/mobile/lib/firebase_services.dart`: capa de serveis Firebase per Flutter.
+- `apps/mobile/lib/spectrum_content.dart`: textos, enums i constants de UI.
 - `apps/mobile/lib/firebase_options.dart`: opcions Firebase generades.
 - `apps/mobile/assets/brand/accessibilitat-logo.svg`: logo oficial mòbil.
 
@@ -830,6 +865,18 @@ Inclou:
 #### `packages/functions`
 
 Backend Firebase Cloud Functions.
+
+El backend està organitzat com un monòlit modular amb límits interns de Clean Architecture / arquitectura hexagonal:
+
+- `packages/functions/src/domain`: regles pures de domini, càlculs d'agregats de reviews, rols i errors de domini.
+- `packages/functions/src/application`: casos d'ús callable i handlers d'esdeveniments.
+- `packages/functions/src/ports`: contractes de repositori, auth, rellotge i logger.
+- `packages/functions/src/infrastructure/firebase`: adaptadors i mappers de Firestore/Auth/Functions.
+- `packages/functions/src/interfaces`: adaptadors HTTPS callable i triggers Firestore.
+- `packages/functions/src/composition`: wiring de dependències.
+- `packages/functions/src/index.ts`: entry point públic prim de Cloud Functions.
+
+Els triggers de Firestore es tracten com adaptadors d'esdeveniments Firebase. Deleguen a handlers d'aplicació per recalcular agregats de reviews, notificar moderació d'imatges i auditar canvis de verificació sense introduir un broker extern.
 
 Responsabilitats principals:
 
@@ -981,6 +1028,7 @@ Dades que no s'han d'incloure al repositori:
 Disponible ara:
 
 - Estructura de monorepo amb enfocament de producte.
+- Arquitectura de monòlit modular amb límits interns Clean/Hexagonal i adaptadors Firebase.
 - Aplicació web Next.js funcional.
 - App Flutter funcional preparada per iOS i Android.
 - Models i validacions de domini compartits.
@@ -1290,10 +1338,14 @@ Aplicación web Next.js, React y TypeScript.
 Archivos relevantes:
 
 - `apps/web/app/page.tsx`: entrada principal de la web.
-- `apps/web/app/platform-app.tsx`: interfaz principal de Spectrum Access.
+- `apps/web/app/platform-app.tsx`: componente de orquestación de la web.
+- `apps/web/app/platform/`: copia de UI, navegación, tipos, mappers, helpers de distancia, configuración de mapa y hooks.
 - `apps/web/app/admin/page.tsx`: zona de administración.
 - `apps/web/app/lib/firebase.ts`: inicialización Firebase web.
-- `apps/web/app/lib/firebase-actions.ts`: acciones web conectadas a Firestore, Storage y Cloud Functions.
+- `apps/web/app/lib/accessibilitat-api.ts`: puerto de API de aplicación del cliente web.
+- `apps/web/app/lib/firebase-api.ts`: adaptador Firebase del puerto de API del cliente.
+- `apps/web/app/lib/firebase-actions.ts`: fachada de compatibilidad para las acciones web existentes.
+- `apps/web/app/lib/firebase-place-mappers.ts`: mappers de Firestore hacia los modelos compartidos.
 - `apps/web/app/lib/google-maps.ts`: cargador de Google Maps JavaScript API.
 - `apps/web/public/brand/accessibilitat-logo.svg`: logo oficial web.
 
@@ -1304,10 +1356,17 @@ Aplicación Flutter para iOS y Android.
 Archivos relevantes:
 
 - `apps/mobile/lib/main.dart`: punto de entrada de Flutter.
-- `apps/mobile/lib/spectrum_app.dart`: UI móvil principal.
+- `apps/mobile/lib/spectrum_app.dart`: punto de entrada público `SpectrumAccessApp`.
+- `apps/mobile/lib/spectrum_shell.dart`: shell móvil, navegación y pantallas.
+- `apps/mobile/lib/spectrum_application_service.dart`: puerto del servicio de aplicación móvil.
+- `apps/mobile/lib/firebase_services.dart`: adaptador Firebase del puerto móvil.
+- `apps/mobile/lib/mobile_state.dart`: modelos de estado de UI móvil.
+- `apps/mobile/lib/place_helpers.dart`: helpers de distancia, ranking y filtrado sensorial.
+- `apps/mobile/lib/theme_preferences.dart`: preferencias de tema persistidas.
+- `apps/mobile/lib/mobile_google_maps.dart`: helper de disponibilidad de Google Maps nativo.
+- `apps/mobile/lib/mobile_image_upload.dart`: selección de imágenes y normalización de metadatos.
 - `apps/mobile/lib/spectrum_theme.dart`: tema, colores y componentes.
-- `apps/mobile/lib/spectrum_content.dart`: textos, datos mock y contenido de UI.
-- `apps/mobile/lib/firebase_services.dart`: capa de servicios Firebase para Flutter.
+- `apps/mobile/lib/spectrum_content.dart`: textos, enums y constantes de UI.
 - `apps/mobile/lib/firebase_options.dart`: opciones Firebase generadas.
 - `apps/mobile/assets/brand/accessibilitat-logo.svg`: logo oficial móvil.
 
@@ -1329,6 +1388,18 @@ Incluye:
 #### `packages/functions`
 
 Backend Firebase Cloud Functions.
+
+El backend está organizado como un monolito modular con límites internos de Clean Architecture / arquitectura hexagonal:
+
+- `packages/functions/src/domain`: reglas puras de dominio, cálculos de agregados de reviews, roles y errores de dominio.
+- `packages/functions/src/application`: casos de uso callable y handlers de eventos.
+- `packages/functions/src/ports`: contratos de repositorio, auth, reloj y logger.
+- `packages/functions/src/infrastructure/firebase`: adaptadores y mappers de Firestore/Auth/Functions.
+- `packages/functions/src/interfaces`: adaptadores HTTPS callable y triggers Firestore.
+- `packages/functions/src/composition`: wiring de dependencias.
+- `packages/functions/src/index.ts`: entry point público fino de Cloud Functions.
+
+Los triggers de Firestore se tratan como adaptadores de eventos Firebase. Delegan en handlers de aplicación para recalcular agregados de reviews, notificar moderación de imágenes y auditar cambios de verificación sin introducir un broker externo.
 
 Responsabilidades principales:
 
@@ -1480,6 +1551,7 @@ Datos que no deben incluirse en el repositorio:
 Disponible ahora:
 
 - Estructura de monorepo con enfoque de producto.
+- Arquitectura de monolito modular con límites internos Clean/Hexagonal y adaptadores Firebase.
 - Aplicación web Next.js funcional.
 - App Flutter funcional preparada para iOS y Android.
 - Modelos y validaciones de dominio compartidos.
