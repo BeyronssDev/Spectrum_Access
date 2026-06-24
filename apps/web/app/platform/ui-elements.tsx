@@ -54,18 +54,20 @@ export function ToggleButton({
   label,
   activeIcon: ActiveIcon,
   inactiveIcon: InactiveIcon,
-  onClick
+  onClick,
+  className
 }: {
   active: boolean;
   label: string;
   activeIcon: LucideIcon;
   inactiveIcon: LucideIcon;
   onClick: () => void;
+  className?: string;
 }) {
   const Icon = active ? ActiveIcon : InactiveIcon;
 
   return (
-    <button type="button" className="toggle-button" data-active={active} aria-pressed={active} onClick={onClick}>
+    <button type="button" className={["toggle-button", className].filter(Boolean).join(" ")} data-active={active} aria-pressed={active} onClick={onClick}>
       <Icon aria-hidden="true" size={17} />
       <span>{label}</span>
       <span className="switch" />

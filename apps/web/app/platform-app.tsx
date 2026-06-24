@@ -508,7 +508,7 @@ export function PlatformApp() {
                 <Check aria-hidden="true" size={15} />
                 {sessionStatusLabel}
               </span>
-              <label className="select-control">
+              <label className="select-control top-language-control">
                 <Globe2 aria-hidden="true" size={17} />
                 <select
                   aria-label="Idioma"
@@ -527,6 +527,7 @@ export function PlatformApp() {
                 label={focusMode ? c.focusOn : c.focus}
                 activeIcon={Sparkles}
                 inactiveIcon={Sparkles}
+                className="top-focus-toggle"
                 onClick={() => setFocusMode((value) => !value)}
               />
               <ToggleButton
@@ -534,6 +535,7 @@ export function PlatformApp() {
                 label={darkMode ? c.lightMode : c.darkMode}
                 activeIcon={Sun}
                 inactiveIcon={Moon}
+                className="top-theme-toggle"
                 onClick={() => setDarkMode((value) => !value)}
               />
               <div className="notification-menu">

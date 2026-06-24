@@ -2328,8 +2328,8 @@ svg {
   }
 
   .topbar {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-wrap: wrap;
   }
 
   .top-actions,
@@ -2345,6 +2345,15 @@ svg {
     display: grid;
     width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topbar .top-actions {
+    display: flex;
+    width: auto;
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .primary-nav {
@@ -2446,12 +2455,31 @@ svg {
   }
 
   .topbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
     margin: -20px -14px 22px;
     padding: 18px 14px;
   }
 
-  .top-actions {
-    grid-template-columns: 1fr;
+  .topbar > div:first-child {
+    min-width: 0;
+  }
+
+  .topbar .screen-label {
+    display: none;
+  }
+
+  .topbar .top-actions {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 5px;
   }
 
   .topbar .health-pill,
@@ -2478,13 +2506,86 @@ svg {
   }
 
   .topbar h1 {
-    font-size: 30px;
+    margin: 0;
+    font-size: 28px;
+    white-space: nowrap;
   }
 
-  .select-control,
-  .toggle-button {
-    min-height: 42px;
-    border-radius: 14px;
+  .topbar .top-language-control,
+  .topbar .top-focus-toggle,
+  .topbar .top-theme-toggle {
+    min-height: 30px;
+    flex: 0 0 auto;
+    gap: 4px;
+    border-radius: 999px;
+    padding: 0 6px;
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .topbar .top-language-control > svg,
+  .topbar .top-focus-toggle > svg {
+    display: none;
+  }
+
+  .topbar .top-theme-toggle > svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .topbar .top-theme-toggle span:not(.switch) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .topbar .top-language-control select {
+    max-width: 56px;
+    font-size: 10px;
+  }
+
+  .topbar .top-focus-toggle .switch,
+  .topbar .top-theme-toggle .switch {
+    width: 22px;
+    height: 13px;
+  }
+
+  .topbar .top-focus-toggle .switch::after,
+  .topbar .top-theme-toggle .switch::after {
+    top: 2px;
+    left: 2px;
+    width: 9px;
+    height: 9px;
+  }
+
+  .topbar .top-focus-toggle[data-active="true"] .switch::after,
+  .topbar .top-theme-toggle[data-active="true"] .switch::after {
+    transform: translateX(9px);
+  }
+
+  .topbar .notification-menu .icon-button,
+  .topbar .top-login-action {
+    width: 30px;
+    min-height: 30px;
+    border-radius: 999px;
+  }
+
+  .topbar .top-login-action {
+    padding: 0;
+    font-size: 0;
+    gap: 0;
+  }
+
+  .topbar .top-login-action svg,
+  .topbar .notification-menu .icon-button svg {
+    width: 14px;
+    height: 14px;
   }
 
   .hero-copy h2,
