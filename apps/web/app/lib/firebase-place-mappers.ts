@@ -17,7 +17,6 @@ export function mapCriterionAverages(value: unknown): Partial<Record<SensoryCrit
 
   return Object.keys(averages).length > 0 ? averages : undefined;
 }
-
 export function mapPlaceDocument(id: string, data: DocumentData): Place {
   const criterionAverages = mapCriterionAverages(data.criterionAverages);
 
@@ -41,4 +40,3 @@ export function mapPlaceDocument(id: string, data: DocumentData): Place {
     updatedAt: String(data.updatedAt ?? "")
   };
 }
-

@@ -20,7 +20,6 @@ export const sensoryLabels: Record<Locale, Record<SensoryKey, string>> = {
   es: { noise: "Ruido", density: "Densidad", light: "Impacto visual", wait: "Espera" },
   en: { noise: "Noise", density: "Density", light: "Visual impact", wait: "Waiting" }
 };
-
 export const sensoryWords: Record<Locale, Record<SensoryKey, string[]>> = {
   ca: {
     noise: ["Silenciós", "Suau", "Moderat", "Actiu", "Intens"],
@@ -41,4 +40,3 @@ export const sensoryWords: Record<Locale, Record<SensoryKey, string[]>> = {
     wait: ["Immediate", "Short", "Moderate", "Long", "Very long"]
   }
 };
-

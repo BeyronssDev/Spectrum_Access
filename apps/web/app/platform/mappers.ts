@@ -5,7 +5,6 @@ function criterionAtMost(place: FirebasePlace, criterion: keyof SensoryRating, m
   const score = place.criterionAverages?.[criterion];
   return typeof score === "number" && score > 0 && score <= maximum;
 }
-
 function criterionAtLeast(place: FirebasePlace, criterion: keyof SensoryRating, minimum: number) {
   const score = place.criterionAverages?.[criterion];
   return typeof score === "number" && score >= minimum;
@@ -73,4 +72,3 @@ export function toSensoryRating(ratings: Record<SensoryKey, number>): SensoryRat
     generalRecommendation
   };
 }
-

@@ -10,4 +10,3 @@ export const googleMapStyles: Array<Record<string, unknown>> = [
   { featureType: "transit", elementType: "geometry", stylers: [{ color: "#ebe7e7" }] },
   { featureType: "water", elementType: "geometry", stylers: [{ color: "#bcc7dd" }] }
 ];
-

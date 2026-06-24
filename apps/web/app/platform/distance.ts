@@ -13,7 +13,6 @@ function distanceBetweenKm(origin: UserLocation, destination: { lat: number; lng
 
   return earthRadiusKm * c;
 }
-
 function toRadians(value: number) {
   return (value * Math.PI) / 180;
 }
@@ -66,4 +65,3 @@ export function rankLocatedItemsByDistance<T extends { distance: string; positio
       distance: formatDistance(distanceKm)
     }));
 }
-
