@@ -1619,6 +1619,31 @@ svg {
   margin-top: 18px;
 }
 
+.auth-link-action {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  color: var(--secondary);
+  font-size: 13px;
+  font-weight: 800;
+  justify-self: start;
+  padding: 4px 2px;
+}
+
+.auth-link-action:hover,
+.auth-link-action:focus-visible {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.auth-link-action:disabled {
+  opacity: 0.55;
+  text-decoration: none;
+}
+
 .account-type-tabs {
   margin-top: 0;
 }

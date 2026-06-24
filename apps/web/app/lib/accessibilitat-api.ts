@@ -79,6 +79,7 @@ export interface AccessibilitatApi {
     locale: Locale;
   }): Promise<User>;
   loginWithEmailPassword(input: { email: string; password: string; locale: Locale }): Promise<User>;
+  requestPasswordReset(input: { email: string; locale: Locale }): Promise<void>;
   loginWithGoogle(locale: Locale): Promise<User>;
   loginWithApple(locale: Locale): Promise<User>;
   logout(): Promise<void>;

@@ -72,6 +72,11 @@ abstract interface class SpectrumApplicationService {
     required String locale,
   });
 
+  Future<void> requestPasswordReset({
+    required String email,
+    required String locale,
+  });
+
   Future<void> signInWithGoogle({required String locale});
 
   Future<void> signInWithApple({required String locale});

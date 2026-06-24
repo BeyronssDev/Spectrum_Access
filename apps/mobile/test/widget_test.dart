@@ -80,6 +80,7 @@ void main() {
     expect(find.text('Continuar amb Google'), findsOneWidget);
     expect(find.text('Continuar amb Apple'), findsOneWidget);
     expect(find.text('Registrar amb email'), findsOneWidget);
+    expect(find.text('Has oblidat la teva contrasenya?'), findsNothing);
     expect(find.byTooltip('Idioma'), findsOneWidget);
     expect(find.byTooltip('Mode fosc'), findsOneWidget);
 
@@ -87,6 +88,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Entrar amb email'), findsOneWidget);
+    expect(find.text('Has oblidat la teva contrasenya?'), findsOneWidget);
     expect(find.text('Nom públic'), findsNothing);
   });
 

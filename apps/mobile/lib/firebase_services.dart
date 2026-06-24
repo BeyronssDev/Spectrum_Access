@@ -106,6 +106,23 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
   }
 
   @override
+  Future<void> requestPasswordReset({
+    required String email,
+    required String locale,
+  }) async {
+    await _auth.setLanguageCode(locale);
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'user-not-found') {
+        return;
+      }
+
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> signInWithGoogle({required String locale}) async {
     await _ensureGoogleSignInInitialized();
     final googleUser = await GoogleSignIn.instance.authenticate();

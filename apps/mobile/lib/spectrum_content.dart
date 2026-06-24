@@ -301,6 +301,8 @@ class AuthCopy {
     required this.invalidEmail,
     required this.passwordMinLength,
     required this.passwordsMismatch,
+    required this.forgotPassword,
+    required this.passwordResetSent,
     required this.professionalFieldsRequired,
     required this.authFailed,
     required this.authCancelled,
@@ -347,6 +349,8 @@ class AuthCopy {
   final String invalidEmail;
   final String passwordMinLength;
   final String passwordsMismatch;
+  final String forgotPassword;
+  final String passwordResetSent;
   final String professionalFieldsRequired;
   final String authFailed;
   final String authCancelled;
@@ -665,6 +669,9 @@ const authCopies = {
     invalidEmail: 'Introdueix un email vàlid.',
     passwordMinLength: 'La contrasenya ha de tenir com a mínim 6 caràcters.',
     passwordsMismatch: 'Les contrasenyes no coincideixen.',
+    forgotPassword: 'Has oblidat la teva contrasenya?',
+    passwordResetSent:
+        'Si aquest correu està registrat, rebràs un enllaç per restablir la contrasenya.',
     professionalFieldsRequired:
         'Omple les dades professionals per enviar la verificació.',
     authFailed: 'No s’ha pogut completar l’autenticació.',
@@ -718,6 +725,9 @@ const authCopies = {
     invalidEmail: 'Introduce un email válido.',
     passwordMinLength: 'La contraseña debe tener como mínimo 6 caracteres.',
     passwordsMismatch: 'Las contraseñas no coinciden.',
+    forgotPassword: '¿Has olvidado tu contraseña?',
+    passwordResetSent:
+        'Si este correo está registrado, recibirás un enlace para restablecer la contraseña.',
     professionalFieldsRequired:
         'Rellena los datos profesionales para enviar la verificación.',
     authFailed: 'No se ha podido completar la autenticación.',
@@ -771,6 +781,9 @@ const authCopies = {
     invalidEmail: 'Enter a valid email.',
     passwordMinLength: 'Password must be at least 6 characters.',
     passwordsMismatch: 'Passwords do not match.',
+    forgotPassword: 'Forgot your password?',
+    passwordResetSent:
+        'If this email is registered, you will receive a password reset link.',
     professionalFieldsRequired:
         'Fill in the professional details to send verification.',
     authFailed: 'Authentication could not be completed.',

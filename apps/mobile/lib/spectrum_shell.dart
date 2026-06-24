@@ -419,6 +419,26 @@ class _SpectrumShellState extends State<SpectrumShell> {
     });
   }
 
+  Future<void> _requestPasswordReset() {
+    final labels = authCopies[_locale]!;
+    final email = _authEmailController.text.trim();
+
+    if (email.isEmpty) {
+      setState(() => _authMessage = labels.requiredFields);
+      return Future<void>.value();
+    }
+
+    if (!_isValidEmail(email)) {
+      setState(() => _authMessage = labels.invalidEmail);
+      return Future<void>.value();
+    }
+
+    return _runAuthAction(() async {
+      await _service().requestPasswordReset(email: email, locale: _locale.name);
+      setStateIfMounted(() => _authMessage = labels.passwordResetSent);
+    });
+  }
+
   Future<void> _signInWithGoogle() {
     return _runAuthAction(() async {
       await _service().signInWithGoogle(locale: _locale.name);
@@ -1007,6 +1027,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
       onRegistrationKindChanged: (kind) =>
           setState(() => _registrationKind = kind),
       onEmailSubmit: _showRegister ? _registerWithEmail : _signInWithEmail,
+      onPasswordReset: _requestPasswordReset,
       onGoogle: _signInWithGoogle,
       onApple: _signInWithApple,
     );
@@ -1033,6 +1054,7 @@ class AuthScreen extends StatelessWidget {
     required this.onToggleMode,
     required this.onRegistrationKindChanged,
     required this.onEmailSubmit,
+    required this.onPasswordReset,
     required this.onGoogle,
     required this.onApple,
     this.standalone = true,
@@ -1057,6 +1079,7 @@ class AuthScreen extends StatelessWidget {
   final VoidCallback onToggleMode;
   final ValueChanged<RegistrationKind> onRegistrationKindChanged;
   final VoidCallback onEmailSubmit;
+  final VoidCallback onPasswordReset;
   final VoidCallback onGoogle;
   final VoidCallback onApple;
   final bool standalone;
@@ -1163,6 +1186,19 @@ class AuthScreen extends StatelessWidget {
                   obscureText: true,
                   decoration: InputDecoration(labelText: authLabels.password),
                 ),
+                if (!showRegister) ...[
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: isSubmitting || authUnavailable
+                          ? null
+                          : onPasswordReset,
+                      icon: const Icon(Icons.lock_reset_outlined, size: 18),
+                      label: Text(authLabels.forgotPassword),
+                    ),
+                  ),
+                ],
                 if (showRegister) ...[
                   const SizedBox(height: 12),
                   TextField(

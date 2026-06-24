@@ -29,7 +29,11 @@ export const authCopy: Record<
     signInRequiredIntro: string;
     signInToContinue: string;
     requiredFields: string;
+    invalidEmail: string;
     passwordsMismatch: string;
+    forgotPassword: string;
+    passwordResetSent: string;
+    passwordResetFailed: string;
     authFailed: string;
     emailVerificationSent: string;
     professionalVerificationSent: string;
@@ -84,7 +88,11 @@ export const authCopy: Record<
       "Pots consultar el mapa i la informació bàsica sense compte. Per aportar contingut, veure perfils verificats o gestionar dades personals cal registrar-se.",
     signInToContinue: "Iniciar sessió",
     requiredFields: "Omple els camps obligatoris.",
+    invalidEmail: "Introdueix un email vàlid.",
     passwordsMismatch: "Les contrasenyes no coincideixen.",
+    forgotPassword: "Has oblidat la teva contrasenya?",
+    passwordResetSent: "Si aquest correu està registrat, rebràs un enllaç per restablir la contrasenya.",
+    passwordResetFailed: "No s'ha pogut enviar el correu de restabliment. Torna-ho a provar.",
     authFailed: "No s'ha pogut completar l'autenticació. Revisa Firebase Auth i torna-ho a provar.",
     emailVerificationSent: "Compte creat. T'hem enviat un correu de verificació.",
     professionalVerificationSent: "Compte professional creat. T'hem enviat el correu de verificació i la sol·licitud queda pendent de revisió.",
@@ -138,7 +146,11 @@ export const authCopy: Record<
       "Puedes consultar el mapa y la información básica sin cuenta. Para aportar contenido, ver perfiles verificados o gestionar datos personales hay que registrarse.",
     signInToContinue: "Iniciar sesión",
     requiredFields: "Rellena los campos obligatorios.",
+    invalidEmail: "Introduce un email válido.",
     passwordsMismatch: "Las contraseñas no coinciden.",
+    forgotPassword: "¿Has olvidado tu contraseña?",
+    passwordResetSent: "Si este correo está registrado, recibirás un enlace para restablecer la contraseña.",
+    passwordResetFailed: "No se ha podido enviar el correo de restablecimiento. Inténtalo de nuevo.",
     authFailed: "No se ha podido completar la autenticación. Revisa Firebase Auth e inténtalo de nuevo.",
     emailVerificationSent: "Cuenta creada. Te hemos enviado un correo de verificación.",
     professionalVerificationSent: "Cuenta profesional creada. Te hemos enviado el correo de verificación y la solicitud queda pendiente de revisión.",
@@ -192,7 +204,11 @@ export const authCopy: Record<
       "You can browse the map and basic place information without an account. To contribute content, view verified profiles or manage personal data, registration is required.",
     signInToContinue: "Sign in",
     requiredFields: "Fill in the required fields.",
+    invalidEmail: "Enter a valid email.",
     passwordsMismatch: "Passwords do not match.",
+    forgotPassword: "Forgot your password?",
+    passwordResetSent: "If this email is registered, you will receive a password reset link.",
+    passwordResetFailed: "We could not send the reset email. Please try again.",
     authFailed: "Authentication could not be completed. Check Firebase Auth and try again.",
     emailVerificationSent: "Account created. We sent you a verification email.",
     professionalVerificationSent: "Professional account created. We sent you a verification email and the request is pending review.",
@@ -218,4 +234,3 @@ export const authCopy: Record<
     verificationRequested: "Request sent. It remains pending manual review."
   }
 };
-

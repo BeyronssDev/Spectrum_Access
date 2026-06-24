@@ -46,6 +46,7 @@ import {
   logout,
   readCurrentAppUser,
   registerWithEmailPassword,
+  requestPasswordReset,
   requestProfessionalVerification,
   submitReview,
   subscribeToAuthState,
@@ -296,6 +297,10 @@ export function PlatformApp() {
     await loginWithEmailPassword({ ...input, locale });
     await refreshAppProfile();
     setAuthPanelOpen(false);
+  };
+
+  const handlePasswordReset = async (input: { email: string }) => {
+    await requestPasswordReset({ ...input, locale });
   };
 
   const handleGoogleLogin = async () => {
@@ -612,6 +617,7 @@ export function PlatformApp() {
               onDarkMode={setDarkMode}
               onEmailLogin={handleEmailLogin}
               onEmailRegister={handleEmailRegister}
+              onPasswordReset={handlePasswordReset}
               onGoogle={handleGoogleLogin}
               onApple={handleAppleLogin}
             />
@@ -719,6 +725,7 @@ export function PlatformApp() {
               onDarkMode={setDarkMode}
               onEmailLogin={handleEmailLogin}
               onEmailRegister={handleEmailRegister}
+              onPasswordReset={handlePasswordReset}
               onGoogle={handleGoogleLogin}
               onApple={handleAppleLogin}
             />
@@ -751,6 +758,7 @@ function AuthGate({
   onDarkMode,
   onEmailLogin,
   onEmailRegister,
+  onPasswordReset,
   onGoogle,
   onApple
 }: {
@@ -769,6 +777,7 @@ function AuthGate({
     city?: string;
     professional?: ProfessionalVerificationInput;
   }) => Promise<void>;
+  onPasswordReset: (input: { email: string }) => Promise<void>;
   onGoogle: () => Promise<void>;
   onApple: () => Promise<void>;
 }) {
@@ -788,7 +797,9 @@ function AuthGate({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localMessage, setLocalMessage] = useState<string | null>(null);
 
-  const runAuth = async (action: () => Promise<void>) => {
+  const isValidEmail = (value: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value.trim());
+
+  const runAuth = async (action: () => Promise<void>, errorMessage = c.authFailed) => {
     if (isSubmitting) {
       return;
     }
@@ -798,7 +809,7 @@ function AuthGate({
     try {
       await action();
     } catch {
-      setLocalMessage(c.authFailed);
+      setLocalMessage(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -833,6 +844,24 @@ function AuthGate({
 
       await onEmailLogin({ email, password });
     });
+  };
+
+  const submitPasswordReset = () => {
+    void runAuth(async () => {
+      const normalizedEmail = email.trim();
+      if (!normalizedEmail) {
+        setLocalMessage(c.requiredFields);
+        return;
+      }
+
+      if (!isValidEmail(normalizedEmail)) {
+        setLocalMessage(c.invalidEmail);
+        return;
+      }
+
+      await onPasswordReset({ email: normalizedEmail });
+      setLocalMessage(c.passwordResetSent);
+    }, c.passwordResetFailed);
   };
 
   return (
@@ -918,6 +947,17 @@ function AuthGate({
             <span>{c.password}</span>
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
           </label>
+          {mode === "login" ? (
+            <button
+              type="button"
+              className="auth-link-action"
+              disabled={isSubmitting}
+              onClick={submitPasswordReset}
+            >
+              <KeyRound aria-hidden="true" size={15} />
+              {c.forgotPassword}
+            </button>
+          ) : null}
           {mode === "register" ? (
             <>
               <label>
@@ -991,6 +1031,7 @@ function AuthRequiredView({
   onDarkMode,
   onEmailLogin,
   onEmailRegister,
+  onPasswordReset,
   onGoogle,
   onApple
 }: {
@@ -1002,6 +1043,7 @@ function AuthRequiredView({
   onDarkMode: (enabled: boolean) => void;
   onEmailLogin: (input: { email: string; password: string }) => Promise<void>;
   onEmailRegister: (input: { email: string; password: string; publicName: string; city?: string }) => Promise<void>;
+  onPasswordReset: (input: { email: string }) => Promise<void>;
   onGoogle: () => Promise<void>;
   onApple: () => Promise<void>;
 }) {
@@ -1022,6 +1064,7 @@ function AuthRequiredView({
         onDarkMode={onDarkMode}
         onEmailLogin={onEmailLogin}
         onEmailRegister={onEmailRegister}
+        onPasswordReset={onPasswordReset}
         onGoogle={onGoogle}
         onApple={onApple}
       />

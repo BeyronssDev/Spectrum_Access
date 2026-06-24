@@ -23,6 +23,7 @@ export const readCurrentAppUser = firebaseApi.readCurrentAppUser;
 export const subscribeToAuthState = firebaseApi.subscribeToAuthState;
 export const registerWithEmailPassword = firebaseApi.registerWithEmailPassword;
 export const loginWithEmailPassword = firebaseApi.loginWithEmailPassword;
+export const requestPasswordReset = firebaseApi.requestPasswordReset;
 export const loginWithGoogle = firebaseApi.loginWithGoogle;
 export const loginWithApple = firebaseApi.loginWithApple;
 export const logout = firebaseApi.logout;
