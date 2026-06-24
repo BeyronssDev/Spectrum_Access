@@ -29,6 +29,12 @@ service firebase.storage {
       allow delete: if isModerator();
     }
 
+    match /profile-photos/{uid}/{fileName} {
+      allow read: if isOwner(uid) || isModerator();
+      allow write: if isOwner(uid) && validImage();
+      allow delete: if isOwner(uid) || isModerator();
+    }
+
     match /professional-photos/{uid}/{fileName} {
       allow read: if true;
       allow write: if isOwner(uid) && validImage();

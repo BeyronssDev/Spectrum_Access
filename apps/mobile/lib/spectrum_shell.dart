@@ -42,6 +42,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _firebaseReady = false;
   bool _authUnavailable = true;
   bool _authSubmitting = false;
+  bool _userProfileEditing = false;
+  bool _userProfileSubmitting = false;
   bool _profileSubmitting = false;
   bool _professionalSubmitting = false;
   bool _placesLoading = false;
@@ -53,12 +55,14 @@ class _SpectrumShellState extends State<SpectrumShell> {
   MobileTab _selectedTab = MobileTab.consult;
   SpectrumApplicationService? _applicationService;
   StreamSubscription<SpectrumAuthUser?>? _authSubscription;
+  Timer? _firebaseInitializationTimeout;
   SpectrumAuthUser? _authUser;
   SpectrumUserProfile? _userProfile;
   List<PlaceSummary> _places = const [];
   final List<VerifiedProfile> _verifiedProfiles = const [];
   final List<ChildProfile> _childProfiles = const [];
   final PlaceImagePicker _imagePicker = PlaceImagePicker();
+  final PlaceImagePicker _profileImagePicker = PlaceImagePicker();
   final List<PreparedPlaceImage> _selectedImages = [];
   final TextEditingController _authEmailController = TextEditingController();
   final TextEditingController _authPasswordController = TextEditingController();
@@ -76,6 +80,14 @@ class _SpectrumShellState extends State<SpectrumShell> {
   final TextEditingController _professionalCollegeController =
       TextEditingController();
   final TextEditingController _specialtyController = TextEditingController();
+  final TextEditingController _userProfileNameController =
+      TextEditingController();
+  final TextEditingController _userProfileCityController =
+      TextEditingController();
+  final TextEditingController _userProfileAddressController =
+      TextEditingController();
+  final TextEditingController _userProfilePhoneController =
+      TextEditingController();
   final TextEditingController _placeNameController = TextEditingController();
   final TextEditingController _placeCityController = TextEditingController();
   final TextEditingController _placeAddressController = TextEditingController();
@@ -85,8 +97,10 @@ class _SpectrumShellState extends State<SpectrumShell> {
   RegistrationKind _registrationKind = RegistrationKind.user;
   String? _childAgeRange;
   String? _authMessage;
+  String? _userProfileMessage;
   String? _profileMessage;
   String? _professionalMessage;
+  PreparedPlaceImage? _profilePhotoDraft;
   bool _isSubmittingReport = false;
   String? _reportMessage;
   final Map<SensoryKey, double> _ratings = {
@@ -107,6 +121,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
   @override
   void dispose() {
+    _firebaseInitializationTimeout?.cancel();
     unawaited(_authSubscription?.cancel());
     _authEmailController.dispose();
     _authPasswordController.dispose();
@@ -119,6 +134,10 @@ class _SpectrumShellState extends State<SpectrumShell> {
     _licenseNumberController.dispose();
     _professionalCollegeController.dispose();
     _specialtyController.dispose();
+    _userProfileNameController.dispose();
+    _userProfileCityController.dispose();
+    _userProfileAddressController.dispose();
+    _userProfilePhoneController.dispose();
     _placeNameController.dispose();
     _placeCityController.dispose();
     _placeAddressController.dispose();
@@ -171,6 +190,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
               _firebaseReady = true;
               _authUnavailable = false;
             });
+            _firebaseInitializationTimeout?.cancel();
             _listenToAuth();
             unawaited(_loadPlaces());
           })
@@ -182,6 +202,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
             if (!mounted) {
               return;
             }
+            _firebaseInitializationTimeout?.cancel();
             setState(() {
               _firebaseReady = false;
               _authUnavailable = true;
@@ -189,14 +210,13 @@ class _SpectrumShellState extends State<SpectrumShell> {
           }),
     );
 
-    unawaited(
-      Future<void>.delayed(const Duration(seconds: 8), () {
-        if (!mounted || _firebaseReady) {
-          return;
-        }
-        setState(() => _authUnavailable = true);
-      }),
-    );
+    _firebaseInitializationTimeout?.cancel();
+    _firebaseInitializationTimeout = Timer(const Duration(seconds: 8), () {
+      if (!mounted || _firebaseReady) {
+        return;
+      }
+      setState(() => _authUnavailable = true);
+    });
   }
 
   Future<void> _loadUserProfile() async {
@@ -465,6 +485,94 @@ class _SpectrumShellState extends State<SpectrumShell> {
         _userProfile = null;
         _showHome = true;
       });
+    }
+  }
+
+  void _openUserProfileEditor() {
+    final profile = _userProfile;
+    if (profile == null || profile.isProfessional || profile.isOrganization) {
+      return;
+    }
+
+    setState(() {
+      _userProfileNameController.text = profile.publicName;
+      _userProfileCityController.text = profile.city ?? '';
+      _userProfileAddressController.text = profile.address ?? '';
+      _userProfilePhoneController.text = profile.phone ?? '';
+      _profilePhotoDraft = null;
+      _userProfileMessage = null;
+      _userProfileEditing = true;
+    });
+  }
+
+  void _closeUserProfileEditor() {
+    setState(() {
+      _userProfileEditing = false;
+      _profilePhotoDraft = null;
+      _userProfileMessage = null;
+    });
+  }
+
+  Future<void> _pickUserProfilePhotoFromGallery() async {
+    final image = await _profileImagePicker.pickFromGallery();
+    if (image == null) {
+      return;
+    }
+
+    setStateIfMounted(() => _profilePhotoDraft = image);
+  }
+
+  Future<void> _takeUserProfilePhoto() async {
+    final image = await _profileImagePicker.takePhoto();
+    if (image == null) {
+      return;
+    }
+
+    setStateIfMounted(() => _profilePhotoDraft = image);
+  }
+
+  Future<void> _saveUserProfile() async {
+    if (_userProfileSubmitting) {
+      return;
+    }
+
+    final labels = appCopies[_locale]!;
+    final publicName = _userProfileNameController.text.trim();
+    if (publicName.isEmpty) {
+      setState(() => _userProfileMessage = labels.profileNameRequired);
+      return;
+    }
+
+    setState(() {
+      _userProfileSubmitting = true;
+      _userProfileMessage = null;
+    });
+
+    try {
+      final photo = _profilePhotoDraft;
+      await _service().updateUserProfile(
+        publicName: publicName,
+        city: _userProfileCityController.text.trim(),
+        address: _userProfileAddressController.text.trim(),
+        phone: _userProfilePhoneController.text.trim(),
+        profilePhotoBytes: photo?.bytes,
+        profilePhotoFileName: photo?.fileName,
+        profilePhotoContentType: photo?.contentType,
+      );
+      await _loadUserProfile();
+      setStateIfMounted(() {
+        _userProfileEditing = false;
+        _profilePhotoDraft = null;
+        _userProfileMessage = labels.profileSaved;
+      });
+    } catch (error, stackTrace) {
+      if (kDebugMode || kProfileMode) {
+        debugPrint('Spectrum profile update error: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      setStateIfMounted(() => _userProfileMessage = labels.profileSaveFailed);
+    } finally {
+      setStateIfMounted(() => _userProfileSubmitting = false);
     }
   }
 
@@ -990,6 +1098,14 @@ class _SpectrumShellState extends State<SpectrumShell> {
           locale: _locale,
           isAuthenticated: isAuthenticated,
           userProfile: _userProfile,
+          isUserProfileEditing: _userProfileEditing,
+          isUserProfileSubmitting: _userProfileSubmitting,
+          userProfileMessage: _userProfileMessage,
+          userProfileNameController: _userProfileNameController,
+          userProfileCityController: _userProfileCityController,
+          userProfileAddressController: _userProfileAddressController,
+          userProfilePhoneController: _userProfilePhoneController,
+          profilePhotoDraft: _profilePhotoDraft,
           verifiedProfiles: verifiedProfiles,
           childProfiles: _childProfiles,
           childAliasController: _childAliasController,
@@ -1002,6 +1118,11 @@ class _SpectrumShellState extends State<SpectrumShell> {
           specialtyController: _specialtyController,
           isProfileSubmitting: _profileSubmitting,
           isProfessionalSubmitting: _professionalSubmitting,
+          onEditUserProfile: _openUserProfileEditor,
+          onCancelUserProfileEdit: _closeUserProfileEditor,
+          onPickUserProfilePhoto: _pickUserProfilePhotoFromGallery,
+          onTakeUserProfilePhoto: _takeUserProfilePhoto,
+          onSaveUserProfile: _saveUserProfile,
           onChildAgeChanged: (value) => setState(() => _childAgeRange = value),
           onCreateChildProfile: _createChildProfile,
           onRequestProfessionalVerification: _requestProfessionalVerification,
@@ -1869,6 +1990,14 @@ class ProfilesScreen extends StatelessWidget {
     required this.locale,
     required this.isAuthenticated,
     required this.userProfile,
+    required this.isUserProfileEditing,
+    required this.isUserProfileSubmitting,
+    required this.userProfileMessage,
+    required this.userProfileNameController,
+    required this.userProfileCityController,
+    required this.userProfileAddressController,
+    required this.userProfilePhoneController,
+    required this.profilePhotoDraft,
     required this.verifiedProfiles,
     required this.childProfiles,
     required this.childAliasController,
@@ -1881,6 +2010,11 @@ class ProfilesScreen extends StatelessWidget {
     required this.specialtyController,
     required this.isProfileSubmitting,
     required this.isProfessionalSubmitting,
+    required this.onEditUserProfile,
+    required this.onCancelUserProfileEdit,
+    required this.onPickUserProfilePhoto,
+    required this.onTakeUserProfilePhoto,
+    required this.onSaveUserProfile,
     required this.onChildAgeChanged,
     required this.onCreateChildProfile,
     required this.onRequestProfessionalVerification,
@@ -1892,6 +2026,14 @@ class ProfilesScreen extends StatelessWidget {
   final LocaleOption locale;
   final bool isAuthenticated;
   final SpectrumUserProfile? userProfile;
+  final bool isUserProfileEditing;
+  final bool isUserProfileSubmitting;
+  final String? userProfileMessage;
+  final TextEditingController userProfileNameController;
+  final TextEditingController userProfileCityController;
+  final TextEditingController userProfileAddressController;
+  final TextEditingController userProfilePhoneController;
+  final PreparedPlaceImage? profilePhotoDraft;
   final List<VerifiedProfile> verifiedProfiles;
   final List<ChildProfile> childProfiles;
   final TextEditingController childAliasController;
@@ -1904,12 +2046,26 @@ class ProfilesScreen extends StatelessWidget {
   final TextEditingController specialtyController;
   final bool isProfileSubmitting;
   final bool isProfessionalSubmitting;
+  final VoidCallback onEditUserProfile;
+  final VoidCallback onCancelUserProfileEdit;
+  final VoidCallback onPickUserProfilePhoto;
+  final VoidCallback onTakeUserProfilePhoto;
+  final VoidCallback onSaveUserProfile;
   final ValueChanged<String?> onChildAgeChanged;
   final VoidCallback onCreateChildProfile;
   final VoidCallback onRequestProfessionalVerification;
 
   @override
   Widget build(BuildContext context) {
+    final canEditUserProfile =
+        userProfile != null &&
+        !userProfile!.isProfessional &&
+        !userProfile!.isOrganization;
+    final userProfileBody = [
+      userProfile?.publicName ?? 'Spectrum user',
+      userProfile?.city ?? authLabels.cityOptional,
+    ].where((part) => part.trim().isNotEmpty).join(' · ');
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       children: [
@@ -1969,9 +2125,33 @@ class ProfilesScreen extends StatelessWidget {
           ProfilePanel(
             icon: Icons.person_outline,
             title: labels.adultProfile,
-            body:
-                '${userProfile?.publicName ?? 'Spectrum user'} · ${userProfile?.city ?? authLabels.cityOptional}',
+            body: userProfileBody,
+            imageUrl: userProfile?.profilePhotoUrl,
+            action: canEditUserProfile ? labels.editUserProfile : null,
+            onTap: canEditUserProfile ? onEditUserProfile : null,
           ),
+          if (isUserProfileEditing && canEditUserProfile) ...[
+            const SizedBox(height: 14),
+            UserProfileEditor(
+              labels: labels,
+              authLabels: authLabels,
+              userProfile: userProfile!,
+              profilePhotoDraft: profilePhotoDraft,
+              nameController: userProfileNameController,
+              cityController: userProfileCityController,
+              addressController: userProfileAddressController,
+              phoneController: userProfilePhoneController,
+              isSubmitting: isUserProfileSubmitting,
+              message: userProfileMessage,
+              onPickPhoto: onPickUserProfilePhoto,
+              onTakePhoto: onTakeUserProfilePhoto,
+              onSave: onSaveUserProfile,
+              onCancel: onCancelUserProfileEdit,
+            ),
+          ] else if (userProfileMessage != null) ...[
+            const SizedBox(height: 12),
+            StatusMessage(message: userProfileMessage!),
+          ],
           const SizedBox(height: 14),
           ProfilePanel(
             icon: Icons.supervisor_account_outlined,
@@ -3130,33 +3310,216 @@ class VerifiedRow extends StatelessWidget {
   }
 }
 
+class UserProfileEditor extends StatelessWidget {
+  const UserProfileEditor({
+    required this.labels,
+    required this.authLabels,
+    required this.userProfile,
+    required this.profilePhotoDraft,
+    required this.nameController,
+    required this.cityController,
+    required this.addressController,
+    required this.phoneController,
+    required this.isSubmitting,
+    required this.message,
+    required this.onPickPhoto,
+    required this.onTakePhoto,
+    required this.onSave,
+    required this.onCancel,
+    super.key,
+  });
+
+  final AppCopy labels;
+  final AuthCopy authLabels;
+  final SpectrumUserProfile userProfile;
+  final PreparedPlaceImage? profilePhotoDraft;
+  final TextEditingController nameController;
+  final TextEditingController cityController;
+  final TextEditingController addressController;
+  final TextEditingController phoneController;
+  final bool isSubmitting;
+  final String? message;
+  final VoidCallback onPickPhoto;
+  final VoidCallback onTakePhoto;
+  final VoidCallback onSave;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final draft = profilePhotoDraft;
+    final existingPhoto = userProfile.profilePhotoUrl;
+    final ImageProvider<Object>? imageProvider;
+    if (draft != null) {
+      imageProvider = MemoryImage(draft.bytes);
+    } else if (existingPhoto != null) {
+      imageProvider = NetworkImage(existingPhoto);
+    } else {
+      imageProvider = null;
+    }
+
+    return SpectrumPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeading(title: labels.editUserProfile, action: labels.close),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: CircleAvatar(
+              radius: 38,
+              backgroundColor: SpectrumColors.secondary.withValues(alpha: 0.14),
+              backgroundImage: imageProvider,
+              child: imageProvider == null
+                  ? const Icon(Icons.person_outline, size: 34)
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            labels.profilePhoto,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: isSubmitting ? null : onTakePhoto,
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: Text(labels.takePhoto),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: isSubmitting ? null : onPickPhoto,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: Text(labels.chooseFromGallery),
+                ),
+              ),
+            ],
+          ),
+          if (draft != null) ...[
+            const SizedBox(height: 10),
+            StatusMessage(
+              message: '${labels.selectedImages}: ${draft.originalName}',
+            ),
+          ],
+          const SizedBox(height: 16),
+          TextField(
+            controller: nameController,
+            decoration: InputDecoration(labelText: authLabels.publicName),
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: cityController,
+            decoration: InputDecoration(labelText: authLabels.cityOptional),
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: addressController,
+            decoration: InputDecoration(labelText: labels.profileAddress),
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(labelText: labels.profilePhone),
+            textInputAction: TextInputAction.done,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: isSubmitting ? null : onCancel,
+                  child: Text(labels.close),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: isSubmitting ? null : onSave,
+                  icon: isSubmitting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: Text(labels.saveProfile),
+                ),
+              ),
+            ],
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 12),
+            StatusMessage(message: message!),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class ProfilePanel extends StatelessWidget {
   const ProfilePanel({
     required this.icon,
     required this.title,
     required this.body,
+    this.imageUrl,
+    this.action,
+    this.onTap,
     super.key,
   });
 
   final IconData icon;
   final String title;
   final String body;
+  final String? imageUrl;
+  final String? action;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SpectrumPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (imageUrl != null)
+          CircleAvatar(radius: 28, backgroundImage: NetworkImage(imageUrl!))
+        else
           Icon(icon, color: SpectrumColors.tertiary),
-          const SizedBox(height: 12),
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text(
-            body,
-            style: TextStyle(color: mutedColor(context), height: 1.45),
-          ),
-        ],
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+            ),
+            if (action != null) ...[
+              const SizedBox(width: 12),
+              Text(
+                action!,
+                style: TextStyle(
+                  color: SpectrumColors.tertiary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(body, style: TextStyle(color: mutedColor(context), height: 1.45)),
+      ],
+    );
+
+    return SpectrumPanel(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: content,
       ),
     );
   }

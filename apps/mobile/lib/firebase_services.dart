@@ -47,7 +47,15 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
 
     final snapshot = await _firestore.collection('users').doc(uid).get();
     final data = snapshot.data();
-    return data == null ? null : SpectrumUserProfile.fromMap(data);
+    if (data == null) {
+      return null;
+    }
+
+    final privateSnapshot = await _firestore
+        .collection('userPrivate')
+        .doc(uid)
+        .get();
+    return SpectrumUserProfile.fromMap({...data, ...?privateSnapshot.data()});
   }
 
   Future<void> completeUserOnboarding({
@@ -123,6 +131,74 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
   }
 
   @override
+  Future<void> updateUserProfile({
+    required String publicName,
+    String? city,
+    String? address,
+    String? phone,
+    Uint8List? profilePhotoBytes,
+    String? profilePhotoFileName,
+    String? profilePhotoContentType,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw StateError('auth-user-missing');
+    }
+
+    final trimmedName = publicName.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError.value(publicName, 'publicName');
+    }
+
+    final userUpdate = <String, Object?>{
+      'publicName': trimmedName,
+      'displayName': trimmedName,
+      'city': _stringOrDelete(city),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (profilePhotoBytes != null &&
+        profilePhotoFileName != null &&
+        profilePhotoContentType != null) {
+      final safeName = profilePhotoFileName
+          .replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '-')
+          .replaceAll(RegExp('-+'), '-');
+      final storagePath =
+          'profile-photos/${user.uid}/${DateTime.now().millisecondsSinceEpoch}-$safeName';
+      final photoRef = _storage.ref(storagePath);
+      await photoRef.putData(
+        profilePhotoBytes,
+        SettableMetadata(contentType: profilePhotoContentType),
+      );
+      userUpdate['profilePhotoPath'] = storagePath;
+      userUpdate['profilePhotoUrl'] = await photoRef.getDownloadURL();
+    }
+
+    final privateUpdate = <String, Object?>{
+      'uid': user.uid,
+      'address': _stringOrDelete(address),
+      'phone': _stringOrDelete(phone),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    final batch = _firestore.batch();
+    batch.set(
+      _firestore.collection('users').doc(user.uid),
+      userUpdate,
+      SetOptions(merge: true),
+    );
+    batch.set(
+      _firestore.collection('userPrivate').doc(user.uid),
+      privateUpdate,
+      SetOptions(merge: true),
+    );
+    await batch.commit();
+    if (user.displayName != trimmedName) {
+      await user.updateDisplayName(trimmedName);
+    }
+  }
+
+  @override
   Future<void> signInWithGoogle({required String locale}) async {
     await _ensureGoogleSignInInitialized();
     final googleUser = await GoogleSignIn.instance.authenticate();
@@ -136,6 +212,11 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       locale,
       'google.com',
     );
+  }
+
+  Object _stringOrDelete(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? FieldValue.delete() : trimmed;
   }
 
   @override

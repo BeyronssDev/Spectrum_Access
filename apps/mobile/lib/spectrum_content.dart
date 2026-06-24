@@ -171,6 +171,14 @@ class AppCopy {
     required this.profilesTitle,
     required this.profilesIntro,
     required this.adultProfile,
+    required this.editUserProfile,
+    required this.profilePhoto,
+    required this.profileAddress,
+    required this.profilePhone,
+    required this.profileSaved,
+    required this.profileSaveFailed,
+    required this.profileNameRequired,
+    required this.saveProfile,
     required this.tutorProfile,
     required this.tutorProfileBody,
     required this.childProfile,
@@ -250,6 +258,14 @@ class AppCopy {
   final String profilesTitle;
   final String profilesIntro;
   final String adultProfile;
+  final String editUserProfile;
+  final String profilePhoto;
+  final String profileAddress;
+  final String profilePhone;
+  final String profileSaved;
+  final String profileSaveFailed;
+  final String profileNameRequired;
+  final String saveProfile;
   final String tutorProfile;
   final String tutorProfileBody;
   final String childProfile;
@@ -436,6 +452,14 @@ const appCopies = {
     profilesTitle: 'Perfils',
     profilesIntro: 'Adults, tutors i perfils tutelats dins el mateix compte.',
     adultProfile: 'Adult o persona identificada',
+    editUserProfile: 'Editar perfil',
+    profilePhoto: 'Foto de perfil',
+    profileAddress: 'Adreça',
+    profilePhone: 'Telèfon',
+    profileSaved: 'Perfil actualitzat.',
+    profileSaveFailed: 'No s’ha pogut actualitzar el perfil.',
+    profileNameRequired: 'El nom públic és obligatori.',
+    saveProfile: 'Guardar perfil',
     tutorProfile: 'Tutor principal',
     tutorProfileBody:
         'Compte principal que revisa aportacions dels perfils infantils.',
@@ -525,6 +549,14 @@ const appCopies = {
     profilesIntro:
         'Adultos, tutores y perfiles tutelados dentro de la misma cuenta.',
     adultProfile: 'Adulto o persona identificada',
+    editUserProfile: 'Editar perfil',
+    profilePhoto: 'Foto de perfil',
+    profileAddress: 'Dirección',
+    profilePhone: 'Teléfono',
+    profileSaved: 'Perfil actualizado.',
+    profileSaveFailed: 'No se ha podido actualizar el perfil.',
+    profileNameRequired: 'El nombre público es obligatorio.',
+    saveProfile: 'Guardar perfil',
     tutorProfile: 'Tutor principal',
     tutorProfileBody:
         'Cuenta principal que revisa aportaciones de los perfiles infantiles.',
@@ -613,6 +645,14 @@ const appCopies = {
     profilesIntro:
         'Adults, tutors and tutored profiles inside the same account.',
     adultProfile: 'Adult or identified person',
+    editUserProfile: 'Edit profile',
+    profilePhoto: 'Profile photo',
+    profileAddress: 'Address',
+    profilePhone: 'Phone',
+    profileSaved: 'Profile updated.',
+    profileSaveFailed: 'Profile could not be updated.',
+    profileNameRequired: 'Public name is required.',
+    saveProfile: 'Save profile',
     tutorProfile: 'Main tutor',
     tutorProfileBody:
         'Main account that reviews contributions from child profiles.',

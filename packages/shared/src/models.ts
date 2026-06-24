@@ -88,6 +88,10 @@ export interface AppUser {
   displayName: string;
   publicName: string;
   city?: string;
+  address?: string;
+  phone?: string;
+  profilePhotoPath?: string;
+  profilePhotoUrl?: string;
   authProviders: AuthProviderId[];
   roles: UserRole[];
   status: "active" | "disabled";

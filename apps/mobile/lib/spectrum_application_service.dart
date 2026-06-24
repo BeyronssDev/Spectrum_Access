@@ -23,6 +23,10 @@ class SpectrumUserProfile {
     required this.roles,
     this.email,
     this.city,
+    this.address,
+    this.phone,
+    this.profilePhotoPath,
+    this.profilePhotoUrl,
   });
 
   final String uid;
@@ -30,9 +34,14 @@ class SpectrumUserProfile {
   final List<String> roles;
   final String? email;
   final String? city;
+  final String? address;
+  final String? phone;
+  final String? profilePhotoPath;
+  final String? profilePhotoUrl;
 
   bool get isTutor => roles.contains('tutor');
   bool get isProfessional => roles.contains('professional');
+  bool get isOrganization => roles.contains('organization');
 
   factory SpectrumUserProfile.fromMap(Map<String, dynamic> data) {
     final roles = data['roles'];
@@ -44,6 +53,10 @@ class SpectrumUserProfile {
           'Spectrum user',
       email: data['email'] as String?,
       city: data['city'] as String?,
+      address: data['address'] as String?,
+      phone: data['phone'] as String?,
+      profilePhotoPath: data['profilePhotoPath'] as String?,
+      profilePhotoUrl: data['profilePhotoUrl'] as String?,
       roles: roles is List
           ? roles.whereType<String>().toList(growable: false)
           : const ['user'],
@@ -75,6 +88,16 @@ abstract interface class SpectrumApplicationService {
   Future<void> requestPasswordReset({
     required String email,
     required String locale,
+  });
+
+  Future<void> updateUserProfile({
+    required String publicName,
+    String? city,
+    String? address,
+    String? phone,
+    Uint8List? profilePhotoBytes,
+    String? profilePhotoFileName,
+    String? profilePhotoContentType,
   });
 
   Future<void> signInWithGoogle({required String locale});

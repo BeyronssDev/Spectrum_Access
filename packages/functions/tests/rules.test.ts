@@ -15,12 +15,16 @@ beforeAll(async () => {
     projectId: "spectrum-access-499918",
     firestore: {
       rules: readFileSync(resolve(process.cwd(), "../../firebase/firestore.rules"), "utf8")
+    },
+    storage: {
+      rules: readFileSync(resolve(process.cwd(), "../../firebase/storage.rules"), "utf8")
     }
   });
 });
 
 beforeEach(async () => {
   await testEnv.clearFirestore();
+  await testEnv.clearStorage();
 });
 
 afterAll(async () => {
@@ -122,6 +126,25 @@ describe("Firestore security rules", () => {
         scanStatus: "not_configured",
         storagePath: "place-images/anonymous/img-1/original.jpg",
         createdAt: "2026-06-20T00:00:00.000Z"
+      })
+    );
+  });
+
+  it("lets users upload only their own profile photos", async () => {
+    const ownerStorage = testEnv.authenticatedContext("user-a").storage();
+    const otherStorage = testEnv.authenticatedContext("user-b").storage();
+    const imageDataUrl =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+
+    await assertSucceeds(
+      ownerStorage.ref("profile-photos/user-a/avatar.png").putString(imageDataUrl, "data_url")
+    );
+    await assertFails(
+      otherStorage.ref("profile-photos/user-a/avatar-2.png").putString(imageDataUrl, "data_url")
+    );
+    await assertFails(
+      ownerStorage.ref("profile-photos/user-a/not-image.txt").putString("not an image", "raw", {
+        contentType: "text/plain"
       })
     );
   });
