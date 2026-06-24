@@ -9,44 +9,10 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+import 'spectrum_application_service.dart';
 import 'spectrum_content.dart';
 
-class SpectrumUserProfile {
-  const SpectrumUserProfile({
-    required this.uid,
-    required this.publicName,
-    required this.roles,
-    this.email,
-    this.city,
-  });
-
-  final String uid;
-  final String publicName;
-  final List<String> roles;
-  final String? email;
-  final String? city;
-
-  bool get isTutor => roles.contains('tutor');
-  bool get isProfessional => roles.contains('professional');
-
-  factory SpectrumUserProfile.fromMap(Map<String, dynamic> data) {
-    final roles = data['roles'];
-    return SpectrumUserProfile(
-      uid: (data['uid'] as String?) ?? '',
-      publicName:
-          (data['publicName'] as String?) ??
-          (data['displayName'] as String?) ??
-          'Spectrum user',
-      email: data['email'] as String?,
-      city: data['city'] as String?,
-      roles: roles is List
-          ? roles.whereType<String>().toList(growable: false)
-          : const ['user'],
-    );
-  }
-}
-
-class SpectrumFirebaseServices {
+class SpectrumFirebaseServices implements SpectrumApplicationService {
   SpectrumFirebaseServices({
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
@@ -64,10 +30,15 @@ class SpectrumFirebaseServices {
   final FirebaseStorage _storage;
   static bool _googleSignInInitialized = false;
 
+  @override
   bool get hasAuthenticatedUser => _auth.currentUser != null;
-  User? get currentUser => _auth.currentUser;
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  @override
+  SpectrumAuthUser? get currentUser => _authUserFromFirebase(_auth.currentUser);
+  @override
+  Stream<SpectrumAuthUser?> get authStateChanges =>
+      _auth.authStateChanges().map(_authUserFromFirebase);
 
+  @override
   Future<SpectrumUserProfile?> loadCurrentUserProfile() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
@@ -97,7 +68,8 @@ class SpectrumFirebaseServices {
     });
   }
 
-  Future<UserCredential> registerWithEmail({
+  @override
+  Future<void> registerWithEmail({
     required String email,
     required String password,
     required String publicName,
@@ -118,10 +90,10 @@ class SpectrumFirebaseServices {
       locale: locale,
       authProviders: const ['password'],
     );
-    return credential;
   }
 
-  Future<UserCredential> signInWithEmail({
+  @override
+  Future<void> signInWithEmail({
     required String email,
     required String password,
     required String locale,
@@ -131,10 +103,10 @@ class SpectrumFirebaseServices {
       password: password,
     );
     await _completeOnboardingFromUser(credential.user, locale, 'password');
-    return credential;
   }
 
-  Future<UserCredential> signInWithGoogle({required String locale}) async {
+  @override
+  Future<void> signInWithGoogle({required String locale}) async {
     await _ensureGoogleSignInInitialized();
     final googleUser = await GoogleSignIn.instance.authenticate();
     final googleAuth = googleUser.authentication;
@@ -147,10 +119,10 @@ class SpectrumFirebaseServices {
       locale,
       'google.com',
     );
-    return userCredential;
   }
 
-  Future<UserCredential> signInWithApple({required String locale}) async {
+  @override
+  Future<void> signInWithApple({required String locale}) async {
     final appleCredential = await SignInWithApple.getAppleIDCredential(
       scopes: [
         AppleIDAuthorizationScopes.email,
@@ -174,9 +146,9 @@ class SpectrumFirebaseServices {
       await userCredential.user?.updateDisplayName(fullName);
     }
     await _completeOnboardingFromUser(userCredential.user, locale, 'apple.com');
-    return userCredential;
   }
 
+  @override
   Future<void> signOut() async {
     await Future.wait([
       _auth.signOut(),
@@ -227,6 +199,7 @@ class SpectrumFirebaseServices {
     );
   }
 
+  @override
   Future<List<PlaceSummary>> loadActivePlaces() async {
     final snapshot = await _firestore
         .collection('places')
@@ -237,7 +210,8 @@ class SpectrumFirebaseServices {
     return snapshot.docs.map(_placeFromDocument).toList(growable: false);
   }
 
-  Future<HttpsCallableResult<dynamic>> createPlace({
+  @override
+  Future<String> createPlace({
     required String name,
     required String category,
     required String city,
@@ -245,8 +219,8 @@ class SpectrumFirebaseServices {
     required double latitude,
     required double longitude,
     String? description,
-  }) {
-    return _functions.httpsCallable('createPlace').call({
+  }) async {
+    final result = await _functions.httpsCallable('createPlace').call({
       'name': name,
       'category': category,
       'city': city,
@@ -255,15 +229,21 @@ class SpectrumFirebaseServices {
       'longitude': longitude,
       if (description != null) 'description': description,
     });
+    final data = result.data;
+    if (data is Map && data['placeId'] is String) {
+      return data['placeId'] as String;
+    }
+    throw StateError('place-id-missing');
   }
 
-  Future<HttpsCallableResult<dynamic>> submitReview({
+  @override
+  Future<void> submitReview({
     required String placeId,
     required Map<SensoryKey, double> ratings,
     String? comment,
     String? childProfileId,
-  }) {
-    return _functions.httpsCallable('submitReview').call({
+  }) async {
+    await _functions.httpsCallable('submitReview').call({
       'placeId': placeId,
       'ratings': _ratingsPayload(ratings),
       if (comment != null && comment.trim().isNotEmpty) 'comment': comment,
@@ -271,13 +251,14 @@ class SpectrumFirebaseServices {
     });
   }
 
-  Future<HttpsCallableResult<dynamic>> submitComment({
+  @override
+  Future<void> submitComment({
     required String targetType,
     required String targetId,
     required String body,
     String? placeId,
-  }) {
-    return _functions.httpsCallable('submitComment').call({
+  }) async {
+    await _functions.httpsCallable('submitComment').call({
       'targetType': targetType,
       'targetId': targetId,
       'body': body,
@@ -285,31 +266,34 @@ class SpectrumFirebaseServices {
     });
   }
 
-  Future<HttpsCallableResult<dynamic>> createReport({
+  @override
+  Future<void> createReport({
     required String targetType,
     required String targetId,
     required String reason,
-  }) {
-    return _functions.httpsCallable('createReport').call({
+  }) async {
+    await _functions.httpsCallable('createReport').call({
       'targetType': targetType,
       'targetId': targetId,
       'reason': reason,
     });
   }
 
-  Future<HttpsCallableResult<dynamic>> createChildProfile({
+  @override
+  Future<void> createChildProfile({
     required String alias,
     String? ageRange,
     Map<String, String>? sensoryPreferences,
-  }) {
-    return _functions.httpsCallable('createChildProfile').call({
+  }) async {
+    await _functions.httpsCallable('createChildProfile').call({
       'alias': alias,
       if (ageRange != null) 'ageRange': ageRange,
       if (sensoryPreferences != null) 'sensoryPreferences': sensoryPreferences,
     });
   }
 
-  Future<HttpsCallableResult<dynamic>> requestProfessionalVerification({
+  @override
+  Future<void> requestProfessionalVerification({
     required String professionalName,
     required String licenseNumber,
     required String professionalCollege,
@@ -317,8 +301,8 @@ class SpectrumFirebaseServices {
     String? photoPath,
     String? evidencePath,
     String? note,
-  }) {
-    return _functions.httpsCallable('requestProfessionalVerification').call({
+  }) async {
+    await _functions.httpsCallable('requestProfessionalVerification').call({
       'professionalName': professionalName,
       'licenseNumber': licenseNumber,
       'professionalCollege': professionalCollege,
@@ -329,7 +313,8 @@ class SpectrumFirebaseServices {
     });
   }
 
-  Future<HttpsCallableResult<dynamic>> requestOrganizationVerification({
+  @override
+  Future<void> requestOrganizationVerification({
     required String name,
     required String description,
     required String city,
@@ -338,8 +323,8 @@ class SpectrumFirebaseServices {
     String? logoPath,
     String? evidencePath,
     String? note,
-  }) {
-    return _functions.httpsCallable('requestOrganizationVerification').call({
+  }) async {
+    await _functions.httpsCallable('requestOrganizationVerification').call({
       'name': name,
       'description': description,
       'city': city,
@@ -351,7 +336,8 @@ class SpectrumFirebaseServices {
     });
   }
 
-  Future<HttpsCallableResult<dynamic>> uploadPlaceImage({
+  @override
+  Future<void> uploadPlaceImage({
     required String placeId,
     required Uint8List bytes,
     required String fileName,
@@ -369,12 +355,25 @@ class SpectrumFirebaseServices {
         .ref(storagePath)
         .putData(bytes, SettableMetadata(contentType: contentType));
 
-    return _functions.httpsCallable('createPlaceImageRecord').call({
+    await _functions.httpsCallable('createPlaceImageRecord').call({
       'placeId': placeId,
       'storagePath': storagePath,
       if (altText != null) 'altText': altText,
     });
   }
+}
+
+SpectrumAuthUser? _authUserFromFirebase(User? user) {
+  if (user == null) {
+    return null;
+  }
+
+  return SpectrumAuthUser(
+    uid: user.uid,
+    displayName: user.displayName,
+    email: user.email,
+    emailVerified: user.emailVerified,
+  );
 }
 
 PlaceSummary _placeFromDocument(
