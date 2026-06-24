@@ -956,12 +956,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
           onSubmit: () => _submitReport(labels),
         );
       case MobileTab.support:
-        return HelpScreen(
-          key: const ValueKey('support'),
-          labels: labels,
-          focusMode: _focusMode,
-          onEnableFocus: () => setState(() => _focusMode = true),
-        );
+        return HelpScreen(key: const ValueKey('support'), labels: labels);
       case MobileTab.profiles:
         return ProfilesScreen(
           key: const ValueKey('profiles'),
@@ -992,10 +987,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
   Widget _protectedAuthScreen(AppCopy labels, AuthCopy authLabels) {
     return AuthScreen(
       key: const ValueKey('protected-auth'),
-      labels: labels,
       authLabels: authLabels,
-      locale: _locale,
-      isDark: widget.themeMode == ThemeMode.dark,
       showRegister: _showRegister,
       isSubmitting: _authSubmitting,
       authUnavailable: _authUnavailable,
@@ -1014,8 +1006,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
       onToggleMode: () => setState(() => _showRegister = !_showRegister),
       onRegistrationKindChanged: (kind) =>
           setState(() => _registrationKind = kind),
-      onLocaleChanged: (locale) => setState(() => _locale = locale),
-      onThemeModeChanged: widget.onThemeModeChanged,
       onEmailSubmit: _showRegister ? _registerWithEmail : _signInWithEmail,
       onGoogle: _signInWithGoogle,
       onApple: _signInWithApple,
@@ -1025,10 +1015,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
 class AuthScreen extends StatelessWidget {
   const AuthScreen({
-    required this.labels,
     required this.authLabels,
-    required this.locale,
-    required this.isDark,
     required this.showRegister,
     required this.isSubmitting,
     required this.authUnavailable,
@@ -1045,8 +1032,6 @@ class AuthScreen extends StatelessWidget {
     required this.registrationKind,
     required this.onToggleMode,
     required this.onRegistrationKindChanged,
-    required this.onLocaleChanged,
-    required this.onThemeModeChanged,
     required this.onEmailSubmit,
     required this.onGoogle,
     required this.onApple,
@@ -1054,10 +1039,7 @@ class AuthScreen extends StatelessWidget {
     super.key,
   });
 
-  final AppCopy labels;
   final AuthCopy authLabels;
-  final LocaleOption locale;
-  final bool isDark;
   final bool showRegister;
   final bool isSubmitting;
   final bool authUnavailable;
@@ -1074,8 +1056,6 @@ class AuthScreen extends StatelessWidget {
   final RegistrationKind registrationKind;
   final VoidCallback onToggleMode;
   final ValueChanged<RegistrationKind> onRegistrationKindChanged;
-  final ValueChanged<LocaleOption> onLocaleChanged;
-  final ValueChanged<ThemeMode> onThemeModeChanged;
   final VoidCallback onEmailSubmit;
   final VoidCallback onGoogle;
   final VoidCallback onApple;
@@ -1089,45 +1069,6 @@ class AuthScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
         children: [
-          Row(
-            children: [
-              const BrandLogo(size: 46),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  labels.appName,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              PopupMenuButton<LocaleOption>(
-                tooltip: 'Idioma',
-                initialValue: locale,
-                icon: Text(
-                  locale.label,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                onSelected: onLocaleChanged,
-                itemBuilder: (context) => LocaleOption.values
-                    .map(
-                      (locale) => PopupMenuItem(
-                        value: locale,
-                        child: Text(locale.label),
-                      ),
-                    )
-                    .toList(),
-              ),
-              IconButton(
-                tooltip: isDark ? labels.lightMode : labels.darkMode,
-                onPressed: () => onThemeModeChanged(
-                  isDark ? ThemeMode.light : ThemeMode.dark,
-                ),
-                icon: Icon(
-                  isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 34),
           Text(
             authLabels.authTitle,
             style: Theme.of(context).textTheme.displayLarge,
@@ -1738,16 +1679,9 @@ class ReportScreen extends StatelessWidget {
 }
 
 class HelpScreen extends StatelessWidget {
-  const HelpScreen({
-    required this.labels,
-    required this.focusMode,
-    required this.onEnableFocus,
-    super.key,
-  });
+  const HelpScreen({required this.labels, super.key});
 
   final AppCopy labels;
-  final bool focusMode;
-  final VoidCallback onEnableFocus;
 
   void _showHelpCard(BuildContext context) {
     showDialog<void>(
@@ -1865,30 +1799,6 @@ class HelpScreen extends StatelessWidget {
               FilledButton(
                 onPressed: () => _showHelpCard(context),
                 child: Text(labels.openHelpCard),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-        SpectrumPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.auto_awesome_outlined, color: SpectrumColors.tertiary),
-              const SizedBox(height: 12),
-              Text(
-                labels.focusMode,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                labels.focusBody,
-                style: TextStyle(color: mutedColor(context), height: 1.45),
-              ),
-              const SizedBox(height: 14),
-              OutlinedButton(
-                onPressed: focusMode ? null : onEnableFocus,
-                child: Text(focusMode ? labels.focusActive : labels.focusMode),
               ),
             ],
           ),

@@ -65,6 +65,14 @@ void main() {
     );
     expect(find.text('Entra a Spectrum Access'), findsNothing);
 
+    await tester.tap(find.text('Ajuda'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ajuda immediata'), findsOneWidget);
+    expect(find.text('Targeta d’ajuda'), findsOneWidget);
+    expect(find.text('Focus mode'), findsNothing);
+    expect(find.byTooltip('Focus mode'), findsOneWidget);
+
     await tester.tap(find.text('Aportacions'));
     await tester.pumpAndSettle();
 
@@ -72,6 +80,8 @@ void main() {
     expect(find.text('Continuar amb Google'), findsOneWidget);
     expect(find.text('Continuar amb Apple'), findsOneWidget);
     expect(find.text('Registrar amb email'), findsOneWidget);
+    expect(find.byTooltip('Idioma'), findsOneWidget);
+    expect(find.byTooltip('Mode fosc'), findsOneWidget);
 
     await tester.tap(find.text('Entrar'));
     await tester.pumpAndSettle();

@@ -421,7 +421,7 @@ const appCopies = {
     pendingModeration: 'Pendent de moderació',
     tutorReview: 'Revisió del tutor',
     helpTitle: 'Ajuda immediata',
-    helpIntro: 'Targeta de comunicació, contacte de confiança i focus mode.',
+    helpIntro: 'Targeta de comunicació i contacte de confiança.',
     communicationMessage:
         'Soc una persona autista. Ara mateix em costa parlar o respondre. Necessito uns minuts, un lloc tranquil o contactar amb una persona de confiança.',
     trustedContact: 'Contacte de confiança',
@@ -509,7 +509,7 @@ const appCopies = {
     pendingModeration: 'Pendiente de moderación',
     tutorReview: 'Revisión del tutor',
     helpTitle: 'Ayuda inmediata',
-    helpIntro: 'Tarjeta de comunicación, contacto de confianza y focus mode.',
+    helpIntro: 'Tarjeta de comunicación y contacto de confianza.',
     communicationMessage:
         'Soy una persona autista. Ahora mismo me cuesta hablar o responder. Necesito unos minutos, un lugar tranquilo o contactar con una persona de confianza.',
     trustedContact: 'Contacto de confianza',
@@ -598,7 +598,7 @@ const appCopies = {
     pendingModeration: 'Pending moderation',
     tutorReview: 'Tutor review',
     helpTitle: 'Immediate help',
-    helpIntro: 'Communication card, trusted contact and focus mode.',
+    helpIntro: 'Communication card and trusted contact.',
     communicationMessage:
         'I am autistic. Right now it is hard for me to speak or answer. I need a few minutes, a quiet place or a trusted contact.',
     trustedContact: 'Trusted contact',
