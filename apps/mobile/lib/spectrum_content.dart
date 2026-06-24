@@ -303,6 +303,7 @@ class AuthCopy {
     required this.passwordsMismatch,
     required this.forgotPassword,
     required this.passwordResetSent,
+    required this.passwordResetFailed,
     required this.professionalFieldsRequired,
     required this.authFailed,
     required this.authCancelled,
@@ -351,6 +352,7 @@ class AuthCopy {
   final String passwordsMismatch;
   final String forgotPassword;
   final String passwordResetSent;
+  final String passwordResetFailed;
   final String professionalFieldsRequired;
   final String authFailed;
   final String authCancelled;
@@ -672,6 +674,8 @@ const authCopies = {
     forgotPassword: 'Has oblidat la teva contrasenya?',
     passwordResetSent:
         'Si aquest correu està registrat, rebràs un enllaç per restablir la contrasenya.',
+    passwordResetFailed:
+        'No s’ha pogut enviar el correu de restabliment. Torna-ho a provar.',
     professionalFieldsRequired:
         'Omple les dades professionals per enviar la verificació.',
     authFailed: 'No s’ha pogut completar l’autenticació.',
@@ -728,6 +732,8 @@ const authCopies = {
     forgotPassword: '¿Has olvidado tu contraseña?',
     passwordResetSent:
         'Si este correo está registrado, recibirás un enlace para restablecer la contraseña.',
+    passwordResetFailed:
+        'No se ha podido enviar el correo de restablecimiento. Inténtalo de nuevo.',
     professionalFieldsRequired:
         'Rellena los datos profesionales para enviar la verificación.',
     authFailed: 'No se ha podido completar la autenticación.',
@@ -784,6 +790,7 @@ const authCopies = {
     forgotPassword: 'Forgot your password?',
     passwordResetSent:
         'If this email is registered, you will receive a password reset link.',
+    passwordResetFailed: 'We could not send the reset email. Please try again.',
     professionalFieldsRequired:
         'Fill in the professional details to send verification.',
     authFailed: 'Authentication could not be completed.',

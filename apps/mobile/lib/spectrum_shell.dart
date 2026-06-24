@@ -259,7 +259,10 @@ class _SpectrumShellState extends State<SpectrumShell> {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim());
   }
 
-  Future<void> _runAuthAction(Future<void> Function() action) async {
+  Future<void> _runAuthAction(
+    Future<void> Function() action, {
+    String? failureMessage,
+  }) async {
     if (_authSubmitting) {
       return;
     }
@@ -273,11 +276,13 @@ class _SpectrumShellState extends State<SpectrumShell> {
       await action();
       await _loadUserProfile();
     } catch (error, stackTrace) {
-      if (kDebugMode) {
+      if (kDebugMode || kProfileMode) {
         debugPrint('Spectrum auth error: $error');
         debugPrintStack(stackTrace: stackTrace);
       }
-      setStateIfMounted(() => _authMessage = _authMessageForError(error));
+      setStateIfMounted(
+        () => _authMessage = failureMessage ?? _authMessageForError(error),
+      );
     } finally {
       setStateIfMounted(() => _authSubmitting = false);
     }
@@ -436,7 +441,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
     return _runAuthAction(() async {
       await _service().requestPasswordReset(email: email, locale: _locale.name);
       setStateIfMounted(() => _authMessage = labels.passwordResetSent);
-    });
+    }, failureMessage: labels.passwordResetFailed);
   }
 
   Future<void> _signInWithGoogle() {
