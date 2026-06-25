@@ -310,9 +310,11 @@ class _SpectrumShellState extends State<SpectrumShell> {
       await action();
       await _loadUserProfile();
     } catch (error, stackTrace) {
-      if (kDebugMode || kProfileMode) {
-        debugPrint('Spectrum auth error: $error');
-        debugPrintStack(stackTrace: stackTrace);
+      if (kDebugMode) {
+        debugPrint('Spectrum auth error handled without user-facing details.');
+        if (error is! FirebaseAuthException) {
+          debugPrintStack(stackTrace: stackTrace);
+        }
       }
       setStateIfMounted(
         () => _authMessage = failureMessage ?? _authMessageForError(error),
@@ -325,16 +327,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
   String _authMessageForError(Object error) {
     final labels = authCopies[_locale]!;
     if (error is FirebaseAuthException) {
-      return switch (error.code) {
-        'operation-not-allowed' => labels.authProviderDisabled,
-        'account-exists-with-different-credential' =>
-          labels.authProviderDisabled,
-        'invalid-credential' ||
-        'invalid-oauth-provider' ||
-        'missing-or-invalid-nonce' => labels.authConfigurationError,
-        'network-request-failed' => labels.authFailed,
-        _ => labels.authFailed,
-      };
+      return labels.authFailed;
     }
     if (error is PlatformException) {
       final code = error.code.toLowerCase();
@@ -343,24 +336,10 @@ class _SpectrumShellState extends State<SpectrumShell> {
       if (code.contains('cancel') || message.contains('cancel')) {
         return labels.authCancelled;
       }
-      if (code.contains('config') ||
-          code.contains('sign_in_failed') ||
-          message.contains('client_id') ||
-          message.contains('url scheme') ||
-          message.contains('entitlement') ||
-          message.contains('configuration')) {
-        return labels.authConfigurationError;
-      }
     }
     final text = error.toString().toLowerCase();
     if (text.contains('cancel')) {
       return labels.authCancelled;
-    }
-    if (text.contains('client_id') ||
-        text.contains('url scheme') ||
-        text.contains('entitlement') ||
-        text.contains('configuration')) {
-      return labels.authConfigurationError;
     }
     return labels.authFailed;
   }

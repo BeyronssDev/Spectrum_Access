@@ -738,10 +738,8 @@ const authCopies = {
         'Omple les dades professionals per enviar la verificació.',
     authFailed: 'No s’ha pogut completar l’autenticació.',
     authCancelled: 'Has cancel·lat l’autenticació.',
-    authProviderDisabled:
-        'Aquest mètode d’accés encara no està activat a Firebase.',
-    authConfigurationError:
-        'Falta configuració nativa o OAuth per completar aquest accés.',
+    authProviderDisabled: 'No s’ha pogut completar l’autenticació.',
+    authConfigurationError: 'No s’ha pogut completar l’autenticació.',
     verificationSent: 'Compte creat. Revisa el correu de verificació.',
     professionalRegistrationSent:
         'Compte creat. La verificació professional queda pendent de revisió.',
@@ -796,10 +794,8 @@ const authCopies = {
         'Rellena los datos profesionales para enviar la verificación.',
     authFailed: 'No se ha podido completar la autenticación.',
     authCancelled: 'Has cancelado la autenticación.',
-    authProviderDisabled:
-        'Este método de acceso todavía no está activado en Firebase.',
-    authConfigurationError:
-        'Falta configuración nativa u OAuth para completar este acceso.',
+    authProviderDisabled: 'No se ha podido completar la autenticación.',
+    authConfigurationError: 'No se ha podido completar la autenticación.',
     verificationSent: 'Cuenta creada. Revisa el correo de verificación.',
     professionalRegistrationSent:
         'Cuenta creada. La verificación profesional queda pendiente de revisión.',
@@ -853,9 +849,8 @@ const authCopies = {
         'Fill in the professional details to send verification.',
     authFailed: 'Authentication could not be completed.',
     authCancelled: 'Authentication was cancelled.',
-    authProviderDisabled: 'This sign-in method is not enabled in Firebase yet.',
-    authConfigurationError:
-        'Native or OAuth configuration is missing for this sign-in method.',
+    authProviderDisabled: 'Authentication could not be completed.',
+    authConfigurationError: 'Authentication could not be completed.',
     verificationSent: 'Account created. Check the verification email.',
     professionalRegistrationSent:
         'Account created. Professional verification is pending review.',

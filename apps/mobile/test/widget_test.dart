@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:sensory_access/spectrum_app.dart';
@@ -187,6 +188,42 @@ class FakeProfileService implements SpectrumApplicationService {
   }) async {}
 }
 
+class FailingEmailSignInService extends FakeProfileService {
+  FailingEmailSignInService()
+    : super(
+        profile: const SpectrumUserProfile(
+          uid: 'guest',
+          publicName: 'Visitant',
+          roles: ['user'],
+        ),
+      );
+
+  @override
+  bool get hasAuthenticatedUser => false;
+
+  @override
+  SpectrumAuthUser? get currentUser => null;
+
+  @override
+  Stream<SpectrumAuthUser?> get authStateChanges =>
+      Stream<SpectrumAuthUser?>.value(null);
+
+  @override
+  Future<SpectrumUserProfile?> loadCurrentUserProfile() async => null;
+
+  @override
+  Future<void> signInWithEmail({
+    required String email,
+    required String password,
+    required String locale,
+  }) async {
+    throw FirebaseAuthException(
+      code: 'user-not-found',
+      message: 'There is no user record corresponding to this identifier.',
+    );
+  }
+}
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -252,6 +289,46 @@ void main() {
     expect(find.text('Entrar amb email'), findsOneWidget);
     expect(find.text('Has oblidat la teva contrasenya?'), findsOneWidget);
     expect(find.text('Nom públic'), findsNothing);
+  });
+
+  testWidgets('keeps email sign-in failures generic', (
+    WidgetTester tester,
+  ) async {
+    final service = FailingEmailSignInService();
+
+    await tester.pumpWidget(
+      SpectrumAccessApp(
+        firebaseInitialization: Future<void>.value(),
+        createApplicationService: () => service,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aportacions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Entrar'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Email'),
+      'noexisteix@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Contrasenya'),
+      'contrasenya-incorrecta',
+    );
+    await tester.ensureVisible(find.text('Entrar amb email'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Entrar amb email'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No s’ha pogut completar l’autenticació.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('user-not-found'), findsNothing);
+    expect(find.textContaining('There is no user record'), findsNothing);
+    expect(find.textContaining('Firebase'), findsNothing);
   });
 
   testWidgets('opens the normal user profile editor from profiles', (
