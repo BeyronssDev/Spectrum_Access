@@ -1,13 +1,25 @@
 import {
   isAuthProviderId,
+  type DiscoveredPlace,
+  type Locale,
+  type Place,
   type UserRole,
   type VerificationRequestType
 } from "@accessibilitat/shared";
+import {
+  categoryFromGoogleTypes,
+  cityFromFormattedAddress,
+  defaultGooglePlaceTypes,
+  distanceBetweenKm,
+  googlePlaceToDiscoveredPlace,
+  spectrumPlaceToDiscoveredPlace
+} from "../domain/place-discovery.js";
 import { fail } from "../domain/errors.js";
 import { moderationTargets, moderationTargetStatuses } from "../domain/moderation.js";
 import { ensureUserRoles } from "../domain/roles.js";
 import type { AuthGateway, RequestContext } from "../ports/auth.js";
 import type { Clock } from "../ports/clock.js";
+import type { GooglePlaceCandidate, PlacesGateway } from "../ports/places.js";
 import type { SpectrumRepository } from "../ports/repositories.js";
 import {
   optionalBoolean,
@@ -34,6 +46,7 @@ import {
 export type UseCaseDependencies = {
   auth: AuthGateway;
   clock: Clock;
+  places: PlacesGateway;
   repository: SpectrumRepository;
 };
 
@@ -42,8 +55,31 @@ const derivedVerificationRoles: Record<string, UserRole> = {
   organization: "organization"
 };
 
-export function createUseCases({ auth, clock, repository }: UseCaseDependencies) {
+export function createUseCases({ auth, clock, places, repository }: UseCaseDependencies) {
   return {
+    async searchNearbyPlaces(rawData: unknown) {
+      const data = requirePayload(rawData);
+      const { latitude, longitude } = requireCoordinate(data);
+      const locale = requireLocale(data);
+      const radiusMeters = clampNumber(data.radiusMeters, 250, 3000, 1500);
+      const maxResultCount = Math.round(clampNumber(data.maxResultCount, 1, 20, 20));
+      const includedTypes = readIncludedGoogleTypes(data.includedTypes);
+      const origin = { latitude, longitude };
+
+      const [googlePlaces, spectrumPlaces] = await Promise.all([
+        places.searchNearby({ latitude, longitude, radiusMeters, maxResultCount, locale, includedTypes }),
+        repository.listActivePlacesForDiscovery(100)
+      ]);
+
+      return mergeDiscoveredPlaces({
+        googlePlaces: googlePlaces ?? [],
+        spectrumPlaces,
+        locale,
+        origin,
+        radiusMeters
+      });
+    },
+
     async completeUserOnboarding(context: RequestContext, rawData: unknown) {
       const data = requirePayload(rawData);
       const uid = context.uid;
@@ -95,6 +131,46 @@ export function createUseCases({ auth, clock, repository }: UseCaseDependencies)
         averageScore: 0,
         createdAt: now,
         updatedAt: now
+      });
+
+      return { placeId, status: "pending" };
+    },
+
+    async resolvePlaceForContribution(context: RequestContext, rawData: unknown) {
+      const data = requirePayload(rawData);
+      const googlePlaceId = requireText(data, "googlePlaceId", 240);
+      const locale = requireLocale(data);
+      const existing = await repository.getPlaceByGooglePlaceId(googlePlaceId);
+      if (existing) {
+        return { placeId: existing.id, status: existing.status };
+      }
+
+      const candidate = await places.getPlace(googlePlaceId, locale);
+      const fallback = candidate ?? fallbackGooglePlaceCandidate(data, googlePlaceId);
+      const now = clock.now();
+      const placeId = await repository.createGoogleLinkedPlace({
+        googlePlaceId,
+        data: {
+          name: fallback.name,
+          category: categoryFromGoogleTypes(fallback.primaryType, fallback.types),
+          city: optionalText(data, "city", 120) ?? cityFromFormattedAddress(fallback.formattedAddress),
+          addressOrArea: fallback.formattedAddress,
+          description: optionalText(data, "description", 1200) ?? "",
+          position: {
+            latitude: fallback.latitude,
+            longitude: fallback.longitude
+          },
+          external: {
+            googlePlaceId
+          },
+          status: "pending",
+          createdBy: context.uid,
+          ratingCount: 0,
+          imageCount: 0,
+          averageScore: 0,
+          createdAt: now,
+          updatedAt: now
+        }
       });
 
       return { placeId, status: "pending" };
@@ -437,6 +513,79 @@ export function createUseCases({ auth, clock, repository }: UseCaseDependencies)
       };
     }
   };
+}
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, value));
+}
+
+function readIncludedGoogleTypes(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [...defaultGooglePlaceTypes];
+  }
+
+  const allowed = new Set<string>(defaultGooglePlaceTypes);
+  const selected = value.filter((type): type is string => typeof type === "string" && allowed.has(type));
+  return selected.length > 0 ? Array.from(new Set(selected)).slice(0, 12) : [...defaultGooglePlaceTypes];
+}
+
+function fallbackGooglePlaceCandidate(data: Record<string, unknown>, googlePlaceId: string): GooglePlaceCandidate {
+  const { latitude, longitude } = requireCoordinate(data);
+  const category = requirePlaceCategory(data);
+  const addressOrArea = requireText(data, "addressOrArea", 240);
+
+  return {
+    googlePlaceId,
+    name: requireText(data, "name", 120),
+    formattedAddress: addressOrArea,
+    latitude,
+    longitude,
+    primaryType: category,
+    types: [category]
+  };
+}
+
+function mergeDiscoveredPlaces(input: {
+  googlePlaces: GooglePlaceCandidate[];
+  spectrumPlaces: Place[];
+  locale: Locale;
+  origin: { latitude: number; longitude: number };
+  radiusMeters: number;
+}): DiscoveredPlace[] {
+  const nearbySpectrum = input.spectrumPlaces.filter((place) => {
+    if (!place.position) {
+      return false;
+    }
+
+    return distanceBetweenKm(input.origin, place.position) <= input.radiusMeters / 1000 + 0.25;
+  });
+  const spectrumByGooglePlaceId = new Map(
+    nearbySpectrum
+      .map((place) => [place.external?.googlePlaceId, place] as const)
+      .filter((entry): entry is readonly [string, Place] => typeof entry[0] === "string")
+  );
+  const merged = new Map<string, DiscoveredPlace>();
+
+  for (const googlePlace of input.googlePlaces) {
+    const linkedSpectrumPlace = spectrumByGooglePlaceId.get(googlePlace.googlePlaceId);
+    const discovered = linkedSpectrumPlace
+      ? spectrumPlaceToDiscoveredPlace(linkedSpectrumPlace)
+      : googlePlaceToDiscoveredPlace(googlePlace, input.locale);
+    merged.set(discovered.id, discovered);
+  }
+
+  for (const spectrumPlace of nearbySpectrum) {
+    const discovered = spectrumPlaceToDiscoveredPlace(spectrumPlace);
+    merged.set(discovered.id, discovered);
+  }
+
+  return [...merged.values()].sort(
+    (a, b) => distanceBetweenKm(input.origin, a.position) - distanceBetweenKm(input.origin, b.position)
+  );
 }
 
 export type UseCases = ReturnType<typeof createUseCases>;

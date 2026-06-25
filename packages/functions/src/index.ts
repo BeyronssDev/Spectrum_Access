@@ -7,6 +7,8 @@ export {
   moderateContent,
   requestOrganizationVerification,
   requestProfessionalVerification,
+  resolvePlaceForContribution,
+  searchNearbyPlaces,
   setUserAccessClaims,
   setVerificationStatus,
   submitComment,

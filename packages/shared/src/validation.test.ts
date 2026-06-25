@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   isAuthProviderId,
   isLocale,
+  isPlaceSource,
   isScore,
   isSensoryRating,
   isValidCoordinate,
@@ -36,6 +37,9 @@ describe("shared validation", () => {
     assert.equal(isAuthProviderId("password"), true);
     assert.equal(isAuthProviderId("google.com"), true);
     assert.equal(isAuthProviderId("facebook.com"), false);
+    assert.equal(isPlaceSource("spectrum"), true);
+    assert.equal(isPlaceSource("google_places"), true);
+    assert.equal(isPlaceSource("google"), false);
   });
 
   it("requires complete sensory ratings", () => {

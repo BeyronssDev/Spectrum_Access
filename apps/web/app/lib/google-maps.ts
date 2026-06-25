@@ -60,7 +60,7 @@ export function loadGoogleMaps(apiKey: string): Promise<GoogleMapsNamespace> {
   window.__spectrumGoogleMapsPromise = new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.id = "spectrum-google-maps";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&loading=async`;
     script.async = true;
     script.defer = true;
     script.onload = () => {

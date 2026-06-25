@@ -14,6 +14,8 @@ PlaceSummary testPlace({
 }) {
   return PlaceSummary(
     id: id,
+    source: 'spectrum',
+    spectrumPlaceId: id,
     name: 'Place $id',
     area: 'Area',
     city: 'Barcelona',
@@ -25,6 +27,7 @@ PlaceSummary testPlace({
     latitude: 41.3851,
     longitude: 2.1734,
     criterionAverages: criterionAverages,
+    hasSpectrumData: criterionAverages.isNotEmpty,
   );
 }
 
@@ -52,6 +55,15 @@ class FakeProfileService implements SpectrumApplicationService {
 
   @override
   Future<List<PlaceSummary>> loadActivePlaces() async => [testPlace(id: 'one')];
+
+  @override
+  Future<List<PlaceSummary>> searchNearbyPlaces({
+    required double latitude,
+    required double longitude,
+    required String locale,
+    double radiusMeters = 1500,
+    int maxResultCount = 20,
+  }) async => [testPlace(id: 'nearby')];
 
   @override
   Future<void> updateUserProfile({
@@ -105,6 +117,12 @@ class FakeProfileService implements SpectrumApplicationService {
     required double longitude,
     String? description,
   }) async => 'place-1';
+
+  @override
+  Future<String> resolvePlaceForContribution({
+    required PlaceSummary place,
+    required String locale,
+  }) async => place.spectrumPlaceId ?? 'resolved-place-1';
 
   @override
   Future<void> submitReview({

@@ -36,6 +36,8 @@ export const placeCategories = [
   "bar",
   "restaurant",
   "cafe",
+  "park",
+  "public_space",
   "shop",
   "medical_center",
   "public_administration",
@@ -46,6 +48,9 @@ export const placeCategories = [
   "other"
 ] as const;
 export type PlaceCategory = (typeof placeCategories)[number];
+
+export const placeSources = ["spectrum", "google_places"] as const;
+export type PlaceSource = (typeof placeSources)[number];
 
 export const sensoryCriteria = [
   "noise",
@@ -137,7 +142,32 @@ export interface Place {
   imageCount: number;
   averageScore: number;
   criterionAverages?: Partial<Record<SensoryCriterion, number>>;
+  external?: {
+    googlePlaceId?: string;
+  };
   updatedAt: string;
+}
+
+export interface DiscoveredPlace {
+  id: string;
+  source: PlaceSource;
+  name: string;
+  category: PlaceCategory;
+  city: string;
+  addressOrArea: string;
+  description: string;
+  position: {
+    latitude: number;
+    longitude: number;
+  };
+  spectrumPlaceId?: string;
+  googlePlaceId?: string;
+  ratingCount: number;
+  imageCount: number;
+  averageScore: number;
+  criterionAverages?: Partial<Record<SensoryCriterion, number>>;
+  hasSpectrumData: boolean;
+  updatedAt?: string;
 }
 
 export interface Review {

@@ -4,6 +4,7 @@ import {
   locales,
   moderationStatuses,
   placeCategories,
+  placeSources,
   reportTargetTypes,
   sensoryCriteria,
   type SensoryRating,
@@ -17,6 +18,7 @@ const asSet = <T extends readonly string[]>(values: T) => new Set<string>(values
 export const localeSet = asSet(locales);
 export const userRoleSet = asSet(userRoles);
 export const placeCategorySet = asSet(placeCategories);
+export const placeSourceSet = asSet(placeSources);
 export const moderationStatusSet = asSet(moderationStatuses);
 export const verificationStatusSet = asSet(verificationStatuses);
 export const sensoryCriterionSet = asSet(sensoryCriteria);
@@ -68,4 +70,8 @@ export function isLocale(value: unknown): value is (typeof locales)[number] {
 
 export function isAuthProviderId(value: unknown): value is (typeof authProviderIds)[number] {
   return typeof value === "string" && authProviderIdSet.has(value);
+}
+
+export function isPlaceSource(value: unknown): value is (typeof placeSources)[number] {
+  return typeof value === "string" && placeSourceSet.has(value);
 }

@@ -56,6 +56,7 @@ export const copy: Record<
     filters: string[];
     placeDetails: string;
     sensoryState: string;
+    noSpectrumRatings: string;
     reportPlace: string;
     favorite: string;
     contributionTitle: string;
@@ -160,6 +161,7 @@ export const copy: Record<
     filters: ["Baix soroll", "Llum suau", "Poca densitat", "Sortida clara"],
     placeDetails: "Fitxa del lloc",
     sensoryState: "Estat sensorial",
+    noSpectrumRatings: "Encara sense valoracions Spectrum",
     reportPlace: "Reportar",
     favorite: "Desar",
     contributionTitle: "Aportació sensorial",
@@ -267,6 +269,7 @@ export const copy: Record<
     filters: ["Bajo ruido", "Luz suave", "Poca densidad", "Salida clara"],
     placeDetails: "Ficha del lugar",
     sensoryState: "Estado sensorial",
+    noSpectrumRatings: "Todavía sin valoraciones Spectrum",
     reportPlace: "Reportar",
     favorite: "Guardar",
     contributionTitle: "Aportación sensorial",
@@ -373,6 +376,7 @@ export const copy: Record<
     filters: ["Low noise", "Soft light", "Low density", "Clear exit"],
     placeDetails: "Place details",
     sensoryState: "Sensory state",
+    noSpectrumRatings: "No Spectrum ratings yet",
     reportPlace: "Report",
     favorite: "Save",
     contributionTitle: "Sensory report",

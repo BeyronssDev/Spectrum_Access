@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import type { Firestore } from "firebase-admin/firestore";
-import type { Review, VerificationRequestType } from "@accessibilitat/shared";
+import type { Place, Review, VerificationRequestType } from "@accessibilitat/shared";
 import type { PlaceReviewStats } from "../../domain/review-stats.js";
 import type { TimestampValue } from "../../ports/clock.js";
 import type {
@@ -30,6 +31,40 @@ export class FirestoreSpectrumRepository implements SpectrumRepository {
     const ref = this.db.collection("places").doc();
     await ref.set({ id: ref.id, ...data });
     return ref.id;
+  }
+
+  async listActivePlacesForDiscovery(limit: number): Promise<Place[]> {
+    const snapshot = await this.db.collection("places").where("status", "==", "active").limit(limit).get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Place);
+  }
+
+  async getPlaceByGooglePlaceId(googlePlaceId: string): Promise<Place | undefined> {
+    const snapshot = await this.db
+      .collection("places")
+      .where("external.googlePlaceId", "==", googlePlaceId)
+      .limit(1)
+      .get();
+    const doc = snapshot.docs[0];
+    return doc ? ({ id: doc.id, ...doc.data() } as Place) : undefined;
+  }
+
+  async createGoogleLinkedPlace(input: {
+    googlePlaceId: string;
+    data: Record<string, unknown>;
+  }): Promise<string> {
+    const id = `google_${createHash("sha256").update(input.googlePlaceId).digest("hex").slice(0, 32)}`;
+    const ref = this.db.collection("places").doc(id);
+
+    await this.db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (snapshot.exists) {
+        return;
+      }
+
+      transaction.set(ref, { id, ...input.data });
+    });
+
+    return id;
   }
 
   async createReview(data: Record<string, unknown>): Promise<string> {

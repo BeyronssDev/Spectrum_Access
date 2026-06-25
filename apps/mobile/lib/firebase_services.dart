@@ -309,6 +309,33 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
   }
 
   @override
+  Future<List<PlaceSummary>> searchNearbyPlaces({
+    required double latitude,
+    required double longitude,
+    required String locale,
+    double radiusMeters = 1500,
+    int maxResultCount = 20,
+  }) async {
+    final result = await _functions.httpsCallable('searchNearbyPlaces').call({
+      'latitude': latitude,
+      'longitude': longitude,
+      'radiusMeters': radiusMeters,
+      'maxResultCount': maxResultCount,
+      'locale': locale,
+    });
+    final data = result.data;
+    final places = data is Map ? data['places'] : data;
+    if (places is! List) {
+      return const [];
+    }
+
+    return places
+        .whereType<Map>()
+        .map((place) => _discoveredPlaceFromMap(Map<String, dynamic>.from(place)))
+        .toList(growable: false);
+  }
+
+  @override
   Future<String> createPlace({
     required String name,
     required String category,
@@ -327,6 +354,41 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       'longitude': longitude,
       if (description != null) 'description': description,
     });
+    final data = result.data;
+    if (data is Map && data['placeId'] is String) {
+      return data['placeId'] as String;
+    }
+    throw StateError('place-id-missing');
+  }
+
+  @override
+  Future<String> resolvePlaceForContribution({
+    required PlaceSummary place,
+    required String locale,
+  }) async {
+    final googlePlaceId = place.googlePlaceId;
+    if (googlePlaceId == null || googlePlaceId.isEmpty) {
+      final spectrumPlaceId = place.spectrumPlaceId;
+      if (spectrumPlaceId != null && spectrumPlaceId.isNotEmpty) {
+        return spectrumPlaceId;
+      }
+      throw StateError('google-place-id-missing');
+    }
+
+    final result = await _functions
+        .httpsCallable('resolvePlaceForContribution')
+        .call({
+          'googlePlaceId': googlePlaceId,
+          'locale': locale,
+          'name': place.name,
+          'category': place.category,
+          'city': place.city,
+          'addressOrArea': place.area,
+          'latitude': place.latitude,
+          'longitude': place.longitude,
+          if (place.description.trim().isNotEmpty)
+            'description': place.description.trim(),
+        });
     final data = result.data;
     if (data is Map && data['placeId'] is String) {
       return data['placeId'] as String;
@@ -488,6 +550,9 @@ PlaceSummary _placeFromDocument(
 
   return PlaceSummary(
     id: doc.id,
+    source: 'spectrum',
+    spectrumPlaceId: doc.id,
+    googlePlaceId: _googlePlaceIdFromMap(data['external']),
     name: (data['name'] as String?) ?? '',
     area:
         (data['addressOrArea'] as String?) ??
@@ -503,7 +568,57 @@ PlaceSummary _placeFromDocument(
     longitude: longitude ?? 2.1734,
     description: (data['description'] as String?) ?? '',
     criterionAverages: _criterionAveragesFromMap(data['criterionAverages']),
+    hasSpectrumData:
+        ((data['ratingCount'] as num?)?.toInt() ?? 0) > 0 ||
+        ((data['imageCount'] as num?)?.toInt() ?? 0) > 0 ||
+        data['criterionAverages'] is Map,
   );
+}
+
+PlaceSummary _discoveredPlaceFromMap(Map<String, dynamic> data) {
+  final position = data['position'];
+  final latitude = position is Map
+      ? (position['latitude'] as num?)?.toDouble()
+      : null;
+  final longitude = position is Map
+      ? (position['longitude'] as num?)?.toDouble()
+      : null;
+  final ratingCount = (data['ratingCount'] as num?)?.toInt() ?? 0;
+  final hasSpectrumData = data['hasSpectrumData'] == true;
+
+  return PlaceSummary(
+    id: (data['id'] as String?) ?? '',
+    source: (data['source'] as String?) ?? 'spectrum',
+    spectrumPlaceId: data['spectrumPlaceId'] as String?,
+    googlePlaceId: data['googlePlaceId'] as String?,
+    name: (data['name'] as String?) ?? '',
+    area:
+        (data['addressOrArea'] as String?) ??
+        (data['category'] as String? ?? ''),
+    city: (data['city'] as String?) ?? '',
+    category: (data['category'] as String?) ?? 'other',
+    score: (data['averageScore'] as num?)?.toDouble() ?? 0,
+    distance: 'Live',
+    quietDb: hasSpectrumData && ratingCount > 0
+        ? '$ratingCount reviews'
+        : 'Spectrum',
+    latitude: latitude ?? 41.3851,
+    longitude: longitude ?? 2.1734,
+    description: (data['description'] as String?) ?? '',
+    criterionAverages: _criterionAveragesFromMap(data['criterionAverages']),
+    hasSpectrumData: hasSpectrumData,
+  );
+}
+
+String? _googlePlaceIdFromMap(Object? value) {
+  if (value is! Map) {
+    return null;
+  }
+
+  final googlePlaceId = value['googlePlaceId'];
+  return googlePlaceId is String && googlePlaceId.isNotEmpty
+      ? googlePlaceId
+      : null;
 }
 
 Map<SensoryKey, double> _criterionAveragesFromMap(Object? value) {

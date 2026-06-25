@@ -108,6 +108,14 @@ abstract interface class SpectrumApplicationService {
 
   Future<List<PlaceSummary>> loadActivePlaces();
 
+  Future<List<PlaceSummary>> searchNearbyPlaces({
+    required double latitude,
+    required double longitude,
+    required String locale,
+    double radiusMeters = 1500,
+    int maxResultCount = 20,
+  });
+
   Future<String> createPlace({
     required String name,
     required String category,
@@ -116,6 +124,11 @@ abstract interface class SpectrumApplicationService {
     required double latitude,
     required double longitude,
     String? description,
+  });
+
+  Future<String> resolvePlaceForContribution({
+    required PlaceSummary place,
+    required String locale,
   });
 
   Future<void> submitReview({

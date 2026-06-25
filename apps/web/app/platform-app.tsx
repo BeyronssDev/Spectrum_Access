@@ -48,6 +48,8 @@ import {
   registerWithEmailPassword,
   requestPasswordReset,
   requestProfessionalVerification,
+  resolvePlaceForContribution,
+  searchNearbyPlaces,
   submitReview,
   subscribeToAuthState,
   uploadPlaceImage,
@@ -68,7 +70,7 @@ import {
 import { rankLocatedItemsByDistance, rankPlacesByDistance } from "./platform/distance";
 import { useUserLocation } from "./platform/hooks/use-user-location";
 import { googleMapStyles } from "./platform/map-config";
-import { toSensoryRating, toUiPlace } from "./platform/mappers";
+import { toSensoryRating, toUiDiscoveredPlace, toUiPlace } from "./platform/mappers";
 import { authRequiredViews, locales, navItems } from "./platform/navigation";
 import type {
   AuthMode,
@@ -193,6 +195,43 @@ export function PlatformApp() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!userLocation) {
+      return;
+    }
+
+    let active = true;
+    searchNearbyPlaces({
+      latitude: userLocation.lat,
+      longitude: userLocation.lng,
+      radiusMeters: 1500,
+      maxResultCount: 20,
+      locale
+    })
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+
+        const discovered = Array.isArray(result.data) ? result.data : result.data.places;
+        const mappedPlaces = discovered.map(toUiDiscoveredPlace);
+        setAvailablePlaces(mappedPlaces);
+        setSelectedPlaceId((current) =>
+          mappedPlaces.some((place) => place.id === current) ? current : (mappedPlaces[0]?.id ?? null)
+        );
+      })
+      .catch(() => {
+        if (active) {
+          setAvailablePlaces([]);
+          setSelectedPlaceId(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [locale, userLocation]);
 
   const c = copy[locale];
   const rankedPlaces = useMemo(() => rankPlacesByDistance(availablePlaces, userLocation), [availablePlaces, userLocation]);
@@ -350,7 +389,7 @@ export function PlatformApp() {
 
     try {
       const shouldCreatePlace = contributionDraft.createNewPlace || !selectedPlace;
-      let placeId = selectedPlace?.id ?? null;
+      let placeId = selectedPlace?.spectrumPlaceId ?? null;
 
       if (shouldCreatePlace) {
         const placeName = contributionDraft.placeName.trim();
@@ -377,6 +416,19 @@ export function PlatformApp() {
           longitude: userLocation.lng
         });
         placeId = created.data.placeId;
+      } else if (!placeId && selectedPlace?.googlePlaceId) {
+        const resolved = await resolvePlaceForContribution({
+          googlePlaceId: selectedPlace.googlePlaceId,
+          locale,
+          name: selectedPlace.name,
+          category: selectedPlace.category,
+          city: selectedPlace.city,
+          addressOrArea: selectedPlace.area,
+          description: selectedPlace.description || undefined,
+          latitude: selectedPlace.position.lat,
+          longitude: selectedPlace.position.lng
+        });
+        placeId = resolved.data.placeId;
       }
 
       if (!placeId) {
@@ -1141,7 +1193,7 @@ function HomeView({
                     {place.area} · {place.distance}
                   </small>
                 </span>
-                <em>{place.score.toFixed(1)}</em>
+                <em>{place.hasSpectrumData ? place.score.toFixed(1) : "Spectrum"}</em>
                 <ChevronRight aria-hidden="true" size={16} />
               </button>
             ))
@@ -2174,6 +2226,12 @@ function EmptyMapCanvas({ body, label }: { body: string; label: string }) {
   );
 }
 
+function criterionValueForUi(place: Place, key: SensoryKey) {
+  const criterion = key === "density" ? "crowd" : key === "light" ? "lighting" : key === "wait" ? "waitingTime" : "noise";
+  const value = place.criterionAverages?.[criterion];
+  return typeof value === "number" ? Math.max(1, Math.min(5, Math.round(value))) : null;
+}
+
 function PlaceDetailCard({
   copy: c,
   authLabels,
@@ -2223,21 +2281,32 @@ function PlaceDetailCard({
       <p>
         {place.area} · {place.city}
       </p>
-      <div className="score-line">
-        <strong>{place.score.toFixed(1)}</strong>
-        <RatingStars value={5} />
-      </div>
-      <p>{place.description}</p>
+      {place.hasSpectrumData ? (
+        <div className="score-line">
+          <strong>{place.score.toFixed(1)}</strong>
+          <RatingStars value={Math.round(place.score)} />
+        </div>
+      ) : (
+        <div className="score-line no-spectrum-score">
+          <strong>{c.noSpectrumRatings}</strong>
+        </div>
+      )}
+      {place.description ? <p>{place.description}</p> : null}
       {isAuthenticated ? (
         <>
-          <div className="metric-list">
-            {sensoryKeys.map((item, index) => (
-              <div key={item.key}>
-                <span>{sensoryLabels[locale][item.key]}</span>
-                <strong>{sensoryWords[locale][item.key][index]}</strong>
-              </div>
-            ))}
-          </div>
+          {place.hasSpectrumData ? (
+            <div className="metric-list">
+              {sensoryKeys.map((item) => {
+                const value = criterionValueForUi(place, item.key);
+                return (
+                  <div key={item.key}>
+                    <span>{sensoryLabels[locale][item.key]}</span>
+                    <strong>{value ? sensoryWords[locale][item.key][value - 1] : c.noSpectrumRatings}</strong>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
           <div className="detail-actions">
             <button type="button" className="secondary-action" disabled title={c.unavailableAction}>
               <Bookmark aria-hidden="true" size={17} />

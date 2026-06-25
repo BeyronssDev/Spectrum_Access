@@ -10,6 +10,8 @@ export const categoryLabels: Record<PlaceCategory, Record<Locale, string>> = {
   bar: { ca: "Bar", es: "Bar", en: "Bar" },
   restaurant: { ca: "Restaurant", es: "Restaurante", en: "Restaurant" },
   cafe: { ca: "Cafeteria", es: "Cafetería", en: "Cafe" },
+  park: { ca: "Parc", es: "Parque", en: "Park" },
+  public_space: { ca: "Espai públic", es: "Espacio público", en: "Public space" },
   shop: { ca: "Botiga", es: "Tienda", en: "Shop" },
   medical_center: { ca: "Centre mèdic", es: "Centro médico", en: "Medical center" },
   public_administration: { ca: "Administració pública", es: "Administración pública", en: "Public administration" },

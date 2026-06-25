@@ -16,6 +16,7 @@ enum SensoryKey { noise, density, light, wait }
 class PlaceSummary {
   const PlaceSummary({
     required this.id,
+    required this.source,
     required this.name,
     required this.area,
     required this.city,
@@ -27,9 +28,15 @@ class PlaceSummary {
     required this.latitude,
     required this.longitude,
     this.criterionAverages = const {},
+    this.spectrumPlaceId,
+    this.googlePlaceId,
+    this.hasSpectrumData = true,
   });
 
   final String id;
+  final String source;
+  final String? spectrumPlaceId;
+  final String? googlePlaceId;
   final String name;
   final String area;
   final String city;
@@ -41,13 +48,18 @@ class PlaceSummary {
   final double latitude;
   final double longitude;
   final Map<SensoryKey, double> criterionAverages;
+  final bool hasSpectrumData;
 
   PlaceSummary copyWith({
     String? distance,
     Map<SensoryKey, double>? criterionAverages,
+    String? spectrumPlaceId,
   }) {
     return PlaceSummary(
       id: id,
+      source: source,
+      spectrumPlaceId: spectrumPlaceId ?? this.spectrumPlaceId,
+      googlePlaceId: googlePlaceId,
       name: name,
       area: area,
       city: city,
@@ -59,6 +71,7 @@ class PlaceSummary {
       latitude: latitude,
       longitude: longitude,
       criterionAverages: criterionAverages ?? this.criterionAverages,
+      hasSpectrumData: hasSpectrumData,
     );
   }
 }
@@ -190,6 +203,7 @@ class AppCopy {
     required this.contact,
     required this.verified,
     required this.actionUnavailable,
+    required this.noSpectrumRatings,
     required this.noPlacesTitle,
     required this.noPlacesBody,
     required this.noVerifiedProfiles,
@@ -277,6 +291,7 @@ class AppCopy {
   final String contact;
   final String verified;
   final String actionUnavailable;
+  final String noSpectrumRatings;
   final String noPlacesTitle;
   final String noPlacesBody;
   final String noVerifiedProfiles;
@@ -473,6 +488,7 @@ const appCopies = {
     contact: 'Contactar',
     verified: 'Verificat',
     actionUnavailable: 'Encara no disponible',
+    noSpectrumRatings: 'Encara sense valoracions Spectrum',
     noPlacesTitle: 'Encara no hi ha llocs publicats',
     noPlacesBody:
         'Quan facis una aportació real, el lloc i les imatges quedaran pendents de moderació.',
@@ -570,6 +586,7 @@ const appCopies = {
     contact: 'Contactar',
     verified: 'Verificado',
     actionUnavailable: 'Todavía no disponible',
+    noSpectrumRatings: 'Todavía sin valoraciones Spectrum',
     noPlacesTitle: 'Todavía no hay lugares publicados',
     noPlacesBody:
         'Cuando hagas una aportación real, el lugar y las imágenes quedarán pendientes de moderación.',
@@ -665,6 +682,7 @@ const appCopies = {
     contact: 'Contact',
     verified: 'Verified',
     actionUnavailable: 'Not available yet',
+    noSpectrumRatings: 'No Spectrum ratings yet',
     noPlacesTitle: 'No published places yet',
     noPlacesBody:
         'When you make a real contribution, the place and images will stay pending moderation.',

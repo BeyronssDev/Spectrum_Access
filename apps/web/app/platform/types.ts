@@ -19,15 +19,19 @@ export type ContributionDraft = {
 
 export type Place = {
   id: string;
+  source: "spectrum" | "google_places";
+  spectrumPlaceId?: string;
+  googlePlaceId?: string;
   name: string;
   area: string;
   city: string;
-  category: string;
+  category: FirebasePlace["category"];
   score: number;
   distance: string;
   description: string;
   quietDb: string;
   criterionAverages?: FirebasePlace["criterionAverages"];
+  hasSpectrumData: boolean;
   position: {
     lat: number;
     lng: number;

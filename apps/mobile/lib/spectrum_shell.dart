@@ -47,6 +47,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _profileSubmitting = false;
   bool _professionalSubmitting = false;
   bool _placesLoading = false;
+  bool _placesReloadQueued = false;
   int _selectedPlace = 0;
   int? _selectedFilter;
   LocationStatus _locationStatus = LocationStatus.idle;
@@ -230,6 +231,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
   Future<void> _loadPlaces() async {
     if (_placesLoading) {
+      _placesReloadQueued = true;
       return;
     }
 
@@ -238,7 +240,14 @@ class _SpectrumShellState extends State<SpectrumShell> {
     });
 
     try {
-      final places = await _service().loadActivePlaces();
+      final location = _deviceLocation;
+      final places = location == null
+          ? await _service().loadActivePlaces()
+          : await _service().searchNearbyPlaces(
+              latitude: location.latitude,
+              longitude: location.longitude,
+              locale: _locale.name,
+            );
       if (!mounted) {
         return;
       }
@@ -251,7 +260,12 @@ class _SpectrumShellState extends State<SpectrumShell> {
     } catch (_) {
       // Keep the production UI empty if Firestore cannot be read.
     } finally {
+      final reloadQueued = _placesReloadQueued;
+      _placesReloadQueued = false;
       setStateIfMounted(() => _placesLoading = false);
+      if (reloadQueued) {
+        unawaited(_loadPlaces());
+      }
     }
   }
 
@@ -701,6 +715,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
         _locationStatus = LocationStatus.located;
         _selectedPlace = 0;
       });
+      unawaited(_loadPlaces());
     } catch (_) {
       setStateIfMounted(() => _locationStatus = LocationStatus.error);
     }
@@ -813,7 +828,16 @@ class _SpectrumShellState extends State<SpectrumShell> {
           : visiblePlaces[_selectedPlace
                 .clamp(0, visiblePlaces.length - 1)
                 .toInt()];
-      var placeId = place?.id;
+      var placeId = place?.spectrumPlaceId;
+      if (placeId == null) {
+        if (place?.googlePlaceId != null) {
+          placeId = await service.resolvePlaceForContribution(
+            place: place!,
+            locale: _locale.name,
+          );
+        }
+      }
+
       if (placeId == null) {
         final placeName = _placeNameController.text.trim();
         final city = _placeCityController.text.trim();
@@ -964,7 +988,10 @@ class _SpectrumShellState extends State<SpectrumShell> {
               _locale.label,
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
-            onSelected: (locale) => setState(() => _locale = locale),
+            onSelected: (locale) {
+              setState(() => _locale = locale);
+              unawaited(_loadPlaces());
+            },
             itemBuilder: (context) => LocaleOption.values
                 .map(
                   (locale) =>
@@ -2767,7 +2794,7 @@ class SavedPlaceRow extends StatelessWidget {
                   ],
                 ),
               ),
-              ScoreBadge(value: place.score),
+              ScoreBadge(value: place.score, hasSpectrumData: place.hasSpectrumData),
             ],
           ),
         ),
@@ -2809,16 +2836,19 @@ class PlaceDetailsCard extends StatelessWidget {
             style: TextStyle(color: mutedColor(context)),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Text(
-                place.score.toStringAsFixed(1),
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.star, color: SpectrumColors.tertiary),
-            ],
-          ),
+          if (place.hasSpectrumData)
+            Row(
+              children: [
+                Text(
+                  place.score.toStringAsFixed(1),
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.star, color: SpectrumColors.tertiary),
+              ],
+            )
+          else
+            StatusMessage(message: labels.noSpectrumRatings),
           const SizedBox(height: 12),
           Text(
             localizedPlaceDescription(locale, place),
@@ -2962,6 +2992,9 @@ class PlaceContext extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final spectrumStatus = place.hasSpectrumData
+        ? place.quietDb
+        : labels.noSpectrumRatings;
     return Row(
       children: [
         const PlaceIcon(),
@@ -2975,7 +3008,7 @@ class PlaceContext extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
               Text(
-                '${localizedPlaceArea(locale, place)} · ${place.quietDb}',
+                '${localizedPlaceArea(locale, place)} · $spectrumStatus',
                 style: TextStyle(color: mutedColor(context)),
               ),
             ],
@@ -3678,9 +3711,14 @@ class AppleLogo extends StatelessWidget {
 }
 
 class ScoreBadge extends StatelessWidget {
-  const ScoreBadge({required this.value, super.key});
+  const ScoreBadge({
+    required this.value,
+    required this.hasSpectrumData,
+    super.key,
+  });
 
   final double value;
+  final bool hasSpectrumData;
 
   @override
   Widget build(BuildContext context) {
@@ -3692,7 +3730,7 @@ class ScoreBadge extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         child: Text(
-          value.toStringAsFixed(1),
+          hasSpectrumData ? value.toStringAsFixed(1) : 'Spectrum',
           style: const TextStyle(
             color: SpectrumColors.tertiary,
             fontWeight: FontWeight.w900,

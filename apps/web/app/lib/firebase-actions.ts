@@ -12,7 +12,9 @@ export type {
 export { firebaseApi };
 
 export const listActivePlaces = firebaseApi.listActivePlaces;
+export const searchNearbyPlaces = firebaseApi.searchNearbyPlaces;
 export const createPlace = firebaseApi.createPlace;
+export const resolvePlaceForContribution = firebaseApi.resolvePlaceForContribution;
 export const submitReview = firebaseApi.submitReview;
 export const submitComment = firebaseApi.submitComment;
 export const createReport = firebaseApi.createReport;

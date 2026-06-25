@@ -1,4 +1,4 @@
-import type { Place as FirebasePlace, SensoryRating } from "@accessibilitat/shared";
+import type { DiscoveredPlace, Place as FirebasePlace, SensoryRating } from "@accessibilitat/shared";
 import type { Place, SensoryKey } from "./types";
 
 function criterionAtMost(place: FirebasePlace, criterion: keyof SensoryRating, maximum: number) {
@@ -35,6 +35,9 @@ function filterIdsForPlace(place: FirebasePlace) {
 export function toUiPlace(place: FirebasePlace): Place {
   return {
     id: place.id,
+    source: "spectrum",
+    spectrumPlaceId: place.id,
+    googlePlaceId: place.external?.googlePlaceId,
     name: place.name,
     area: place.addressOrArea || place.category,
     city: place.city,
@@ -44,11 +47,51 @@ export function toUiPlace(place: FirebasePlace): Place {
     quietDb: place.ratingCount > 0 ? `${place.ratingCount} reviews` : "New",
     description: place.description,
     criterionAverages: place.criterionAverages,
+    hasSpectrumData: place.ratingCount > 0 || place.imageCount > 0 || Boolean(place.criterionAverages),
     position: {
       lat: place.position.latitude,
       lng: place.position.longitude
     },
     filterIds: filterIdsForPlace(place)
+  };
+}
+
+export function toUiDiscoveredPlace(place: DiscoveredPlace): Place {
+  return {
+    id: place.id,
+    source: place.source,
+    spectrumPlaceId: place.spectrumPlaceId,
+    googlePlaceId: place.googlePlaceId,
+    name: place.name,
+    area: place.addressOrArea || place.category,
+    city: place.city,
+    category: place.category,
+    score: place.averageScore || 0,
+    distance: "Live",
+    quietDb: place.hasSpectrumData && place.ratingCount > 0 ? `${place.ratingCount} reviews` : "Spectrum",
+    description: place.description,
+    criterionAverages: place.criterionAverages,
+    hasSpectrumData: place.hasSpectrumData,
+    position: {
+      lat: place.position.latitude,
+      lng: place.position.longitude
+    },
+    filterIds: filterIdsForPlace({
+      id: place.spectrumPlaceId ?? place.id,
+      name: place.name,
+      category: place.category,
+      city: place.city,
+      addressOrArea: place.addressOrArea,
+      description: place.description,
+      position: place.position,
+      status: "active",
+      createdBy: "",
+      ratingCount: place.ratingCount,
+      imageCount: place.imageCount,
+      averageScore: place.averageScore,
+      criterionAverages: place.criterionAverages,
+      updatedAt: place.updatedAt ?? ""
+    })
   };
 }
 

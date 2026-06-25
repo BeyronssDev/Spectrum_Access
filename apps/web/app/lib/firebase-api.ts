@@ -15,7 +15,7 @@ import {
 import { collection, doc, getDoc, getDocs, getFirestore, limit, query, where } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getStorage, ref, uploadBytes } from "firebase/storage";
-import type { AppUser, AuthProviderId, Locale, Place } from "@accessibilitat/shared";
+import type { AppUser, AuthProviderId, DiscoveredPlace, Locale, Place } from "@accessibilitat/shared";
 import type {
   AccessibilitatApi,
   CompleteUserOnboardingInput,
@@ -23,6 +23,8 @@ import type {
   CreatePlaceInput,
   CreateReportInput,
   ProfessionalVerificationInput,
+  ResolvePlaceForContributionInput,
+  SearchNearbyPlacesInput,
   SubmitCommentInput,
   SubmitReviewInput
 } from "./accessibilitat-api";
@@ -57,6 +59,19 @@ async function listActivePlaces(): Promise<Place[]> {
 
 async function createPlace(input: CreatePlaceInput) {
   const callable = getCallable<CreatePlaceInput, { placeId: string; status: "pending" }>("createPlace");
+  return callable(input);
+}
+
+async function searchNearbyPlaces(input: SearchNearbyPlacesInput) {
+  const callable = getCallable<SearchNearbyPlacesInput, { places: DiscoveredPlace[] } | DiscoveredPlace[]>("searchNearbyPlaces");
+  return callable(input);
+}
+
+async function resolvePlaceForContribution(input: ResolvePlaceForContributionInput) {
+  const callable = getCallable<
+    ResolvePlaceForContributionInput,
+    { placeId: string; status: "pending" | "active" | "hidden" | "deleted" | "rejected" | "suspended" }
+  >("resolvePlaceForContribution");
   return callable(input);
 }
 
@@ -228,7 +243,9 @@ async function uploadPlaceImage(placeId: string, file: File, altText?: Record<st
 export function createFirebaseAccessibilitatApi(): AccessibilitatApi {
   return {
     listActivePlaces,
+    searchNearbyPlaces,
     createPlace,
+    resolvePlaceForContribution,
     submitReview,
     submitComment,
     createReport,

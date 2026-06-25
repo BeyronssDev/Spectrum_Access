@@ -3,9 +3,10 @@ import { ApplicationError } from "../../src/domain/errors.js";
 import { createUseCases } from "../../src/application/use-cases.js";
 import type { AuthGateway, AuthUserRecord, UserLookup } from "../../src/ports/auth.js";
 import type { Clock, TimestampValue } from "../../src/ports/clock.js";
+import type { GooglePlaceCandidate, NearbyPlacesSearch, PlacesGateway } from "../../src/ports/places.js";
 import type { SpectrumRepository, UserDocument, VerificationProfileDocument } from "../../src/ports/repositories.js";
 import type { PlaceReviewStats } from "../../src/domain/review-stats.js";
-import type { Review } from "@accessibilitat/shared";
+import type { Place, Review } from "@accessibilitat/shared";
 
 class FakeClock implements Clock {
   now(): TimestampValue {
@@ -33,6 +34,7 @@ class FakeAuthGateway implements AuthGateway {
 class FakeRepository implements SpectrumRepository {
   users = new Map<string, UserDocument>();
   childTutors = new Map<string, string>();
+  places = new Map<string, Place>();
   createdPlaces: Array<Record<string, unknown>> = [];
   createdReviews: Array<Record<string, unknown>> = [];
 
@@ -51,6 +53,24 @@ class FakeRepository implements SpectrumRepository {
   async createPlace(data: Record<string, unknown>): Promise<string> {
     this.createdPlaces.push(data);
     return "place-1";
+  }
+
+  listActivePlacesForDiscovery(_limit: number): Promise<Place[]> {
+    return Promise.resolve([...this.places.values()].filter((place) => place.status === "active"));
+  }
+
+  getPlaceByGooglePlaceId(googlePlaceId: string): Promise<Place | undefined> {
+    return Promise.resolve([...this.places.values()].find((place) => place.external?.googlePlaceId === googlePlaceId));
+  }
+
+  async createGoogleLinkedPlace(input: {
+    googlePlaceId: string;
+    data: Record<string, unknown>;
+  }): Promise<string> {
+    const placeId = `google-${input.googlePlaceId}`;
+    this.places.set(placeId, { id: placeId, ...(input.data as Omit<Place, "id">) });
+    this.createdPlaces.push(input.data);
+    return placeId;
   }
 
   async createReview(data: Record<string, unknown>): Promise<string> {
@@ -136,6 +156,21 @@ class FakeRepository implements SpectrumRepository {
   }
 }
 
+class FakePlacesGateway implements PlacesGateway {
+  nearby: GooglePlaceCandidate[] = [];
+  details = new Map<string, GooglePlaceCandidate>();
+  lastSearch: NearbyPlacesSearch | null = null;
+
+  searchNearby(input: NearbyPlacesSearch): Promise<GooglePlaceCandidate[]> {
+    this.lastSearch = input;
+    return Promise.resolve(this.nearby);
+  }
+
+  getPlace(googlePlaceId: string): Promise<GooglePlaceCandidate | undefined> {
+    return Promise.resolve(this.details.get(googlePlaceId));
+  }
+}
+
 const validRatings = {
   noise: 1,
   crowd: 2,
@@ -151,13 +186,15 @@ const validRatings = {
 
 function makeUseCases() {
   const repository = new FakeRepository();
+  const places = new FakePlacesGateway();
   const useCases = createUseCases({
     auth: new FakeAuthGateway(),
     clock: new FakeClock(),
+    places,
     repository
   });
 
-  return { repository, useCases };
+  return { places, repository, useCases };
 }
 
 describe("functions use cases", () => {
@@ -181,6 +218,93 @@ describe("functions use cases", () => {
       name: "Biblioteca",
       status: "pending",
       createdBy: "user-1"
+    });
+  });
+
+  it("merges Google Places discovery with existing Spectrum stats", async () => {
+    const { places, repository, useCases } = makeUseCases();
+    places.nearby = [
+      {
+        googlePlaceId: "google-1",
+        name: "Biblioteca Central",
+        formattedAddress: "Passeig Pere III, 08242 Manresa, Barcelona, Spain",
+        latitude: 41.728,
+        longitude: 1.823,
+        primaryType: "library",
+        types: ["library", "point_of_interest"]
+      }
+    ];
+    repository.places.set("spectrum-1", {
+      id: "spectrum-1",
+      name: "Biblioteca Central",
+      category: "culture",
+      city: "Manresa",
+      addressOrArea: "Passeig Pere III",
+      description: "",
+      position: { latitude: 41.728, longitude: 1.823 },
+      external: { googlePlaceId: "google-1" },
+      status: "active",
+      createdBy: "moderator",
+      ratingCount: 3,
+      imageCount: 1,
+      averageScore: 4,
+      criterionAverages: { noise: 2 },
+      updatedAt: "now"
+    });
+
+    const result = await useCases.searchNearbyPlaces({
+      latitude: 41.728,
+      longitude: 1.823,
+      radiusMeters: 1000,
+      maxResultCount: 10,
+      locale: "ca"
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: "spectrum:spectrum-1",
+      source: "spectrum",
+      spectrumPlaceId: "spectrum-1",
+      googlePlaceId: "google-1",
+      ratingCount: 3,
+      hasSpectrumData: true
+    });
+    expect(places.lastSearch?.includedTypes).toContain("restaurant");
+  });
+
+  it("resolves a Google place into a pending local Spectrum place", async () => {
+    const { places, repository, useCases } = makeUseCases();
+    places.details.set("google-2", {
+      googlePlaceId: "google-2",
+      name: "Parc de la Seu",
+      formattedAddress: "Parc de la Seu, 08241 Manresa, Barcelona, Spain",
+      latitude: 41.721,
+      longitude: 1.828,
+      primaryType: "park",
+      types: ["park", "point_of_interest"]
+    });
+
+    const result = await useCases.resolvePlaceForContribution(
+      { uid: "user-1", token: {} },
+      {
+        googlePlaceId: "google-2",
+        locale: "ca",
+        name: "Fallback",
+        category: "other",
+        city: "Manresa",
+        addressOrArea: "Fallback address",
+        latitude: 41.7,
+        longitude: 1.8
+      }
+    );
+
+    expect(result).toEqual({ placeId: "google-google-2", status: "pending" });
+    expect(repository.createdPlaces[0]).toMatchObject({
+      name: "Parc de la Seu",
+      category: "park",
+      status: "pending",
+      createdBy: "user-1",
+      external: { googlePlaceId: "google-2" }
     });
   });
 

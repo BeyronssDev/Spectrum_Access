@@ -1,6 +1,7 @@
 import type {
   Locale,
   ModerationStatus,
+  Place,
   Review,
   SensoryCriterion,
   SensoryRating,
@@ -32,6 +33,12 @@ export interface SpectrumRepository {
   saveUser(uid: string, data: Record<string, unknown>): Promise<void>;
   getChildProfileTutorUid(childProfileId: string): Promise<string | undefined>;
   createPlace(data: Record<string, unknown>): Promise<string>;
+  listActivePlacesForDiscovery(limit: number): Promise<Place[]>;
+  getPlaceByGooglePlaceId(googlePlaceId: string): Promise<Place | undefined>;
+  createGoogleLinkedPlace(input: {
+    googlePlaceId: string;
+    data: Record<string, unknown>;
+  }): Promise<string>;
   createReview(data: Record<string, unknown>): Promise<string>;
   createComment(data: Record<string, unknown>): Promise<string>;
   createPlaceImage(data: Record<string, unknown>): Promise<string>;

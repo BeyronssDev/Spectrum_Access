@@ -1,5 +1,5 @@
 import type { User } from "firebase/auth";
-import type { AppUser, AuthProviderId, Locale, Place, SensoryRating } from "@accessibilitat/shared";
+import type { AppUser, AuthProviderId, DiscoveredPlace, Locale, Place, PlaceCategory, SensoryRating } from "@accessibilitat/shared";
 
 export type CreatePlaceInput = {
   name: string;
@@ -9,6 +9,27 @@ export type CreatePlaceInput = {
   description?: string;
   latitude: number;
   longitude: number;
+};
+
+export type SearchNearbyPlacesInput = {
+  latitude: number;
+  longitude: number;
+  radiusMeters?: number;
+  maxResultCount?: number;
+  locale: Locale;
+  includedTypes?: string[];
+};
+
+export type ResolvePlaceForContributionInput = {
+  googlePlaceId: string;
+  locale: Locale;
+  name: string;
+  category: PlaceCategory;
+  city: string;
+  addressOrArea: string;
+  latitude: number;
+  longitude: number;
+  description?: string;
 };
 
 export type SubmitReviewInput = {
@@ -60,7 +81,11 @@ export type CallableResponse<T> = Promise<{ data: T }>;
 
 export interface AccessibilitatApi {
   listActivePlaces(): Promise<Place[]>;
+  searchNearbyPlaces(input: SearchNearbyPlacesInput): CallableResponse<{ places: DiscoveredPlace[] } | DiscoveredPlace[]>;
   createPlace(input: CreatePlaceInput): CallableResponse<{ placeId: string; status: "pending" }>;
+  resolvePlaceForContribution(
+    input: ResolvePlaceForContributionInput
+  ): CallableResponse<{ placeId: string; status: "pending" | "active" | "hidden" | "deleted" | "rejected" | "suspended" }>;
   submitReview(input: SubmitReviewInput): CallableResponse<{ reviewId: string; status: "pending" }>;
   submitComment(input: SubmitCommentInput): CallableResponse<{ commentId: string; status: "pending" }>;
   createReport(input: CreateReportInput): CallableResponse<{ reportId: string; status: "open" }>;

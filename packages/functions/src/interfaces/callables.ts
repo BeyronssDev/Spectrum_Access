@@ -12,6 +12,20 @@ function authedCallable(handler: (request: CallableRequest<unknown>) => Promise<
   });
 }
 
+function publicCallable(handler: (request: CallableRequest<unknown>) => Promise<unknown>) {
+  return onCall(callableOptions, async (request) => {
+    try {
+      return await handler(request);
+    } catch (error) {
+      throw toHttpsError(error);
+    }
+  });
+}
+
+export const searchNearbyPlaces = publicCallable(async (request) => {
+  return useCases.searchNearbyPlaces(request.data);
+});
+
 export const completeUserOnboarding = authedCallable(async (request) => {
   const authedRequest = requireAuth(request);
   return useCases.completeUserOnboarding(toRequestContext(authedRequest), request.data);
@@ -20,6 +34,11 @@ export const completeUserOnboarding = authedCallable(async (request) => {
 export const createPlace = authedCallable(async (request) => {
   const authedRequest = requireAuth(request);
   return useCases.createPlace(toRequestContext(authedRequest), request.data);
+});
+
+export const resolvePlaceForContribution = authedCallable(async (request) => {
+  const authedRequest = requireAuth(request);
+  return useCases.resolvePlaceForContribution(toRequestContext(authedRequest), request.data);
 });
 
 export const submitReview = authedCallable(async (request) => {
