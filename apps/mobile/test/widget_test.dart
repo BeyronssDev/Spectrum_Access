@@ -256,6 +256,7 @@ void main() {
     expect(find.text('Mode consulta'), findsWidgets);
     expect(find.text('Mapa Sensorial'), findsOneWidget);
     expect(find.text('Entra a Spectrum Access'), findsNothing);
+    expect(find.text('Professionals verificats'), findsNothing);
 
     await tester.tap(find.text('Perfils'));
     await tester.pumpAndSettle();
@@ -388,6 +389,13 @@ void main() {
     expect(find.text('Editar perfil'), findsOneWidget);
     expect(find.text('Professionals verificats'), findsNothing);
     expect(find.text('Sol·licitar perfil professional'), findsNothing);
+    expect(find.text('Perfil infantil tutelat'), findsNothing);
+    expect(find.text('Perfil tutor'), findsNothing);
+    expect(find.text('Perfil sensorial'), findsNothing);
+    expect(
+      find.text('Gestiona les teves dades personals i la foto del perfil.'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Editar perfil'));
     await tester.pumpAndSettle();

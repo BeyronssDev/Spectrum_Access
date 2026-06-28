@@ -465,8 +465,8 @@ const appCopies = {
     focusBody:
         'Redueix informació secundària i manté només les accions crítiques.',
     profilesTitle: 'Perfils',
-    profilesIntro: 'Adults, tutors i perfils tutelats dins el mateix compte.',
-    adultProfile: 'Adult o persona identificada',
+    profilesIntro: 'Gestiona les teves dades personals i la foto del perfil.',
+    adultProfile: 'El meu perfil',
     editUserProfile: 'Editar perfil',
     profilePhoto: 'Foto de perfil',
     profileAddress: 'Adreça',
@@ -562,9 +562,8 @@ const appCopies = {
     focusBody:
         'Reduce información secundaria y mantiene solo las acciones críticas.',
     profilesTitle: 'Perfiles',
-    profilesIntro:
-        'Adultos, tutores y perfiles tutelados dentro de la misma cuenta.',
-    adultProfile: 'Adulto o persona identificada',
+    profilesIntro: 'Gestiona tus datos personales y la foto del perfil.',
+    adultProfile: 'Mi perfil',
     editUserProfile: 'Editar perfil',
     profilePhoto: 'Foto de perfil',
     profileAddress: 'Dirección',
@@ -659,9 +658,8 @@ const appCopies = {
     trustedContact: 'Trusted contact',
     focusBody: 'Reduces secondary information and keeps only critical actions.',
     profilesTitle: 'Profiles',
-    profilesIntro:
-        'Adults, tutors and tutored profiles inside the same account.',
-    adultProfile: 'Adult or identified person',
+    profilesIntro: 'Manage your personal details and profile photo.',
+    adultProfile: 'My profile',
     editUserProfile: 'Edit profile',
     profilePhoto: 'Profile photo',
     profileAddress: 'Address',
@@ -702,7 +700,7 @@ const authCopies = {
   LocaleOption.ca: AuthCopy(
     authTitle: 'Entra a Spectrum Access',
     authIntro:
-        'Consulta el mapa sense compte. Registra’t només quan vulguis aportar imatges, crear perfils tutelats o sol·licitar verificació professional.',
+        'Consulta el mapa sense compte. Registra’t quan vulguis aportar imatges, valorar llocs o gestionar el teu perfil.',
     login: 'Entrar',
     register: 'Crear compte',
     personalAccount: 'Usuari',
@@ -723,7 +721,7 @@ const authCopies = {
     guestName: 'Visitant',
     signInRequiredTitle: 'Inicia sessió per continuar',
     signInRequiredIntro:
-        'Pots consultar el mapa i la informació bàsica sense compte. Per aportar contingut, veure perfils verificats o gestionar dades personals cal registrar-se.',
+        'Pots consultar el mapa i la informació bàsica sense compte. Per aportar contingut o gestionar dades personals cal registrar-se.',
     signInToContinue: 'Iniciar sessió',
     requiredFields: 'Omple els camps obligatoris.',
     invalidEmail: 'Introdueix un email vàlid.',
@@ -758,7 +756,7 @@ const authCopies = {
   LocaleOption.es: AuthCopy(
     authTitle: 'Entra en Spectrum Access',
     authIntro:
-        'Consulta el mapa sin cuenta. Regístrate solo cuando quieras aportar imágenes, crear perfiles tutelados o solicitar verificación profesional.',
+        'Consulta el mapa sin cuenta. Regístrate cuando quieras aportar imágenes, valorar lugares o gestionar tu perfil.',
     login: 'Entrar',
     register: 'Crear cuenta',
     personalAccount: 'Usuario',
@@ -779,7 +777,7 @@ const authCopies = {
     guestName: 'Visitante',
     signInRequiredTitle: 'Inicia sesión para continuar',
     signInRequiredIntro:
-        'Puedes consultar el mapa y la información básica sin cuenta. Para aportar contenido, ver perfiles verificados o gestionar datos personales hay que registrarse.',
+        'Puedes consultar el mapa y la información básica sin cuenta. Para aportar contenido o gestionar datos personales hay que registrarse.',
     signInToContinue: 'Iniciar sesión',
     requiredFields: 'Rellena los campos obligatorios.',
     invalidEmail: 'Introduce un email válido.',
@@ -814,7 +812,7 @@ const authCopies = {
   LocaleOption.en: AuthCopy(
     authTitle: 'Enter Spectrum Access',
     authIntro:
-        'Browse the map without an account. Register only when you want to upload images, create tutored profiles or request professional verification.',
+        'Browse the map without an account. Register when you want to upload images, rate places or manage your profile.',
     login: 'Sign in',
     register: 'Create account',
     personalAccount: 'User',
@@ -835,7 +833,7 @@ const authCopies = {
     guestName: 'Guest',
     signInRequiredTitle: 'Sign in to continue',
     signInRequiredIntro:
-        'You can browse the map and basic place information without an account. To contribute content, view verified profiles or manage personal data, registration is required.',
+        'You can browse the map and basic place information without an account. To contribute content or manage personal data, registration is required.',
     signInToContinue: 'Sign in',
     requiredFields: 'Fill in the required fields.',
     invalidEmail: 'Enter a valid email.',

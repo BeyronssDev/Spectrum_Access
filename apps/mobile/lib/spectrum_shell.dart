@@ -47,8 +47,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _authSubmitting = false;
   bool _userProfileEditing = false;
   bool _userProfileSubmitting = false;
-  bool _profileSubmitting = false;
-  bool _professionalSubmitting = false;
   bool _placesLoading = false;
   bool _placesReloadQueued = false;
   int _selectedPlace = 0;
@@ -63,8 +61,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
   SpectrumAuthUser? _authUser;
   SpectrumUserProfile? _userProfile;
   List<PlaceSummary> _places = const [];
-  final List<VerifiedProfile> _verifiedProfiles = const [];
-  final List<ChildProfile> _childProfiles = const [];
   final PlaceImagePicker _imagePicker = PlaceImagePicker();
   final PlaceImagePicker _profileImagePicker = PlaceImagePicker();
   final List<PreparedPlaceImage> _selectedImages = [];
@@ -76,7 +72,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
       TextEditingController();
   final TextEditingController _authCityController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
-  final TextEditingController _childAliasController = TextEditingController();
   final TextEditingController _professionalNameController =
       TextEditingController();
   final TextEditingController _licenseNumberController =
@@ -99,11 +94,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
       TextEditingController();
   bool _showRegister = true;
   RegistrationKind _registrationKind = RegistrationKind.user;
-  String? _childAgeRange;
   String? _authMessage;
   String? _userProfileMessage;
-  String? _profileMessage;
-  String? _professionalMessage;
   PreparedPlaceImage? _profilePhotoDraft;
   bool _isSubmittingReport = false;
   String? _reportMessage;
@@ -133,7 +125,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
     _authPublicNameController.dispose();
     _authCityController.dispose();
     _notesController.dispose();
-    _childAliasController.dispose();
     _professionalNameController.dispose();
     _licenseNumberController.dispose();
     _professionalCollegeController.dispose();
@@ -584,85 +575,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
     }
   }
 
-  Future<void> _createChildProfile() async {
-    if (_profileSubmitting) {
-      return;
-    }
-
-    setState(() {
-      _profileSubmitting = true;
-      _profileMessage = null;
-    });
-
-    try {
-      await _service().createChildProfile(
-        alias: _childAliasController.text.trim(),
-        ageRange: _childAgeRange,
-        sensoryPreferences: const {},
-      );
-      _childAliasController.clear();
-      setStateIfMounted(() {
-        _childAgeRange = null;
-        _profileMessage = authCopies[_locale]!.childCreated;
-      });
-      await _loadUserProfile();
-    } catch (_) {
-      setStateIfMounted(
-        () => _profileMessage = authCopies[_locale]!.authFailed,
-      );
-    } finally {
-      setStateIfMounted(() => _profileSubmitting = false);
-    }
-  }
-
-  Future<void> _requestProfessionalVerification() async {
-    if (_professionalSubmitting) {
-      return;
-    }
-
-    final labels = authCopies[_locale]!;
-    final professionalName = _professionalNameController.text.trim();
-    final licenseNumber = _licenseNumberController.text.trim();
-    final professionalCollege = _professionalCollegeController.text.trim();
-    final specialty = _specialtyController.text.trim();
-
-    if (professionalName.isEmpty ||
-        licenseNumber.isEmpty ||
-        professionalCollege.isEmpty ||
-        specialty.isEmpty) {
-      setState(() => _professionalMessage = labels.professionalFieldsRequired);
-      return;
-    }
-
-    setState(() {
-      _professionalSubmitting = true;
-      _professionalMessage = null;
-    });
-
-    try {
-      await _service().requestProfessionalVerification(
-        professionalName: professionalName,
-        licenseNumber: licenseNumber,
-        professionalCollege: professionalCollege,
-        specialty: specialty,
-      );
-      _professionalNameController.clear();
-      _licenseNumberController.clear();
-      _professionalCollegeController.clear();
-      _specialtyController.clear();
-      setStateIfMounted(
-        () => _professionalMessage = authCopies[_locale]!.verificationRequested,
-      );
-      await _loadUserProfile();
-    } catch (_) {
-      setStateIfMounted(
-        () => _professionalMessage = authCopies[_locale]!.authFailed,
-      );
-    } finally {
-      setStateIfMounted(() => _professionalSubmitting = false);
-    }
-  }
-
   Future<void> _resolveGoogleMapsAvailability() async {
     final available = await resolveGoogleMapsAvailability();
     setStateIfMounted(() => _googleMapsAvailable = available);
@@ -944,10 +856,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
       rankPlacesByDeviceLocation(_places, _deviceLocation),
       _selectedFilter,
     );
-    final visibleVerifiedProfiles = rankVerifiedProfilesByDeviceLocation(
-      _verifiedProfiles,
-      _deviceLocation,
-    );
     final selectedPlaceIndex = visiblePlaces.isEmpty
         ? -1
         : _selectedPlace.clamp(0, visiblePlaces.length - 1).toInt();
@@ -1045,7 +953,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
                   focusMode: _focusMode,
                   googleMapsAvailable: _googleMapsAvailable,
                   places: visiblePlaces,
-                  verifiedProfiles: visibleVerifiedProfiles,
                   selectedPlace: selectedPlace,
                   mapSubtitle: mapSubtitle,
                   locationStatus: _locationStatus,
@@ -1062,7 +969,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
                   labels,
                   selectedPlace,
                   visiblePlaces,
-                  visibleVerifiedProfiles,
                   selectedPlaceIndex,
                   mapSubtitle,
                 ),
@@ -1080,7 +986,6 @@ class _SpectrumShellState extends State<SpectrumShell> {
     AppCopy labels,
     PlaceSummary? selectedPlace,
     List<PlaceSummary> places,
-    List<VerifiedProfile> verifiedProfiles,
     int selectedPlaceIndex,
     String mapSubtitle,
   ) {
@@ -1154,26 +1059,11 @@ class _SpectrumShellState extends State<SpectrumShell> {
           userProfileAddressController: _userProfileAddressController,
           userProfilePhoneController: _userProfilePhoneController,
           profilePhotoDraft: _profilePhotoDraft,
-          verifiedProfiles: verifiedProfiles,
-          childProfiles: _childProfiles,
-          childAliasController: _childAliasController,
-          childAgeRange: _childAgeRange,
-          profileMessage: _profileMessage,
-          professionalMessage: _professionalMessage,
-          professionalNameController: _professionalNameController,
-          licenseNumberController: _licenseNumberController,
-          professionalCollegeController: _professionalCollegeController,
-          specialtyController: _specialtyController,
-          isProfileSubmitting: _profileSubmitting,
-          isProfessionalSubmitting: _professionalSubmitting,
           onEditUserProfile: _openUserProfileEditor,
           onCancelUserProfileEdit: _closeUserProfileEditor,
           onPickUserProfilePhoto: _pickUserProfilePhotoFromGallery,
           onTakeUserProfilePhoto: _takeUserProfilePhoto,
           onSaveUserProfile: _saveUserProfile,
-          onChildAgeChanged: (value) => setState(() => _childAgeRange = value),
-          onCreateChildProfile: _createChildProfile,
-          onRequestProfessionalVerification: _requestProfessionalVerification,
         );
     }
   }
@@ -1462,7 +1352,6 @@ class HomeScreen extends StatelessWidget {
     required this.focusMode,
     required this.googleMapsAvailable,
     required this.places,
-    required this.verifiedProfiles,
     required this.selectedPlace,
     required this.mapSubtitle,
     required this.locationStatus,
@@ -1480,7 +1369,6 @@ class HomeScreen extends StatelessWidget {
   final bool focusMode;
   final bool googleMapsAvailable;
   final List<PlaceSummary> places;
-  final List<VerifiedProfile> verifiedProfiles;
   final PlaceSummary? selectedPlace;
   final String mapSubtitle;
   final LocationStatus locationStatus;
@@ -1576,24 +1464,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 18),
-        SpectrumPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeading(
-                title: labels.verifiedProfessionals,
-                action: labels.viewAll,
-              ),
-              const SizedBox(height: 12),
-              if (verifiedProfiles.isEmpty)
-                StatusMessage(message: labels.noVerifiedProfiles)
-              else
-                for (final profile in verifiedProfiles)
-                  VerifiedRow(profile: profile, labels: labels),
-            ],
-          ),
-        ),
         const SizedBox(height: 18),
         SpectrumPanel(
           child: Row(
@@ -2046,26 +1916,11 @@ class ProfilesScreen extends StatelessWidget {
     required this.userProfileAddressController,
     required this.userProfilePhoneController,
     required this.profilePhotoDraft,
-    required this.verifiedProfiles,
-    required this.childProfiles,
-    required this.childAliasController,
-    required this.childAgeRange,
-    required this.profileMessage,
-    required this.professionalMessage,
-    required this.professionalNameController,
-    required this.licenseNumberController,
-    required this.professionalCollegeController,
-    required this.specialtyController,
-    required this.isProfileSubmitting,
-    required this.isProfessionalSubmitting,
     required this.onEditUserProfile,
     required this.onCancelUserProfileEdit,
     required this.onPickUserProfilePhoto,
     required this.onTakeUserProfilePhoto,
     required this.onSaveUserProfile,
-    required this.onChildAgeChanged,
-    required this.onCreateChildProfile,
-    required this.onRequestProfessionalVerification,
     super.key,
   });
 
@@ -2082,26 +1937,11 @@ class ProfilesScreen extends StatelessWidget {
   final TextEditingController userProfileAddressController;
   final TextEditingController userProfilePhoneController;
   final PreparedPlaceImage? profilePhotoDraft;
-  final List<VerifiedProfile> verifiedProfiles;
-  final List<ChildProfile> childProfiles;
-  final TextEditingController childAliasController;
-  final String? childAgeRange;
-  final String? profileMessage;
-  final String? professionalMessage;
-  final TextEditingController professionalNameController;
-  final TextEditingController licenseNumberController;
-  final TextEditingController professionalCollegeController;
-  final TextEditingController specialtyController;
-  final bool isProfileSubmitting;
-  final bool isProfessionalSubmitting;
   final VoidCallback onEditUserProfile;
   final VoidCallback onCancelUserProfileEdit;
   final VoidCallback onPickUserProfilePhoto;
   final VoidCallback onTakeUserProfilePhoto;
   final VoidCallback onSaveUserProfile;
-  final ValueChanged<String?> onChildAgeChanged;
-  final VoidCallback onCreateChildProfile;
-  final VoidCallback onRequestProfessionalVerification;
 
   @override
   Widget build(BuildContext context) {
@@ -2182,67 +2022,6 @@ class ProfilesScreen extends StatelessWidget {
             const SizedBox(height: 12),
             StatusMessage(message: userProfileMessage!),
           ],
-          const SizedBox(height: 14),
-          ProfilePanel(
-            icon: Icons.supervisor_account_outlined,
-            title: labels.tutorProfile,
-            body: labels.tutorProfileBody,
-          ),
-          const SizedBox(height: 14),
-          SpectrumPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionHeading(title: labels.childProfile),
-                const SizedBox(height: 10),
-                if (childProfiles.isEmpty)
-                  StatusMessage(message: labels.noChildProfiles)
-                else
-                  for (final child in childProfiles)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: ChildProfileTile(profile: child, locale: locale),
-                    ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: childAliasController,
-                  decoration: InputDecoration(labelText: authLabels.childAlias),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: childAgeRange,
-                  decoration: InputDecoration(labelText: authLabels.childAge),
-                  items: const [
-                    DropdownMenuItem(value: '0-5', child: Text('0-5')),
-                    DropdownMenuItem(value: '6-9', child: Text('6-9')),
-                    DropdownMenuItem(value: '10-13', child: Text('10-13')),
-                    DropdownMenuItem(value: '14-17', child: Text('14-17')),
-                  ],
-                  onChanged: onChildAgeChanged,
-                ),
-                const SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: isProfileSubmitting ? null : onCreateChildProfile,
-                  icon: isProfileSubmitting
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.add),
-                  label: Text(authLabels.createChildProfile),
-                ),
-                if (profileMessage != null) ...[
-                  const SizedBox(height: 12),
-                  StatusMessage(message: profileMessage!),
-                ],
-              ],
-            ),
-          ),
-          ProfilePanel(
-            icon: Icons.tune_outlined,
-            title: labels.sensoryProfile,
-            body: labels.sensoryProfileBody,
-          ),
         ],
       ],
     );
@@ -3227,75 +3006,6 @@ class SensoryControl extends StatelessWidget {
   }
 }
 
-class VerifiedRow extends StatelessWidget {
-  const VerifiedRow({required this.profile, required this.labels, super.key});
-
-  final VerifiedProfile profile;
-  final AppCopy labels;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: softPanelColor(context),
-            child: Text(
-              profile.initials,
-              style: const TextStyle(fontWeight: FontWeight.w900),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile.name,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${profile.identifier} · ${profile.distance}',
-                  style: TextStyle(color: mutedColor(context), fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: softPanelColor(context),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.verified_outlined,
-                    size: 15,
-                    color: SpectrumColors.tertiary,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    labels.verified,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class UserProfileEditor extends StatelessWidget {
   const UserProfileEditor({
     required this.labels,
@@ -3506,51 +3216,6 @@ class ProfilePanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: content,
-      ),
-    );
-  }
-}
-
-class ChildProfileTile extends StatelessWidget {
-  const ChildProfileTile({
-    required this.profile,
-    required this.locale,
-    super.key,
-  });
-
-  final ChildProfile profile;
-  final LocaleOption locale;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: softPanelColor(context),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            CircleAvatar(child: Text(profile.alias.substring(0, 1))),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    profile.alias,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  Text(
-                    localizedChildAgeLine(locale, profile),
-                    style: TextStyle(color: mutedColor(context), fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
