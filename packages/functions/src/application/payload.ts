@@ -62,9 +62,14 @@ export function requireNumber(data: Record<string, unknown>, key: string): numbe
   return value;
 }
 
-export function requireCoordinate(data: Record<string, unknown>) {
-  const latitude = requireNumber(data, "latitude");
-  const longitude = requireNumber(data, "longitude");
+export function requireCoordinate(data: Record<string, unknown>, key?: string) {
+  const source = key === undefined ? data : data[key];
+  if (!isRecord(source)) {
+    fail("invalid-argument", key === undefined ? "Invalid position." : `Invalid ${key}.`);
+  }
+
+  const latitude = requireNumber(source, "latitude");
+  const longitude = requireNumber(source, "longitude");
 
   if (!isValidCoordinate(latitude, longitude)) {
     fail("invalid-argument", "Invalid position.");

@@ -29,6 +29,11 @@ export type ResolvePlaceForContributionInput = {
   addressOrArea: string;
   latitude: number;
   longitude: number;
+  contributorPosition: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters?: number;
+  };
   description?: string;
 };
 

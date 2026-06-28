@@ -123,6 +123,9 @@ class FakeProfileService implements SpectrumApplicationService {
   Future<String> resolvePlaceForContribution({
     required PlaceSummary place,
     required String locale,
+    required double contributorLatitude,
+    required double contributorLongitude,
+    double? contributorAccuracyMeters,
   }) async => place.spectrumPlaceId ?? 'resolved-place-1';
 
   @override

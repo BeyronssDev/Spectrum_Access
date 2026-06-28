@@ -365,6 +365,9 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
   Future<String> resolvePlaceForContribution({
     required PlaceSummary place,
     required String locale,
+    required double contributorLatitude,
+    required double contributorLongitude,
+    double? contributorAccuracyMeters,
   }) async {
     final googlePlaceId = place.googlePlaceId;
     if (googlePlaceId == null || googlePlaceId.isEmpty) {
@@ -386,6 +389,12 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
           'addressOrArea': place.area,
           'latitude': place.latitude,
           'longitude': place.longitude,
+          'contributorPosition': {
+            'latitude': contributorLatitude,
+            'longitude': contributorLongitude,
+            if (contributorAccuracyMeters != null)
+              'accuracyMeters': contributorAccuracyMeters,
+          },
           if (place.description.trim().isNotEmpty)
             'description': place.description.trim(),
         });

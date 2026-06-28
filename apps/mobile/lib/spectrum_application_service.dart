@@ -129,6 +129,9 @@ abstract interface class SpectrumApplicationService {
   Future<String> resolvePlaceForContribution({
     required PlaceSummary place,
     required String locale,
+    required double contributorLatitude,
+    required double contributorLongitude,
+    double? contributorAccuracyMeters,
   });
 
   Future<void> submitReview({

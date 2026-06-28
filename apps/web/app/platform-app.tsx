@@ -417,6 +417,11 @@ export function PlatformApp() {
         });
         placeId = created.data.placeId;
       } else if (!placeId && selectedPlace?.googlePlaceId) {
+        if (!userLocation) {
+          setContributionMessage(c.locationRequiredForPlace);
+          return;
+        }
+
         const resolved = await resolvePlaceForContribution({
           googlePlaceId: selectedPlace.googlePlaceId,
           locale,
@@ -426,7 +431,12 @@ export function PlatformApp() {
           addressOrArea: selectedPlace.area,
           description: selectedPlace.description || undefined,
           latitude: selectedPlace.position.lat,
-          longitude: selectedPlace.position.lng
+          longitude: selectedPlace.position.lng,
+          contributorPosition: {
+            latitude: userLocation.lat,
+            longitude: userLocation.lng,
+            ...(userLocation.accuracy ? { accuracyMeters: userLocation.accuracy } : {})
+          }
         });
         placeId = resolved.data.placeId;
       }

@@ -294,7 +294,11 @@ describe("functions use cases", () => {
         city: "Manresa",
         addressOrArea: "Fallback address",
         latitude: 41.7,
-        longitude: 1.8
+        longitude: 1.8,
+        contributorPosition: {
+          latitude: 41.721,
+          longitude: 1.828
+        }
       }
     );
 
@@ -306,6 +310,39 @@ describe("functions use cases", () => {
       createdBy: "user-1",
       external: { googlePlaceId: "google-2" }
     });
+  });
+
+  it("requires contributors to be near a discovered Google place", async () => {
+    const { places, useCases } = makeUseCases();
+    places.details.set("google-2", {
+      googlePlaceId: "google-2",
+      name: "Parc de la Seu",
+      formattedAddress: "Parc de la Seu, 08241 Manresa, Barcelona, Spain",
+      latitude: 41.721,
+      longitude: 1.828,
+      primaryType: "park",
+      types: ["park", "point_of_interest"]
+    });
+
+    await expect(
+      useCases.resolvePlaceForContribution(
+        { uid: "user-1", token: {} },
+        {
+          googlePlaceId: "google-2",
+          locale: "ca",
+          name: "Fallback",
+          category: "other",
+          city: "Manresa",
+          addressOrArea: "Fallback address",
+          latitude: 41.7,
+          longitude: 1.8,
+          contributorPosition: {
+            latitude: 41.728,
+            longitude: 1.823
+          }
+        }
+      )
+    ).rejects.toMatchObject(new ApplicationError("failed-precondition", "The contributor must be near this place."));
   });
 
   it("blocks child reviews when the profile belongs to another tutor", async () => {

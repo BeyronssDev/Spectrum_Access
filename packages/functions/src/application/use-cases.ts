@@ -54,6 +54,7 @@ const derivedVerificationRoles: Record<string, UserRole> = {
   professional: "professional",
   organization: "organization"
 };
+const maxContributionDistanceMeters = 100;
 
 export function createUseCases({ auth, clock, places, repository }: UseCaseDependencies) {
   return {
@@ -61,7 +62,7 @@ export function createUseCases({ auth, clock, places, repository }: UseCaseDepen
       const data = requirePayload(rawData);
       const { latitude, longitude } = requireCoordinate(data);
       const locale = requireLocale(data);
-      const radiusMeters = clampNumber(data.radiusMeters, 250, 3000, 1500);
+      const radiusMeters = clampNumber(data.radiusMeters, 50, 3000, 1500);
       const maxResultCount = Math.round(clampNumber(data.maxResultCount, 1, 20, 20));
       const includedTypes = readIncludedGoogleTypes(data.includedTypes);
       const origin = { latitude, longitude };
@@ -140,13 +141,19 @@ export function createUseCases({ auth, clock, places, repository }: UseCaseDepen
       const data = requirePayload(rawData);
       const googlePlaceId = requireText(data, "googlePlaceId", 240);
       const locale = requireLocale(data);
+      const contributorPosition = requireCoordinate(data, "contributorPosition");
       const existing = await repository.getPlaceByGooglePlaceId(googlePlaceId);
       if (existing) {
+        assertContributionIsNearPlace(contributorPosition, existing.position);
         return { placeId: existing.id, status: existing.status };
       }
 
       const candidate = await places.getPlace(googlePlaceId, locale);
       const fallback = candidate ?? fallbackGooglePlaceCandidate(data, googlePlaceId);
+      assertContributionIsNearPlace(contributorPosition, {
+        latitude: fallback.latitude,
+        longitude: fallback.longitude
+      });
       const now = clock.now();
       const placeId = await repository.createGoogleLinkedPlace({
         googlePlaceId,
@@ -549,6 +556,16 @@ function fallbackGooglePlaceCandidate(data: Record<string, unknown>, googlePlace
   };
 }
 
+function assertContributionIsNearPlace(
+  contributorPosition: { latitude: number; longitude: number },
+  placePosition: { latitude: number; longitude: number }
+) {
+  const distanceMeters = distanceBetweenKm(contributorPosition, placePosition) * 1000;
+  if (distanceMeters > maxContributionDistanceMeters) {
+    fail("failed-precondition", "The contributor must be near this place.");
+  }
+}
+
 function mergeDiscoveredPlaces(input: {
   googlePlaces: GooglePlaceCandidate[];
   spectrumPlaces: Place[];
@@ -556,12 +573,14 @@ function mergeDiscoveredPlaces(input: {
   origin: { latitude: number; longitude: number };
   radiusMeters: number;
 }): DiscoveredPlace[] {
+  const radiusKm = input.radiusMeters / 1000;
+  const toleranceKm = Math.min(0.25, radiusKm / 2);
   const nearbySpectrum = input.spectrumPlaces.filter((place) => {
     if (!place.position) {
       return false;
     }
 
-    return distanceBetweenKm(input.origin, place.position) <= input.radiusMeters / 1000 + 0.25;
+    return distanceBetweenKm(input.origin, place.position) <= radiusKm + toleranceKm;
   });
   const spectrumByGooglePlaceId = new Map(
     nearbySpectrum

@@ -17,6 +17,9 @@ import 'spectrum_application_service.dart';
 import 'spectrum_content.dart';
 import 'spectrum_theme.dart';
 
+const nearbyDiscoveryRadiusMeters = 100.0;
+const nearbyDiscoveryMaxResults = 8;
+
 class SpectrumShell extends StatefulWidget {
   const SpectrumShell({
     required this.firebaseInitialization,
@@ -250,6 +253,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
         latitude: location.latitude,
         longitude: location.longitude,
         locale: _locale.name,
+        radiusMeters: nearbyDiscoveryRadiusMeters,
+        maxResultCount: nearbyDiscoveryMaxResults,
       );
       if (!mounted) {
         return;
@@ -832,9 +837,24 @@ class _SpectrumShellState extends State<SpectrumShell> {
       var placeId = place?.spectrumPlaceId;
       if (placeId == null) {
         if (place?.googlePlaceId != null) {
+          var location = _deviceLocation;
+          if (location == null) {
+            await _locateDeviceOnLaunch();
+            location = _deviceLocation;
+          }
+          if (location == null) {
+            if (mounted) {
+              setState(() => _reportMessage = labels.locationRequiredForPlace);
+            }
+            return;
+          }
+
           placeId = await service.resolvePlaceForContribution(
             place: place!,
             locale: _locale.name,
+            contributorLatitude: location.latitude,
+            contributorLongitude: location.longitude,
+            contributorAccuracyMeters: location.accuracyMeters,
           );
         }
       }
