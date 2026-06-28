@@ -257,10 +257,10 @@ void main() {
     await tester.tap(find.text('Perfils'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Professionals verificats'), findsOneWidget);
+    expect(find.text('Professionals verificats'), findsNothing);
     expect(
       find.text('Encara no hi ha professionals verificats.'),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.text('Entra a Spectrum Access'), findsNothing);
 
@@ -289,6 +289,30 @@ void main() {
     expect(find.text('Entrar amb email'), findsOneWidget);
     expect(find.text('Has oblidat la teva contrasenya?'), findsOneWidget);
     expect(find.text('Nom públic'), findsNothing);
+  });
+
+  testWidgets('does not show old Firestore places before location discovery', (
+    WidgetTester tester,
+  ) async {
+    final service = FakeProfileService(
+      profile: const SpectrumUserProfile(
+        uid: 'user-a',
+        publicName: 'Josep Baró Roca',
+        roles: ['user'],
+      ),
+    );
+
+    await tester.pumpWidget(
+      SpectrumAccessApp(
+        firebaseInitialization: Future<void>.value(),
+        createApplicationService: () => service,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Place one'), findsNothing);
+    expect(find.text('Place nearby'), findsNothing);
+    expect(find.textContaining('Jardins Artigas'), findsNothing);
   });
 
   testWidgets('keeps email sign-in failures generic', (
@@ -359,15 +383,15 @@ void main() {
 
     expect(find.text('Josep Baró Roca · Barcelona'), findsOneWidget);
     expect(find.text('Editar perfil'), findsOneWidget);
+    expect(find.text('Professionals verificats'), findsNothing);
+    expect(find.text('Sol·licitar perfil professional'), findsNothing);
 
     await tester.tap(find.text('Editar perfil'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Foto de perfil'), 220);
-    await tester.pumpAndSettle();
 
-    expect(find.text('Foto de perfil'), findsOneWidget);
-    expect(find.text('Adreça'), findsOneWidget);
-    expect(find.text('Telèfon'), findsOneWidget);
+    expect(find.text('Foto de perfil'), findsWidgets);
+    expect(find.widgetWithText(TextField, 'Adreça'), findsWidgets);
+    expect(find.widgetWithText(TextField, 'Telèfon'), findsWidgets);
     expect(find.text('Guardar perfil'), findsOneWidget);
   });
 

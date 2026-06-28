@@ -241,13 +241,16 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
     try {
       final location = _deviceLocation;
-      final places = location == null
-          ? await _service().loadActivePlaces()
-          : await _service().searchNearbyPlaces(
-              latitude: location.latitude,
-              longitude: location.longitude,
-              locale: _locale.name,
-            );
+      if (location == null) {
+        _clearPlaces();
+        return;
+      }
+
+      final places = await _service().searchNearbyPlaces(
+        latitude: location.latitude,
+        longitude: location.longitude,
+        locale: _locale.name,
+      );
       if (!mounted) {
         return;
       }
@@ -258,7 +261,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
             : _selectedPlace.clamp(0, places.length - 1).toInt();
       });
     } catch (_) {
-      // Keep the production UI empty if Firestore cannot be read.
+      _clearPlaces();
     } finally {
       final reloadQueued = _placesReloadQueued;
       _placesReloadQueued = false;
@@ -267,6 +270,13 @@ class _SpectrumShellState extends State<SpectrumShell> {
         unawaited(_loadPlaces());
       }
     }
+  }
+
+  void _clearPlaces() {
+    setStateIfMounted(() {
+      _places = const [];
+      _selectedPlace = 0;
+    });
   }
 
   void _openTab(MobileTab tab) {
@@ -663,7 +673,11 @@ class _SpectrumShellState extends State<SpectrumShell> {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        setStateIfMounted(() => _locationStatus = LocationStatus.unavailable);
+        setStateIfMounted(() {
+          _locationStatus = LocationStatus.unavailable;
+          _places = const [];
+          _selectedPlace = 0;
+        });
         return;
       }
 
@@ -674,7 +688,11 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        setStateIfMounted(() => _locationStatus = LocationStatus.denied);
+        setStateIfMounted(() {
+          _locationStatus = LocationStatus.denied;
+          _places = const [];
+          _selectedPlace = 0;
+        });
         return;
       }
 
@@ -696,7 +714,11 @@ class _SpectrumShellState extends State<SpectrumShell> {
       });
       unawaited(_loadPlaces());
     } catch (_) {
-      setStateIfMounted(() => _locationStatus = LocationStatus.error);
+      setStateIfMounted(() {
+        _locationStatus = LocationStatus.error;
+        _places = const [];
+        _selectedPlace = 0;
+      });
     }
   }
 
@@ -2089,24 +2111,6 @@ class ProfilesScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 22),
-        SpectrumPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeading(
-                title: labels.verifiedProfessionals,
-                action: labels.viewAll,
-              ),
-              const SizedBox(height: 10),
-              if (verifiedProfiles.isEmpty)
-                StatusMessage(message: labels.noVerifiedProfiles)
-              else
-                for (final profile in verifiedProfiles)
-                  VerifiedRow(profile: profile, labels: labels),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
         if (!isAuthenticated) ...[
           SpectrumPanel(
             child: Column(
@@ -2214,59 +2218,6 @@ class ProfilesScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          SpectrumPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionHeading(title: authLabels.professionalRequestTitle),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: professionalNameController,
-                  decoration: InputDecoration(
-                    labelText: authLabels.professionalName,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: licenseNumberController,
-                  decoration: InputDecoration(
-                    labelText: authLabels.licenseNumber,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: professionalCollegeController,
-                  decoration: InputDecoration(
-                    labelText: authLabels.professionalCollege,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: specialtyController,
-                  decoration: InputDecoration(labelText: authLabels.specialty),
-                ),
-                const SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: isProfessionalSubmitting
-                      ? null
-                      : onRequestProfessionalVerification,
-                  icon: isProfessionalSubmitting
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.verified_outlined),
-                  label: Text(authLabels.requestVerification),
-                ),
-                if (professionalMessage != null) ...[
-                  const SizedBox(height: 12),
-                  StatusMessage(message: professionalMessage!),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
           ProfilePanel(
             icon: Icons.tune_outlined,
             title: labels.sensoryProfile,
@@ -2773,7 +2724,10 @@ class SavedPlaceRow extends StatelessWidget {
                   ],
                 ),
               ),
-              ScoreBadge(value: place.score, hasSpectrumData: place.hasSpectrumData),
+              ScoreBadge(
+                value: place.score,
+                hasSpectrumData: place.hasSpectrumData,
+              ),
             ],
           ),
         ),
