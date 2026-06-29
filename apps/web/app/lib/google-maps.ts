@@ -40,6 +40,7 @@ export type GoogleMapsNamespace = {
 declare global {
   interface Window {
     google?: GoogleMapsNamespace;
+    __spectrumGoogleMapsReady?: () => void;
     __spectrumGoogleMapsPromise?: Promise<GoogleMapsNamespace>;
   }
 }
@@ -58,20 +59,25 @@ export function loadGoogleMaps(apiKey: string): Promise<GoogleMapsNamespace> {
   }
 
   window.__spectrumGoogleMapsPromise = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.id = "spectrum-google-maps";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&loading=async`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
+    window.__spectrumGoogleMapsReady = () => {
       if (window.google?.maps) {
         resolve(window.google);
         return;
       }
 
+      window.__spectrumGoogleMapsPromise = undefined;
       reject(new Error("google-maps-unavailable"));
     };
-    script.onerror = () => reject(new Error("google-maps-load-failed"));
+
+    const script = document.createElement("script");
+    script.id = "spectrum-google-maps";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&loading=async&callback=__spectrumGoogleMapsReady`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => {
+      window.__spectrumGoogleMapsPromise = undefined;
+      reject(new Error("google-maps-load-failed"));
+    };
     document.head.appendChild(script);
   });
 

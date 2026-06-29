@@ -36,6 +36,7 @@ import {
 import type { User } from "firebase/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AppUser } from "@accessibilitat/shared";
+import { disableGoogleAnalytics, initializeGoogleAnalytics } from "./lib/google-analytics";
 import {
   createChildProfile,
   createPlace,
@@ -56,6 +57,7 @@ import {
   type ProfessionalVerificationInput
 } from "./lib/firebase-actions";
 import { loadGoogleMaps, type GoogleMarkerInstance } from "./lib/google-maps";
+import { readPrivacyConsent, savePrivacyConsent, type PrivacyConsent, type PrivacyConsentChoice } from "./lib/privacy-consent";
 import { authCopy } from "./platform/auth-copy";
 import { copy } from "./platform/copy";
 import {
@@ -72,6 +74,8 @@ import { useUserLocation } from "./platform/hooks/use-user-location";
 import { googleMapStyles } from "./platform/map-config";
 import { toSensoryRating, toUiDiscoveredPlace, toUiPlace } from "./platform/mappers";
 import { authRequiredViews, locales, navItems } from "./platform/navigation";
+import { PrivacyConsentBanner } from "./platform/privacy-consent-banner";
+import { privacyCopy } from "./platform/privacy-copy";
 import type {
   AuthMode,
   ContributionDraft,
@@ -107,6 +111,9 @@ export function PlatformApp() {
   const [authChecked, setAuthChecked] = useState(false);
   const [authPanelOpen, setAuthPanelOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState<PrivacyConsent | null>(null);
+  const [privacyConsentLoaded, setPrivacyConsentLoaded] = useState(false);
+  const [privacyPreferencesOpen, setPrivacyPreferencesOpen] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [isSubmittingContribution, setIsSubmittingContribution] = useState(false);
   const [contributionMessage, setContributionMessage] = useState<string | null>(null);
@@ -123,6 +130,27 @@ export function PlatformApp() {
     light: 2,
     wait: 1
   });
+
+  const googleAnalyticsId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID?.trim() ?? "";
+
+  useEffect(() => {
+    setPrivacyConsent(readPrivacyConsent());
+    setPrivacyConsentLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!privacyConsentLoaded) {
+      return;
+    }
+
+    if (privacyConsent?.analytics && googleAnalyticsId) {
+      initializeGoogleAnalytics(googleAnalyticsId);
+      return;
+    }
+
+    disableGoogleAnalytics(googleAnalyticsId);
+  }, [googleAnalyticsId, privacyConsent?.analytics, privacyConsentLoaded]);
+
   useEffect(() => {
     let active = true;
 
@@ -284,6 +312,12 @@ export function PlatformApp() {
     setRatings((current) => ({ ...current, [key]: value }));
   };
 
+  const persistPrivacyConsent = (choice: PrivacyConsentChoice) => {
+    const savedConsent = savePrivacyConsent(choice);
+    setPrivacyConsent(savedConsent);
+    setPrivacyPreferencesOpen(false);
+  };
+
   const toggleFilter = (index: number) => {
     setSelectedFilter((current) => (current === index ? null : index));
   };
@@ -369,6 +403,13 @@ export function PlatformApp() {
   const openAuthPanel = () => {
     setNotificationsOpen(false);
     setAuthPanelOpen(true);
+  };
+
+  const allowGoogleMaps = () => {
+    persistPrivacyConsent({
+      analytics: privacyConsent?.analytics ?? false,
+      maps: true
+    });
   };
 
   const updateContributionDraft = (patch: Partial<ContributionDraft>) => {
@@ -476,6 +517,7 @@ export function PlatformApp() {
   };
 
   const isAuthenticated = Boolean(authUser);
+  const mapsConsentGranted = Boolean(privacyConsent?.maps);
   const sessionStatusLabel = !authChecked
     ? authCopy[locale].loadingSession
     : authUser
@@ -556,6 +598,10 @@ export function PlatformApp() {
                 <strong>{authUser ? (authUser.emailVerified ? c.verified : "Email pendent") : sessionStatusLabel}</strong>
               </div>
             </div>
+            <button type="button" className="privacy-manage-action" onClick={() => setPrivacyPreferencesOpen(true)}>
+              <FileText aria-hidden="true" size={16} />
+              {privacyCopy[locale].manage}
+            </button>
           </div>
         </aside>
 
@@ -607,6 +653,15 @@ export function PlatformApp() {
                 className="top-theme-toggle"
                 onClick={() => setDarkMode((value) => !value)}
               />
+              <button
+                type="button"
+                className="icon-button privacy-top-action"
+                aria-label={privacyCopy[locale].title}
+                title={privacyCopy[locale].title}
+                onClick={() => setPrivacyPreferencesOpen(true)}
+              >
+                <FileText aria-hidden="true" size={20} />
+              </button>
               <div className="notification-menu">
                 <button
                   type="button"
@@ -697,6 +752,7 @@ export function PlatformApp() {
               selectedPlace={visibleSelectedPlace}
               locationState={locationState}
               userLocation={userLocation}
+              mapsConsentGranted={mapsConsentGranted}
               professionals={rankedProfessionals}
               organizations={rankedOrganizations}
               isAuthenticated={isAuthenticated}
@@ -704,6 +760,7 @@ export function PlatformApp() {
               onSelectPlace={setSelectedPlaceId}
               onCycleFilter={cycleFilter}
               onLocate={requestUserLocation}
+              onAcceptMaps={allowGoogleMaps}
             />
           ) : null}
 
@@ -718,6 +775,7 @@ export function PlatformApp() {
               places={filteredPlaces}
               locationState={locationState}
               userLocation={userLocation}
+              mapsConsentGranted={mapsConsentGranted}
               isAuthenticated={isAuthenticated}
               onQuery={setQuery}
               onFilter={toggleFilter}
@@ -725,6 +783,7 @@ export function PlatformApp() {
               onNavigate={navigateToView}
               onCycleFilter={cycleFilter}
               onLocate={requestUserLocation}
+              onAcceptMaps={allowGoogleMaps}
               onRequireAuth={() => setAuthPanelOpen(true)}
             />
           ) : null}
@@ -795,6 +854,19 @@ export function PlatformApp() {
             />
           </div>
         </div>
+      ) : null}
+
+      {privacyConsentLoaded && (!privacyConsent || privacyPreferencesOpen) ? (
+        <PrivacyConsentBanner
+          locale={locale}
+          consent={privacyConsent}
+          analyticsConfigured={Boolean(googleAnalyticsId)}
+          preferencesOpen={privacyPreferencesOpen}
+          onAcceptAll={() => persistPrivacyConsent({ analytics: true, maps: true })}
+          onRejectOptional={() => persistPrivacyConsent({ analytics: false, maps: false })}
+          onSave={persistPrivacyConsent}
+          onClosePreferences={() => setPrivacyPreferencesOpen(false)}
+        />
       ) : null}
     </main>
   );
@@ -1150,13 +1222,15 @@ function HomeView({
   selectedPlace,
   locationState,
   userLocation,
+  mapsConsentGranted,
   professionals: verifiedProfessionals,
   organizations: verifiedOrganizations,
   isAuthenticated,
   onNavigate,
   onSelectPlace,
   onCycleFilter,
-  onLocate
+  onLocate,
+  onAcceptMaps
 }: {
   copy: (typeof copy)[Locale];
   authLabels: (typeof authCopy)[Locale];
@@ -1166,6 +1240,7 @@ function HomeView({
   selectedPlace: Place | null;
   locationState: LocationState;
   userLocation: UserLocation | null;
+  mapsConsentGranted: boolean;
   professionals: Professional[];
   organizations: Organization[];
   isAuthenticated: boolean;
@@ -1173,6 +1248,7 @@ function HomeView({
   onSelectPlace: (id: string) => void;
   onCycleFilter: () => void;
   onLocate: () => void;
+  onAcceptMaps: () => void;
 }) {
   return (
     <div className="dashboard-grid">
@@ -1184,6 +1260,7 @@ function HomeView({
       <MapPanel
         title={c.sensoryMap}
         subtitle={c.mapArea}
+        locale={locale}
         copyText={c}
         places={availablePlaces}
         filters={c.filters}
@@ -1191,9 +1268,11 @@ function HomeView({
         selectedPlace={selectedPlace}
         locationState={locationState}
         userLocation={userLocation}
+        mapsConsentGranted={mapsConsentGranted}
         onSelectPlace={onSelectPlace}
         onCycleFilter={onCycleFilter}
         onLocate={onLocate}
+        onAcceptMaps={onAcceptMaps}
         onOpen={() => onNavigate("consult")}
       />
 
@@ -1327,6 +1406,7 @@ function ConsultView({
   places: visiblePlaces,
   locationState,
   userLocation,
+  mapsConsentGranted,
   isAuthenticated,
   onQuery,
   onFilter,
@@ -1334,6 +1414,7 @@ function ConsultView({
   onNavigate,
   onCycleFilter,
   onLocate,
+  onAcceptMaps,
   onRequireAuth
 }: {
   copy: (typeof copy)[Locale];
@@ -1345,6 +1426,7 @@ function ConsultView({
   places: Place[];
   locationState: LocationState;
   userLocation: UserLocation | null;
+  mapsConsentGranted: boolean;
   isAuthenticated: boolean;
   onQuery: (query: string) => void;
   onFilter: (index: number) => void;
@@ -1352,6 +1434,7 @@ function ConsultView({
   onNavigate: (view: ViewId) => void;
   onCycleFilter: () => void;
   onLocate: () => void;
+  onAcceptMaps: () => void;
   onRequireAuth: () => void;
 }) {
   return (
@@ -1383,6 +1466,7 @@ function ConsultView({
       <MapPanel
         title={c.sensoryMap}
         subtitle={c.mapArea}
+        locale={locale}
         copyText={c}
         places={visiblePlaces}
         filters={c.filters}
@@ -1390,9 +1474,11 @@ function ConsultView({
         selectedPlace={selectedPlace}
         locationState={locationState}
         userLocation={userLocation}
+        mapsConsentGranted={mapsConsentGranted}
         onSelectPlace={onSelectPlace}
         onCycleFilter={onCycleFilter}
         onLocate={onLocate}
+        onAcceptMaps={onAcceptMaps}
         tall
       />
 
@@ -1891,6 +1977,7 @@ function VerifiedView({
 function MapPanel({
   title,
   subtitle,
+  locale,
   copyText,
   places: visiblePlaces,
   filters,
@@ -1898,14 +1985,17 @@ function MapPanel({
   selectedPlace,
   locationState,
   userLocation,
+  mapsConsentGranted,
   tall = false,
   onSelectPlace,
   onCycleFilter,
   onLocate,
+  onAcceptMaps,
   onOpen
 }: {
   title: string;
   subtitle: string;
+  locale: Locale;
   copyText: (typeof copy)[Locale];
   places: Place[];
   filters: string[];
@@ -1913,13 +2003,16 @@ function MapPanel({
   selectedPlace: Place | null;
   locationState: LocationState;
   userLocation: UserLocation | null;
+  mapsConsentGranted: boolean;
   tall?: boolean;
   onSelectPlace: (id: string) => void;
   onCycleFilter: () => void;
   onLocate: () => void;
+  onAcceptMaps: () => void;
   onOpen?: () => void;
 }) {
   const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
+  const privacyLabels = privacyCopy[locale];
   const [mapLayer, setMapLayer] = useState<MapLayerId>("roadmap");
 
   const layerLabels: Record<MapLayerId, string> = {
@@ -1935,11 +2028,11 @@ function MapPanel({
     locationState === "idle" ? copyText.mapLocationControl : `${copyText.mapLocationControl} · ${mapStatus}`;
   const layerControlLabel = `${copyText.mapLayerControl}: ${layerLabels[mapLayer]}`;
   const providerLabel = [
-    googleMapsKey ? "Google Maps" : "Google Maps key missing",
+    !mapsConsentGranted ? privacyLabels.mapConsentLabel : googleMapsKey ? "Google Maps" : "Google Maps key missing",
     activeFilterLabel,
     layerLabels[mapLayer]
   ].filter(Boolean).join(" · ");
-  const hasMapAnchor = Boolean(selectedPlace || userLocation);
+  const hasMapAnchor = Boolean(selectedPlace || userLocation || visiblePlaces.length > 0);
 
   const cycleLayer = () => {
     setMapLayer((current) => {
@@ -1995,9 +2088,15 @@ function MapPanel({
           </button>
         </div>
       </div>
-      <div className="map-canvas" role="img" aria-label={title}>
-        {!hasMapAnchor ? (
-          <EmptyMapCanvas body={copyText.noPlacesBody} label={providerLabel} />
+      <div className="map-canvas" role="region" aria-label={title}>
+        {!mapsConsentGranted ? (
+          <MapConsentCanvas
+            title={privacyLabels.mapBlockedTitle}
+            body={privacyLabels.mapBlockedBody}
+            action={privacyLabels.enableMaps}
+            label={providerLabel}
+            onAcceptMaps={onAcceptMaps}
+          />
         ) : googleMapsKey ? (
           <GoogleMapCanvas
             apiKey={googleMapsKey}
@@ -2009,6 +2108,8 @@ function MapPanel({
             userLocationLabel={copyText.mapYourLocation}
             onSelectPlace={onSelectPlace}
           />
+        ) : !hasMapAnchor ? (
+          <EmptyMapCanvas body={copyText.noPlacesBody} label={providerLabel} />
         ) : (
           <FallbackMapCanvas
             places={visiblePlaces}
@@ -2035,6 +2136,36 @@ function MapPanel({
         </button>
       ) : null}
     </section>
+  );
+}
+
+function MapConsentCanvas({
+  title,
+  body,
+  action,
+  label,
+  onAcceptMaps
+}: {
+  title: string;
+  body: string;
+  action: string;
+  label: string;
+  onAcceptMaps: () => void;
+}) {
+  return (
+    <>
+      <div className="map-consent-layer">
+        <MapPin aria-hidden="true" size={34} />
+        <div>
+          <strong>{title}</strong>
+          <p>{body}</p>
+        </div>
+        <button type="button" className="primary-action map-consent-action" onClick={onAcceptMaps}>
+          {action}
+        </button>
+      </div>
+      <span className="map-provider-note">{label}</span>
+    </>
   );
 }
 
@@ -2088,6 +2219,7 @@ function GoogleMapCanvas({
     let cancelled = false;
     const markers: GoogleMarkerInstance[] = [];
 
+    setLoadFailed(false);
     loadGoogleMaps(apiKey)
       .then((google) => {
         if (cancelled || !mapElementRef.current) {
