@@ -93,6 +93,8 @@ import type {
 import { AppleLogo, EmptyState, GoogleLogo, OfficialLogo, PanelHeading, ProfileCard, ToggleButton } from "./platform/ui-elements";
 
 const minimumPasswordLength = 12;
+const nearbyPlaceSearchLimit = 10;
+const nearbyPlaceDisplayLimit = 5;
 
 export function PlatformApp() {
   const [locale, setLocale] = useState<Locale>("ca");
@@ -236,7 +238,7 @@ export function PlatformApp() {
       latitude: userLocation.lat,
       longitude: userLocation.lng,
       radiusMeters: 1500,
-      maxResultCount: 20,
+      maxResultCount: nearbyPlaceSearchLimit,
       locale
     })
       .then((result) => {
@@ -287,10 +289,14 @@ export function PlatformApp() {
       return matchesQuery && matchesFilter;
     });
   }, [rankedPlaces, query, selectedFilter]);
+  const visibleNearbyPlaces = useMemo(
+    () => filteredPlaces.slice(0, nearbyPlaceDisplayLimit),
+    [filteredPlaces]
+  );
 
   const selectedPlace = rankedPlaces.find((place) => place.id === selectedPlaceId) ?? rankedPlaces[0] ?? null;
   const visibleSelectedPlace =
-    filteredPlaces.find((place) => place.id === selectedPlaceId) ?? filteredPlaces[0] ?? null;
+    visibleNearbyPlaces.find((place) => place.id === selectedPlaceId) ?? visibleNearbyPlaces[0] ?? null;
 
   useEffect(() => {
     if (!userLocation || rankedPlaces.length === 0) {
@@ -301,12 +307,12 @@ export function PlatformApp() {
   }, [rankedPlaces, userLocation]);
 
   useEffect(() => {
-    if (filteredPlaces.length === 0 || filteredPlaces.some((place) => place.id === selectedPlaceId)) {
+    if (visibleNearbyPlaces.length === 0 || visibleNearbyPlaces.some((place) => place.id === selectedPlaceId)) {
       return;
     }
 
-    setSelectedPlaceId(filteredPlaces[0].id);
-  }, [filteredPlaces, selectedPlaceId]);
+    setSelectedPlaceId(visibleNearbyPlaces[0].id);
+  }, [visibleNearbyPlaces, selectedPlaceId]);
 
   const updateRating = (key: SensoryKey, value: number) => {
     setRatings((current) => ({ ...current, [key]: value }));
@@ -747,7 +753,7 @@ export function PlatformApp() {
               copy={c}
               authLabels={authCopy[locale]}
               locale={locale}
-              places={filteredPlaces}
+              places={visibleNearbyPlaces}
               selectedFilter={selectedFilter}
               selectedPlace={visibleSelectedPlace}
               locationState={locationState}
@@ -772,7 +778,7 @@ export function PlatformApp() {
               query={query}
               selectedFilter={selectedFilter}
               selectedPlace={visibleSelectedPlace}
-              places={filteredPlaces}
+              places={visibleNearbyPlaces}
               locationState={locationState}
               userLocation={userLocation}
               mapsConsentGranted={mapsConsentGranted}
