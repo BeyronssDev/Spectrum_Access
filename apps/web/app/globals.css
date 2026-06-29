@@ -2470,7 +2470,7 @@ svg {
   }
 
   .spectrum-app[data-focus="true"] .dashboard-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(328px, 0.325fr);
+    grid-template-columns: minmax(0, 1fr) minmax(336px, 0.33fr);
     grid-template-areas:
       "map saved"
       "map draft"
@@ -2488,7 +2488,7 @@ svg {
 
   .spectrum-app[data-focus="true"] .saved-panel,
   .spectrum-app[data-focus="true"] .results-panel {
-    padding: 21px;
+    padding: 20px;
   }
 
   .spectrum-app[data-focus="true"] .saved-panel .panel-heading,
@@ -2510,7 +2510,7 @@ svg {
 
   .spectrum-app[data-focus="true"] .saved-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 11px;
+    gap: 10px;
   }
 
   .spectrum-app[data-focus="true"] .saved-list > .empty-state {
@@ -2522,14 +2522,14 @@ svg {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr) auto;
     min-width: 0;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 1 / 1.14;
     align-content: center;
     justify-items: center;
     gap: 9px;
     overflow: hidden;
     border: 1px solid var(--surface-container-high);
     background: var(--surface-container-lowest);
-    padding: 13px;
+    padding: 13px 13px 15px;
     text-align: center;
   }
 
@@ -2585,9 +2585,10 @@ svg {
   }
 
   .spectrum-app[data-focus="true"] .saved-row em {
+    min-width: 74px;
     max-width: 100%;
     border-radius: 999px;
-    padding: 6px 8px;
+    padding: 7px 10px;
     font-size: 10px;
     line-height: 1;
     white-space: nowrap;
