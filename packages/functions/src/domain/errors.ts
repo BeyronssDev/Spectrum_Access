@@ -3,7 +3,8 @@ export type ApplicationErrorCode =
   | "permission-denied"
   | "invalid-argument"
   | "not-found"
-  | "failed-precondition";
+  | "failed-precondition"
+  | "resource-exhausted";
 
 export class ApplicationError extends Error {
   constructor(

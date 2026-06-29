@@ -55,10 +55,20 @@ const derivedVerificationRoles: Record<string, UserRole> = {
   organization: "organization"
 };
 const maxContributionDistanceMeters = 100;
+export type RateLimitReservation = {
+  namespace: string;
+  key: string;
+  limit: number;
+  windowSeconds: number;
+};
 
 export function createUseCases({ auth, clock, places, repository }: UseCaseDependencies) {
   return {
-    async searchNearbyPlaces(rawData: unknown) {
+    async searchNearbyPlaces(rawData: unknown, rateLimit?: RateLimitReservation) {
+      if (rateLimit) {
+        await reserveRateLimitOrFail(repository, rateLimit);
+      }
+
       const data = requirePayload(rawData);
       const { latitude, longitude } = requireCoordinate(data);
       const locale = requireLocale(data);
@@ -79,6 +89,10 @@ export function createUseCases({ auth, clock, places, repository }: UseCaseDepen
         origin,
         radiusMeters
       });
+    },
+
+    async reserveRateLimit(rateLimit: RateLimitReservation) {
+      await reserveRateLimitOrFail(repository, rateLimit);
     },
 
     async completeUserOnboarding(context: RequestContext, rawData: unknown) {
@@ -524,6 +538,13 @@ export function createUseCases({ auth, clock, places, repository }: UseCaseDepen
       };
     }
   };
+}
+
+async function reserveRateLimitOrFail(repository: SpectrumRepository, input: RateLimitReservation): Promise<void> {
+  const allowed = await repository.reserveRateLimit(input);
+  if (!allowed) {
+    fail("resource-exhausted", "Too many requests. Try again shortly.");
+  }
 }
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {

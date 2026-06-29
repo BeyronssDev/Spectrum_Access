@@ -26,6 +26,26 @@ export function requireAuth(request: CallableRequest<unknown>): AuthedRequest {
   return request as AuthedRequest;
 }
 
+function tokenRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+}
+
+function requireVerifiedElevatedEmail(request: AuthedRequest): void {
+  const email = request.auth.token.email;
+  if (typeof email === "string" && request.auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "Verified email is required for elevated access.");
+  }
+}
+
+function hasMultiFactorSession(request: AuthedRequest): boolean {
+  const firebase = tokenRecord(request.auth.token.firebase);
+  return typeof firebase.sign_in_second_factor === "string" && firebase.sign_in_second_factor.length > 0;
+}
+
+function superAdminMfaRequired(): boolean {
+  return process.env.REQUIRE_SUPER_ADMIN_MFA !== "false";
+}
+
 export function toRequestContext(request: AuthedRequest): RequestContext {
   return {
     uid: request.auth.uid,
@@ -43,6 +63,7 @@ export function requireModerator(request: CallableRequest<unknown>): AuthedReque
     throw new HttpsError("permission-denied", "Moderator privileges are required.");
   }
 
+  requireVerifiedElevatedEmail(authedRequest);
   return authedRequest;
 }
 
@@ -50,6 +71,11 @@ export function requireSuperAdmin(request: CallableRequest<unknown>): AuthedRequ
   const authedRequest = requireAuth(request);
   if (authedRequest.auth.token.superAdmin !== true) {
     throw new HttpsError("permission-denied", "Super admin privileges are required.");
+  }
+
+  requireVerifiedElevatedEmail(authedRequest);
+  if (superAdminMfaRequired() && !hasMultiFactorSession(authedRequest)) {
+    throw new HttpsError("permission-denied", "A multi-factor super admin session is required.");
   }
 
   return authedRequest;

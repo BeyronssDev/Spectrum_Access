@@ -37,6 +37,8 @@ class FakeRepository implements SpectrumRepository {
   places = new Map<string, Place>();
   createdPlaces: Array<Record<string, unknown>> = [];
   createdReviews: Array<Record<string, unknown>> = [];
+  rateLimitAllowed = true;
+  reservedRateLimits: Array<Record<string, unknown>> = [];
 
   getUser(uid: string): Promise<UserDocument | undefined> {
     return Promise.resolve(this.users.get(uid));
@@ -154,6 +156,17 @@ class FakeRepository implements SpectrumRepository {
   addAdminAction(_data: Record<string, unknown>): Promise<void> {
     return Promise.resolve();
   }
+
+  reserveRateLimit(input: {
+    namespace: string;
+    key: string;
+    limit: number;
+    windowSeconds: number;
+    nowMillis?: number;
+  }): Promise<boolean> {
+    this.reservedRateLimits.push(input);
+    return Promise.resolve(this.rateLimitAllowed);
+  }
 }
 
 class FakePlacesGateway implements PlacesGateway {
@@ -270,6 +283,32 @@ describe("functions use cases", () => {
       hasSpectrumData: true
     });
     expect(places.lastSearch?.includedTypes).toContain("restaurant");
+  });
+
+  it("blocks public place discovery when the caller search quota is exhausted", async () => {
+    const { places, repository, useCases } = makeUseCases();
+    repository.rateLimitAllowed = false;
+
+    await expect(
+      useCases.searchNearbyPlaces(
+        {
+          latitude: 41.728,
+          longitude: 1.823,
+          radiusMeters: 1000,
+          maxResultCount: 10,
+          locale: "ca"
+        },
+        {
+          namespace: "places.searchNearby",
+          key: "app:web:ip:127.0.0.1",
+          limit: 60,
+          windowSeconds: 60
+        }
+      )
+    ).rejects.toMatchObject(new ApplicationError("resource-exhausted", "Too many requests. Try again shortly."));
+
+    expect(repository.reservedRateLimits).toHaveLength(1);
+    expect(places.lastSearch).toBeNull();
   });
 
   it("resolves a Google place into a pending local Spectrum place", async () => {

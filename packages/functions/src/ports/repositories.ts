@@ -81,6 +81,13 @@ export interface SpectrumRepository {
   updatePlaceReviewStats(placeId: string, stats: PlaceReviewStats, updatedAt: TimestampValue): Promise<void>;
   createUserNotification(uid: string, data: Record<string, unknown>): Promise<void>;
   addAdminAction(data: Record<string, unknown>): Promise<void>;
+  reserveRateLimit(input: {
+    namespace: string;
+    key: string;
+    limit: number;
+    windowSeconds: number;
+    nowMillis?: number;
+  }): Promise<boolean>;
 }
 
 export type CreatePlaceCommand = {

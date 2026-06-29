@@ -725,7 +725,7 @@ const authCopies = {
     signInToContinue: 'Iniciar sessió',
     requiredFields: 'Omple els camps obligatoris.',
     invalidEmail: 'Introdueix un email vàlid.',
-    passwordMinLength: 'La contrasenya ha de tenir com a mínim 6 caràcters.',
+    passwordMinLength: 'La contrasenya ha de tenir com a mínim 12 caràcters.',
     passwordsMismatch: 'Les contrasenyes no coincideixen.',
     forgotPassword: 'Has oblidat la teva contrasenya?',
     passwordResetSent:
@@ -781,7 +781,7 @@ const authCopies = {
     signInToContinue: 'Iniciar sesión',
     requiredFields: 'Rellena los campos obligatorios.',
     invalidEmail: 'Introduce un email válido.',
-    passwordMinLength: 'La contraseña debe tener como mínimo 6 caracteres.',
+    passwordMinLength: 'La contraseña debe tener como mínimo 12 caracteres.',
     passwordsMismatch: 'Las contraseñas no coinciden.',
     forgotPassword: '¿Has olvidado tu contraseña?',
     passwordResetSent:
@@ -837,7 +837,7 @@ const authCopies = {
     signInToContinue: 'Sign in',
     requiredFields: 'Fill in the required fields.',
     invalidEmail: 'Enter a valid email.',
-    passwordMinLength: 'Password must be at least 6 characters.',
+    passwordMinLength: 'Password must be at least 12 characters.',
     passwordsMismatch: 'Passwords do not match.',
     forgotPassword: 'Forgot your password?',
     passwordResetSent:

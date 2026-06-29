@@ -19,6 +19,7 @@ import 'spectrum_theme.dart';
 
 const nearbyDiscoveryRadiusMeters = 100.0;
 const nearbyDiscoveryMaxResults = 8;
+const minimumPasswordLength = 12;
 
 class SpectrumShell extends StatefulWidget {
   const SpectrumShell({
@@ -375,7 +376,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
       return Future<void>.value();
     }
 
-    if (password.length < 6) {
+    if (password.length < minimumPasswordLength) {
       setState(() => _authMessage = labels.passwordMinLength);
       return Future<void>.value();
     }

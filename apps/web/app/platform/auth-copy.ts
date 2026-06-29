@@ -30,6 +30,7 @@ export const authCopy: Record<
     signInToContinue: string;
     requiredFields: string;
     invalidEmail: string;
+    passwordMinLength: string;
     passwordsMismatch: string;
     forgotPassword: string;
     passwordResetSent: string;
@@ -89,6 +90,7 @@ export const authCopy: Record<
     signInToContinue: "Iniciar sessió",
     requiredFields: "Omple els camps obligatoris.",
     invalidEmail: "Introdueix un email vàlid.",
+    passwordMinLength: "La contrasenya ha de tenir com a mínim 12 caràcters.",
     passwordsMismatch: "Les contrasenyes no coincideixen.",
     forgotPassword: "Has oblidat la teva contrasenya?",
     passwordResetSent: "Si aquest correu està registrat, rebràs un enllaç per restablir la contrasenya.",
@@ -147,6 +149,7 @@ export const authCopy: Record<
     signInToContinue: "Iniciar sesión",
     requiredFields: "Rellena los campos obligatorios.",
     invalidEmail: "Introduce un email válido.",
+    passwordMinLength: "La contraseña debe tener como mínimo 12 caracteres.",
     passwordsMismatch: "Las contraseñas no coinciden.",
     forgotPassword: "¿Has olvidado tu contraseña?",
     passwordResetSent: "Si este correo está registrado, recibirás un enlace para restablecer la contraseña.",
@@ -205,6 +208,7 @@ export const authCopy: Record<
     signInToContinue: "Sign in",
     requiredFields: "Fill in the required fields.",
     invalidEmail: "Enter a valid email.",
+    passwordMinLength: "Password must be at least 12 characters.",
     passwordsMismatch: "Passwords do not match.",
     forgotPassword: "Forgot your password?",
     passwordResetSent: "If this email is registered, you will receive a password reset link.",

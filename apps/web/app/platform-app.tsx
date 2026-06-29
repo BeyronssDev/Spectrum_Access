@@ -88,6 +88,8 @@ import type {
 } from "./platform/types";
 import { AppleLogo, EmptyState, GoogleLogo, OfficialLogo, PanelHeading, ProfileCard, ToggleButton } from "./platform/ui-elements";
 
+const minimumPasswordLength = 12;
+
 export function PlatformApp() {
   const [locale, setLocale] = useState<Locale>("ca");
   const [activeView, setActiveView] = useState<ViewId>("home");
@@ -882,6 +884,11 @@ function AuthGate({
       if (mode === "register") {
         if (password !== passwordRepeat) {
           setLocalMessage(c.passwordsMismatch);
+          return;
+        }
+
+        if (password.length < minimumPasswordLength) {
+          setLocalMessage(c.passwordMinLength);
           return;
         }
 

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Firestore } from "firebase-admin/firestore";
+import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import type { Place, Review, VerificationRequestType } from "@accessibilitat/shared";
 import type { PlaceReviewStats } from "../../domain/review-stats.js";
 import type { TimestampValue } from "../../ports/clock.js";
@@ -201,5 +201,60 @@ export class FirestoreSpectrumRepository implements SpectrumRepository {
 
   async addAdminAction(data: Record<string, unknown>): Promise<void> {
     await this.db.collection("adminActions").add(data);
+  }
+
+  async reserveRateLimit(input: {
+    namespace: string;
+    key: string;
+    limit: number;
+    windowSeconds: number;
+    nowMillis?: number;
+  }): Promise<boolean> {
+    const safeNamespace = input.namespace.replace(/[^A-Za-z0-9_.-]+/g, "_").slice(0, 80);
+    const keyHash = createHash("sha256").update(input.key).digest("hex");
+    const ref = this.db.collection("rateLimits").doc(`${safeNamespace}_${keyHash.slice(0, 40)}`);
+    const nowMillis = input.nowMillis ?? Date.now();
+    const windowMillis = input.windowSeconds * 1000;
+
+    return this.db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      const data = snapshot.data();
+      const currentCount = typeof data?.count === "number" ? data.count : 0;
+      const currentWindowStartedAt =
+        typeof data?.windowStartedAtMillis === "number" ? data.windowStartedAtMillis : nowMillis;
+      const resetWindow = !snapshot.exists || nowMillis - currentWindowStartedAt >= windowMillis;
+
+      if (!resetWindow && currentCount >= input.limit) {
+        transaction.set(
+          ref,
+          {
+            namespace: input.namespace,
+            count: currentCount,
+            limit: input.limit,
+            windowSeconds: input.windowSeconds,
+            lastRejectedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp()
+          },
+          { merge: true }
+        );
+        return false;
+      }
+
+      const windowStartedAtMillis = resetWindow ? nowMillis : currentWindowStartedAt;
+      transaction.set(
+        ref,
+        {
+          namespace: input.namespace,
+          count: resetWindow ? 1 : currentCount + 1,
+          limit: input.limit,
+          windowSeconds: input.windowSeconds,
+          windowStartedAtMillis,
+          resetsAt: Timestamp.fromMillis(windowStartedAtMillis + windowMillis),
+          updatedAt: FieldValue.serverTimestamp()
+        },
+        { merge: true }
+      );
+      return true;
+    });
   }
 }

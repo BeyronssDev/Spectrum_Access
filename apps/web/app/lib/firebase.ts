@@ -1,5 +1,6 @@
 import { getApps, initializeApp } from "firebase/app";
 import type { FirebaseApp } from "firebase/app";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -10,12 +11,35 @@ export const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
+const appCheckSiteKey = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_RECAPTCHA_ENTERPRISE_SITE_KEY;
+let appCheckInitializedForApp: string | null = null;
+
+function initializeAppCheckIfConfigured(app: FirebaseApp) {
+  if (typeof window === "undefined" || !appCheckSiteKey || appCheckInitializedForApp === app.name) {
+    return;
+  }
+
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true
+    });
+  } catch (error) {
+    if ((error as { code?: string }).code !== "appCheck/already-initialized") {
+      throw error;
+    }
+  }
+  appCheckInitializedForApp = app.name;
+}
+
 export function getFirebaseApp() {
   if (!firebaseConfig.projectId) {
     return null;
   }
 
-  return getApps()[0] ?? initializeApp(firebaseConfig);
+  const app = getApps()[0] ?? initializeApp(firebaseConfig);
+  initializeAppCheckIfConfigured(app);
+  return app;
 }
 
 export function requireFirebaseApp(): FirebaseApp {

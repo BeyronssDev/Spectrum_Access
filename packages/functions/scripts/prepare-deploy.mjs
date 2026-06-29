@@ -16,6 +16,7 @@ const packageJson = {
   private: true,
   type: "module",
   main: "index.js",
+  packageManager: "pnpm@11.1.2",
   engines: {
     node: "22"
   },
@@ -49,23 +50,24 @@ await writeFile(
   `${JSON.stringify(packageJson, null, 2)}\n`
 );
 
-await new Promise((resolve, reject) => {
-  const child = spawn(
-    "pnpm",
-    ["install", "--prod", "--ignore-workspace", "--no-lockfile", "--ignore-scripts"],
-    {
+async function runPnpm(args) {
+  await new Promise((resolve, reject) => {
+    const child = spawn("pnpm", args, {
       cwd: deployDir,
       stdio: "inherit"
-    }
-  );
+    });
 
-  child.once("error", reject);
-  child.once("exit", (code) => {
-    if (code === 0) {
-      resolve();
-      return;
-    }
+    child.once("error", reject);
+    child.once("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
 
-    reject(new Error(`pnpm install for Firebase Functions deploy failed with code ${code}`));
+      reject(new Error(`pnpm ${args.join(" ")} for Firebase Functions deploy failed with code ${code}`));
+    });
   });
-});
+}
+
+await runPnpm(["install", "--prod", "--ignore-workspace", "--lockfile-only", "--ignore-scripts"]);
+await runPnpm(["install", "--prod", "--ignore-workspace", "--frozen-lockfile", "--ignore-scripts"]);
