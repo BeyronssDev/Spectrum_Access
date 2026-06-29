@@ -195,6 +195,84 @@ describe("Firestore security rules", () => {
     );
   });
 
+  it("blocks authors from editing active reviews and comments after moderation", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await db.collection("reviews").doc("active-review").set({
+        placeId: "place-1",
+        authorUid: "user-a",
+        ratings: { noise: 2 },
+        comment: "Text aprovat.",
+        status: "active",
+        createdAt: "2026-06-19T00:00:00.000Z"
+      });
+      await db.collection("comments").doc("active-comment").set({
+        targetType: "place",
+        targetId: "place-1",
+        authorUid: "user-a",
+        body: "Comentari aprovat.",
+        status: "active",
+        createdAt: "2026-06-19T00:00:00.000Z",
+        updatedAt: "2026-06-19T00:00:00.000Z"
+      });
+    });
+
+    const userDb = testEnv.authenticatedContext("user-a").firestore();
+
+    await assertFails(
+      userDb.collection("reviews").doc("active-review").update({
+        comment: "Text canviat despres de moderacio.",
+        status: "active"
+      })
+    );
+    await assertFails(
+      userDb.collection("comments").doc("active-comment").update({
+        body: "Comentari canviat despres de moderacio.",
+        status: "active",
+        updatedAt: "2026-06-20T00:00:00.000Z"
+      })
+    );
+  });
+
+  it("still lets authors edit their own pending reviews and comments", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await db.collection("reviews").doc("pending-review").set({
+        placeId: "place-1",
+        authorUid: "user-a",
+        ratings: { noise: 2 },
+        comment: "Text pendent.",
+        status: "pending",
+        createdAt: "2026-06-19T00:00:00.000Z"
+      });
+      await db.collection("comments").doc("pending-comment").set({
+        targetType: "place",
+        targetId: "place-1",
+        authorUid: "user-a",
+        body: "Comentari pendent.",
+        status: "pending",
+        createdAt: "2026-06-19T00:00:00.000Z",
+        updatedAt: "2026-06-19T00:00:00.000Z"
+      });
+    });
+
+    const userDb = testEnv.authenticatedContext("user-a").firestore();
+
+    await assertSucceeds(
+      userDb.collection("reviews").doc("pending-review").update({
+        comment: "Text pendent actualitzat.",
+        status: "pending"
+      })
+    );
+    await assertSucceeds(
+      userDb.collection("comments").doc("pending-comment").update({
+        body: "Comentari pendent actualitzat.",
+        status: "pending",
+        updatedAt: "2026-06-20T00:00:00.000Z"
+      })
+    );
+  });
+
   it("forces professional verification profiles to start pending", async () => {
     const userDb = testEnv.authenticatedContext("professional-a").firestore();
 
@@ -218,6 +296,115 @@ describe("Firestore security rules", () => {
         specialty: "Second test specialty",
         verificationStatus: "verified"
       })
+    );
+  });
+
+  it("keeps pending verification profiles private until they are verified", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await db.collection("professionalProfiles").doc("pending-professional").set({
+        ownerUid: "professional-a",
+        professionalName: "Professional Pendent",
+        licenseNumber: "TEST 20001",
+        professionalCollege: "College",
+        specialty: "Accessibility",
+        verificationStatus: "pending_verification"
+      });
+      await db.collection("organizationProfiles").doc("verified-organization").set({
+        ownerUid: "organization-a",
+        name: "Entitat Verificada",
+        description: "Descripcio publica.",
+        city: "Barcelona",
+        verificationStatus: "verified"
+      });
+    });
+
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+    const ownerDb = testEnv.authenticatedContext("professional-a").firestore();
+
+    await assertFails(anonDb.collection("professionalProfiles").doc("pending-professional").get());
+    await assertSucceeds(ownerDb.collection("professionalProfiles").doc("pending-professional").get());
+    await assertSucceeds(anonDb.collection("organizationProfiles").doc("verified-organization").get());
+  });
+
+  it("requires owner edits to verified profiles to return to pending verification", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().collection("professionalProfiles").doc("verified-professional").set({
+        ownerUid: "professional-a",
+        professionalName: "Professional Verificat",
+        licenseNumber: "TEST 30001",
+        professionalCollege: "College",
+        specialty: "Accessibility",
+        verificationStatus: "verified"
+      });
+    });
+
+    const ownerDb = testEnv.authenticatedContext("professional-a").firestore();
+
+    await assertFails(
+      ownerDb.collection("professionalProfiles").doc("verified-professional").update({
+        specialty: "Changed after approval",
+        verificationStatus: "verified"
+      })
+    );
+    await assertSucceeds(
+      ownerDb.collection("professionalProfiles").doc("verified-professional").update({
+        specialty: "Changed for re-review",
+        verificationStatus: "pending_verification"
+      })
+    );
+  });
+
+  it("publishes professional and organization media only for verified profile paths", async () => {
+    const imageDataUrl =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await db.collection("professionalProfiles").doc("verified-professional").set({
+        ownerUid: "professional-a",
+        professionalName: "Professional Verificat",
+        licenseNumber: "TEST 40001",
+        professionalCollege: "College",
+        specialty: "Accessibility",
+        verificationStatus: "verified"
+      });
+      await db.collection("professionalProfiles").doc("pending-professional").set({
+        ownerUid: "professional-a",
+        professionalName: "Professional Pendent",
+        licenseNumber: "TEST 40002",
+        professionalCollege: "College",
+        specialty: "Accessibility",
+        verificationStatus: "pending_verification"
+      });
+      await db.collection("organizationProfiles").doc("verified-organization").set({
+        ownerUid: "organization-a",
+        name: "Entitat Verificada",
+        description: "Descripcio publica.",
+        city: "Barcelona",
+        verificationStatus: "verified"
+      });
+
+      const storage = context.storage();
+      await storage.ref("professional-photos/professional-a/verified-professional/headshot.png").putString(imageDataUrl, "data_url");
+      await storage.ref("professional-photos/professional-a/pending-professional/headshot.png").putString(imageDataUrl, "data_url");
+      await storage.ref("professional-photos/professional-a/legacy-headshot.png").putString(imageDataUrl, "data_url");
+      await storage.ref("organization-logos/organization-a/verified-organization/logo.png").putString(imageDataUrl, "data_url");
+    });
+
+    const anonStorage = testEnv.unauthenticatedContext().storage();
+    const ownerStorage = testEnv.authenticatedContext("professional-a").storage();
+
+    await assertSucceeds(
+      anonStorage.ref("professional-photos/professional-a/verified-professional/headshot.png").getDownloadURL()
+    );
+    await assertFails(
+      anonStorage.ref("professional-photos/professional-a/pending-professional/headshot.png").getDownloadURL()
+    );
+    await assertFails(anonStorage.ref("professional-photos/professional-a/legacy-headshot.png").getDownloadURL());
+    await assertSucceeds(ownerStorage.ref("professional-photos/professional-a/pending-professional/headshot.png").getDownloadURL());
+    await assertSucceeds(
+      anonStorage.ref("organization-logos/organization-a/verified-organization/logo.png").getDownloadURL()
     );
   });
 

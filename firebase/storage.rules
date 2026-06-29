@@ -21,6 +21,18 @@ service firebase.storage {
         && request.resource.contentType.matches("image/.*");
     }
 
+    function isVerifiedProfessionalProfile(uid, profileId) {
+      return firestore.exists(/databases/(default)/documents/professionalProfiles/$(profileId))
+        && firestore.get(/databases/(default)/documents/professionalProfiles/$(profileId)).data.ownerUid == uid
+        && firestore.get(/databases/(default)/documents/professionalProfiles/$(profileId)).data.verificationStatus == "verified";
+    }
+
+    function isVerifiedOrganizationProfile(uid, profileId) {
+      return firestore.exists(/databases/(default)/documents/organizationProfiles/$(profileId))
+        && firestore.get(/databases/(default)/documents/organizationProfiles/$(profileId)).data.ownerUid == uid
+        && firestore.get(/databases/(default)/documents/organizationProfiles/$(profileId)).data.verificationStatus == "verified";
+    }
+
     match /place-images/{uid}/{imageId}/{fileName} {
       allow read: if isModerator()
         || firestore.exists(/databases/(default)/documents/placeImages/$(imageId))
@@ -35,14 +47,26 @@ service firebase.storage {
       allow delete: if isOwner(uid) || isModerator();
     }
 
+    match /professional-photos/{uid}/{profileId}/{fileName} {
+      allow read: if isOwner(uid) || isModerator() || isVerifiedProfessionalProfile(uid, profileId);
+      allow write: if isOwner(uid) && validImage();
+      allow delete: if isOwner(uid) || isModerator();
+    }
+
     match /professional-photos/{uid}/{fileName} {
-      allow read: if true;
+      allow read: if isOwner(uid) || isModerator();
+      allow write: if isOwner(uid) && validImage();
+      allow delete: if isOwner(uid) || isModerator();
+    }
+
+    match /organization-logos/{uid}/{profileId}/{fileName} {
+      allow read: if isOwner(uid) || isModerator() || isVerifiedOrganizationProfile(uid, profileId);
       allow write: if isOwner(uid) && validImage();
       allow delete: if isOwner(uid) || isModerator();
     }
 
     match /organization-logos/{uid}/{fileName} {
-      allow read: if true;
+      allow read: if isOwner(uid) || isModerator();
       allow write: if isOwner(uid) && validImage();
       allow delete: if isOwner(uid) || isModerator();
     }

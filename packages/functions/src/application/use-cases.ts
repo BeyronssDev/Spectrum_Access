@@ -92,6 +92,10 @@ export function createUseCases({ auth, clock, places, repository }: UseCaseDepen
       const email = optionalEmail(data, "email") ?? (typeof context.token.email === "string" ? context.token.email : undefined);
       const city = optionalText(data, "city", 120);
       const existing = await repository.getUser(uid);
+      if (existing?.status === "disabled") {
+        fail("permission-denied", "This account is disabled.");
+      }
+
       const roles = ensureUserRoles(existing?.roles, "user", true);
 
       await repository.saveUser(uid, {

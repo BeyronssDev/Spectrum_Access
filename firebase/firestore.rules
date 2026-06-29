@@ -31,6 +31,20 @@ service cloud.firestore {
       return !resource.data.keys().hasAny([field]) || request.resource.data[field] == resource.data[field];
     }
 
+    function ownerCanEditPendingAuthoredContent() {
+      return isOwner(resource.data.authorUid)
+        && resource.data.status == "pending"
+        && immutableOwner("authorUid")
+        && request.resource.data.status == "pending";
+    }
+
+    function ownerCanResubmitVerificationProfile() {
+      return isOwner(resource.data.ownerUid)
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && resource.data.verificationStatus in ["pending_verification", "verified", "rejected"]
+        && request.resource.data.verificationStatus == "pending_verification";
+    }
+
     function validBaseUserRoles() {
       return request.resource.data.roles is list
         && request.resource.data.roles.size() == 1
@@ -94,10 +108,7 @@ service cloud.firestore {
           !request.resource.data.keys().hasAny(["childProfileId"]) ||
           get(/databases/$(database)/documents/childProfiles/$(request.resource.data.childProfileId)).data.tutorUid == request.auth.uid
         );
-      allow update: if isModerator()
-        || (isOwner(resource.data.authorUid)
-          && immutableOwner("authorUid")
-          && request.resource.data.status == resource.data.status);
+      allow update: if isModerator() || ownerCanEditPendingAuthoredContent();
       allow delete: if isModerator();
     }
 
@@ -106,10 +117,7 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.authorUid == request.auth.uid
         && createsPendingContent();
-      allow update: if isModerator()
-        || (isOwner(resource.data.authorUid)
-          && immutableOwner("authorUid")
-          && request.resource.data.status == resource.data.status);
+      allow update: if isModerator() || ownerCanEditPendingAuthoredContent();
       allow delete: if isModerator();
     }
 
@@ -130,26 +138,20 @@ service cloud.firestore {
     }
 
     match /professionalProfiles/{profileId} {
-      allow read: if resource.data.verificationStatus in ["verified", "pending_verification"] || isModerator() || isOwner(resource.data.ownerUid);
+      allow read: if resource.data.verificationStatus == "verified" || isModerator() || isOwner(resource.data.ownerUid);
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.verificationStatus == "pending_verification";
-      allow update: if isModerator()
-        || (isOwner(resource.data.ownerUid)
-          && request.resource.data.ownerUid == resource.data.ownerUid
-          && request.resource.data.verificationStatus == resource.data.verificationStatus);
+      allow update: if isModerator() || ownerCanResubmitVerificationProfile();
       allow delete: if isModerator();
     }
 
     match /organizationProfiles/{profileId} {
-      allow read: if resource.data.verificationStatus in ["verified", "pending_verification"] || isModerator() || isOwner(resource.data.ownerUid);
+      allow read: if resource.data.verificationStatus == "verified" || isModerator() || isOwner(resource.data.ownerUid);
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.verificationStatus == "pending_verification";
-      allow update: if isModerator()
-        || (isOwner(resource.data.ownerUid)
-          && request.resource.data.ownerUid == resource.data.ownerUid
-          && request.resource.data.verificationStatus == resource.data.verificationStatus);
+      allow update: if isModerator() || ownerCanResubmitVerificationProfile();
       allow delete: if isModerator();
     }
 

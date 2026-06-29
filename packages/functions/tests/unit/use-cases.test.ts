@@ -380,4 +380,28 @@ describe("functions use cases", () => {
       updatedAt: "now"
     });
   });
+
+  it("does not reactivate disabled users during onboarding", async () => {
+    const { repository, useCases } = makeUseCases();
+    repository.users.set("user-1", {
+      createdAt: "existing-created-at",
+      roles: ["user"],
+      status: "disabled"
+    });
+
+    await expect(
+      useCases.completeUserOnboarding(
+        { uid: "user-1", token: { email: "user@example.com" } },
+        {
+          publicName: "Usuari",
+          locale: "ca",
+          authProviders: ["password"]
+        }
+      )
+    ).rejects.toMatchObject(new ApplicationError("permission-denied", "This account is disabled."));
+    expect(repository.users.get("user-1")).toMatchObject({
+      status: "disabled",
+      createdAt: "existing-created-at"
+    });
+  });
 });
