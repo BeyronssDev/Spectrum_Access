@@ -1292,7 +1292,9 @@ function HomeView({
                 <span>
                   <strong>{place.name}</strong>
                   <small>
-                    {place.area} · {place.distance}
+                    <span className="saved-place-area">{place.area}</span>
+                    <span className="saved-place-separator"> · </span>
+                    <span className="saved-place-distance">{place.distance}</span>
                   </small>
                 </span>
                 <em>{place.hasSpectrumData ? place.score.toFixed(1) : "Spectrum"}</em>
@@ -1514,7 +1516,9 @@ function ConsultView({
                 <span>
                   <strong>{place.name}</strong>
                   <small>
-                    {place.city} · {place.distance}
+                    <span className="saved-place-area">{place.city}</span>
+                    <span className="saved-place-separator"> · </span>
+                    <span className="saved-place-distance">{place.distance}</span>
                   </small>
                 </span>
                 <em>{place.score.toFixed(1)}</em>

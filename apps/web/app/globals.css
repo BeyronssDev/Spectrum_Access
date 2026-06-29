@@ -2470,7 +2470,7 @@ svg {
   }
 
   .spectrum-app[data-focus="true"] .dashboard-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(250px, 0.28fr);
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.32fr);
     grid-template-areas:
       "map saved"
       "map draft"
@@ -2484,6 +2484,117 @@ svg {
 
   .spectrum-app[data-focus="true"] .dashboard-grid .map-canvas {
     min-height: 620px;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-panel,
+  .spectrum-app[data-focus="true"] .results-panel {
+    padding: 22px;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-panel .panel-heading,
+  .spectrum-app[data-focus="true"] .results-panel .panel-heading {
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-panel .panel-heading h3,
+  .spectrum-app[data-focus="true"] .results-panel .panel-heading h3 {
+    font-size: 24px;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-panel .panel-heading button,
+  .spectrum-app[data-focus="true"] .results-panel .panel-heading button {
+    flex: 0 0 auto;
+    font-size: 12px;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-list > .empty-state {
+    grid-column: 1 / -1;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-row {
+    position: relative;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-width: 0;
+    aspect-ratio: 1 / 1;
+    align-content: center;
+    justify-items: center;
+    gap: 9px;
+    overflow: hidden;
+    border: 1px solid var(--surface-container-high);
+    background: var(--surface-container-lowest);
+    padding: 13px;
+    text-align: center;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-row:hover,
+  .spectrum-app[data-focus="true"] .saved-row[data-active="true"] {
+    background: var(--surface-container-low);
+    transform: none;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-row .place-symbol {
+    width: 48px;
+    height: 48px;
+    border-radius: 17px;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-row > span {
+    display: grid;
+    min-width: 0;
+    justify-items: center;
+    gap: 6px;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-row strong {
+    display: -webkit-box;
+    max-width: 100%;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--primary);
+    font-size: 13px;
+    line-height: 1.14;
+    text-align: center;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-row small {
+    margin-top: 0;
+    color: var(--secondary);
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-place-area,
+  .spectrum-app[data-focus="true"] .saved-place-separator {
+    display: none;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-place-distance {
+    display: inline-flex;
+    border-radius: 999px;
+    background: var(--surface-container);
+    padding: 5px 8px;
+    font-weight: 800;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-row em {
+    max-width: 100%;
+    border-radius: 999px;
+    padding: 6px 8px;
+    font-size: 10px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .spectrum-app[data-focus="true"] .saved-row > svg:last-child {
+    display: none;
   }
 
   .spectrum-app[data-focus="true"] .consult-grid {
