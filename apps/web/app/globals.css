@@ -2119,6 +2119,10 @@ svg {
   padding: 38px;
 }
 
+.spectrum-app[data-theme="dark"] .auth-card {
+  background: var(--surface-container-lowest);
+}
+
 .auth-shell-inline .auth-card {
   width: 100%;
 }
