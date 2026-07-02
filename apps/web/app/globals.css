@@ -167,6 +167,15 @@ svg {
   align-items: center;
 }
 
+.brand-copy,
+.brand-title-row {
+  min-width: 0;
+}
+
+.mobile-screen-title {
+  display: none;
+}
+
 .official-logo {
   width: 54px;
   height: 54px;
@@ -2819,6 +2828,7 @@ svg {
 
   .brand-block {
     grid-template-columns: 44px minmax(0, 1fr);
+    gap: 12px;
   }
 
   .official-logo {
@@ -2828,6 +2838,32 @@ svg {
 
   .brand-block strong {
     font-size: 23px;
+  }
+
+  .brand-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .mobile-screen-title {
+    display: inline;
+    flex: 0 1 auto;
+    max-width: 42%;
+    overflow: hidden;
+    color: var(--secondary);
+    font-family:
+      "Montserrat",
+      ui-sans-serif,
+      system-ui,
+      sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1;
+    text-overflow: ellipsis;
+    text-transform: none;
+    white-space: nowrap;
   }
 
   .primary-nav {
@@ -2869,15 +2905,21 @@ svg {
 
   .topbar {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
-    gap: 8px;
+    gap: 10px;
     margin: -20px -14px 22px;
     padding: 18px 14px;
   }
 
   .topbar > div:first-child {
-    min-width: 0;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 
   .topbar .screen-label {
@@ -2890,8 +2932,8 @@ svg {
     min-width: 0;
     align-items: center;
     flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    flex-wrap: nowrap;
+    justify-content: space-between;
     gap: 5px;
   }
 
@@ -2987,6 +3029,7 @@ svg {
   }
 
   .topbar .notification-menu .icon-button,
+  .topbar .privacy-top-action,
   .topbar .top-login-action {
     width: 30px;
     min-height: 30px;

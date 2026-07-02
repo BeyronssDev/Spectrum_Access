@@ -553,8 +553,13 @@ export function PlatformApp() {
         <aside className="side-rail" aria-label="Spectrum Access">
           <div className="brand-block">
             <OfficialLogo size={54} />
-            <div>
-              <strong>Spectrum Access</strong>
+            <div className="brand-copy">
+              <div className="brand-title-row">
+                <strong>Spectrum Access</strong>
+                <span className="mobile-screen-title" aria-hidden="true">
+                  {c.nav[activeView]}
+                </span>
+              </div>
               <span>Sensory Accessibility</span>
             </div>
           </div>
