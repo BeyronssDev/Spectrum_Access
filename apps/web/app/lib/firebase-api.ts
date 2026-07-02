@@ -4,7 +4,6 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   onAuthStateChanged,
-  sendPasswordResetEmail,
   sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -261,19 +260,8 @@ async function loginWithEmailPassword(input: { email: string; password: string; 
 }
 
 async function requestPasswordReset(input: { email: string; locale: Locale }) {
-  const app = requireFirebaseApp();
-  const auth = getAuth(app);
-  auth.languageCode = input.locale;
-
-  try {
-    await sendPasswordResetEmail(auth, input.email.trim());
-  } catch (error) {
-    if ((error as { code?: string }).code === "auth/user-not-found") {
-      return;
-    }
-
-    throw error;
-  }
+  const callable = getCallable<{ email: string; locale: Locale }, { status: "accepted" }>("requestPasswordReset");
+  await callable({ email: input.email.trim(), locale: input.locale });
 }
 
 async function loginWithGoogle(input: { locale: Locale; birthDate?: string }) {

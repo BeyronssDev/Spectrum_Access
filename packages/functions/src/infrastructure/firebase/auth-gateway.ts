@@ -1,6 +1,6 @@
-import type { Auth } from "firebase-admin/auth";
+import type { ActionCodeSettings, Auth } from "firebase-admin/auth";
 import { ApplicationError } from "../../domain/errors.js";
-import type { AuthGateway, AuthUserRecord, UserLookup } from "../../ports/auth.js";
+import type { AuthGateway, AuthUserRecord, PasswordResetLinkSettings, UserLookup } from "../../ports/auth.js";
 
 export class FirebaseAuthGateway implements AuthGateway {
   constructor(private readonly auth: Auth) {}
@@ -23,5 +23,14 @@ export class FirebaseAuthGateway implements AuthGateway {
 
   setCustomUserClaims(uid: string, claims: Record<string, unknown>) {
     return this.auth.setCustomUserClaims(uid, claims);
+  }
+
+  generatePasswordResetLink(email: string, settings: PasswordResetLinkSettings) {
+    const actionCodeSettings: ActionCodeSettings = {
+      url: settings.url,
+      handleCodeInApp: settings.handleCodeInApp ?? false
+    };
+
+    return this.auth.generatePasswordResetLink(email, actionCodeSettings);
   }
 }

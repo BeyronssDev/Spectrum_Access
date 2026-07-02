@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import { logger as functionsLogger } from "firebase-functions";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
-import { callableOptions, replayProtectedCallableOptions, useCases } from "../composition/container.js";
+import {
+  callableOptions,
+  passwordResetCallableOptions,
+  replayProtectedCallableOptions,
+  useCases
+} from "../composition/container.js";
 import { requireAuth, requireModerator, requireSuperAdmin, toHttpsError, toRequestContext } from "./callable-auth.js";
 
 const publicSearchQuota = {
@@ -27,8 +32,12 @@ function authedCallable(name: string, handler: (request: CallableRequest<unknown
   });
 }
 
-function publicCallable(name: string, handler: (request: CallableRequest<unknown>) => Promise<unknown>) {
-  return onCall(callableOptions, async (request) => {
+function publicCallable(
+  name: string,
+  handler: (request: CallableRequest<unknown>) => Promise<unknown>,
+  options = callableOptions
+) {
+  return onCall(options, async (request) => {
     try {
       return await handler(request);
     } catch (error) {
@@ -113,6 +122,18 @@ export const completeUserOnboarding = authedCallable("completeUserOnboarding", a
   const authedRequest = requireAuth(request);
   return useCases.completeUserOnboarding(toRequestContext(authedRequest), request.data);
 });
+
+export const requestPasswordReset = publicCallable(
+  "requestPasswordReset",
+  async (request) => {
+    await reserveCallableQuota("requestPasswordReset", request, {
+      limit: 5,
+      windowSeconds: 3600
+    });
+    return useCases.requestPasswordReset(request.data);
+  },
+  passwordResetCallableOptions
+);
 
 export const createPlace = authedCallable("createPlace", async (request) => {
   const authedRequest = requireAuth(request);

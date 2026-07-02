@@ -23,7 +23,8 @@ const packageJson = {
   dependencies: {
     "@google-cloud/functions-framework": "5.0.5",
     "firebase-admin": "13.10.0",
-    "firebase-functions": "7.2.5"
+    "firebase-functions": "7.2.5",
+    "nodemailer": "9.0.3"
   }
 };
 

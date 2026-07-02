@@ -21,11 +21,12 @@ import {
   googlePlaceToDiscoveredPlace,
   spectrumPlaceToDiscoveredPlace
 } from "../domain/place-discovery.js";
-import { fail } from "../domain/errors.js";
+import { ApplicationError, fail } from "../domain/errors.js";
 import { moderationTargets, moderationTargetStatuses } from "../domain/moderation.js";
 import { ensureUserRoles } from "../domain/roles.js";
-import type { AuthGateway, RequestContext } from "../ports/auth.js";
+import type { AuthGateway, AuthUserRecord, RequestContext } from "../ports/auth.js";
 import type { Clock } from "../ports/clock.js";
+import type { EmailGateway } from "../ports/email.js";
 import type { GooglePlaceCandidate, PlacesGateway } from "../ports/places.js";
 import type { SpectrumRepository } from "../ports/repositories.js";
 import {
@@ -40,6 +41,7 @@ import {
   readSensoryPreferences,
   requireCommentTargetType,
   requireCoordinate,
+  requireEmail,
   requireEventCategory,
   requireEventExperienceRating,
   requireInteger,
@@ -58,6 +60,8 @@ import {
 export type UseCaseDependencies = {
   auth: AuthGateway;
   clock: Clock;
+  email: EmailGateway;
+  appPublicUrl?: string;
   places: PlacesGateway;
   repository: SpectrumRepository;
 };
@@ -67,6 +71,7 @@ const derivedVerificationRoles: Record<string, UserRole> = {
   organization: "organization"
 };
 const maxContributionDistanceMeters = 100;
+const defaultAppPublicUrl = "https://spectrumaccess.info";
 export type RateLimitReservation = {
   namespace: string;
   key: string;
@@ -74,7 +79,7 @@ export type RateLimitReservation = {
   windowSeconds: number;
 };
 
-export function createUseCases({ auth, clock, places, repository }: UseCaseDependencies) {
+export function createUseCases({ auth, clock, email, appPublicUrl, places, repository }: UseCaseDependencies) {
   return {
     async searchNearbyPlaces(rawData: unknown, rateLimit?: RateLimitReservation) {
       if (rateLimit) {
@@ -105,6 +110,33 @@ export function createUseCases({ auth, clock, places, repository }: UseCaseDepen
 
     async reserveRateLimit(rateLimit: RateLimitReservation) {
       await reserveRateLimitOrFail(repository, rateLimit);
+    },
+
+    async requestPasswordReset(rawData: unknown) {
+      const data = requirePayload(rawData);
+      const requestedEmail = requireEmail(data, "email");
+      const locale = requireLocale(data);
+      const accepted = { status: "accepted" as const };
+      const user = await getPasswordResetUser(auth, requestedEmail);
+
+      if (!user || !user.providerIds.includes("password")) {
+        return accepted;
+      }
+
+      const baseUrl = readAppPublicUrl(appPublicUrl);
+      const firebaseLink = await auth.generatePasswordResetLink(user.email ?? requestedEmail, {
+        url: `${baseUrl}/auth/action`,
+        handleCodeInApp: false
+      });
+      const resetUrl = buildBrandedPasswordResetUrl(firebaseLink, baseUrl, locale);
+      await email.sendPasswordResetEmail({
+        to: user.email ?? requestedEmail,
+        displayName: user.displayName,
+        locale,
+        resetUrl
+      });
+
+      return accepted;
     },
 
     async searchEventHistory(rawData: unknown, rateLimit?: RateLimitReservation): Promise<EventHistorySearchResult> {
@@ -701,6 +733,50 @@ async function reserveRateLimitOrFail(repository: SpectrumRepository, input: Rat
   if (!allowed) {
     fail("resource-exhausted", "Too many requests. Try again shortly.");
   }
+}
+
+async function getPasswordResetUser(auth: AuthGateway, email: string): Promise<AuthUserRecord | undefined> {
+  try {
+    return await auth.getUser({ email });
+  } catch (error) {
+    if (error instanceof ApplicationError && error.code === "not-found") {
+      return undefined;
+    }
+
+    throw error;
+  }
+}
+
+function readAppPublicUrl(configuredUrl: string | undefined): string {
+  const source = configuredUrl?.trim() || defaultAppPublicUrl;
+  const url = new URL(source);
+  return `${url.origin}${url.pathname === "/" ? "" : url.pathname}`.replace(/\/+$/, "");
+}
+
+function buildBrandedPasswordResetUrl(firebaseLink: string, appPublicUrl: string, locale: Locale): string {
+  const source = new URL(firebaseLink);
+  const target = new URL("/auth/action", appPublicUrl);
+  const oobCode = source.searchParams.get("oobCode");
+
+  if (!oobCode) {
+    throw new Error("password-reset-code-missing");
+  }
+
+  target.searchParams.set("mode", source.searchParams.get("mode") ?? "resetPassword");
+  target.searchParams.set("oobCode", oobCode);
+  target.searchParams.set("lang", locale);
+
+  const apiKey = source.searchParams.get("apiKey");
+  if (apiKey) {
+    target.searchParams.set("apiKey", apiKey);
+  }
+
+  const continueUrl = source.searchParams.get("continueUrl");
+  if (continueUrl) {
+    target.searchParams.set("continueUrl", continueUrl);
+  }
+
+  return target.toString();
 }
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {

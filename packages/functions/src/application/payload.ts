@@ -174,6 +174,15 @@ export function optionalEmail(data: Record<string, unknown>, key: string): strin
   return value.toLowerCase();
 }
 
+export function requireEmail(data: Record<string, unknown>, key: string): string {
+  const value = optionalEmail(data, key);
+  if (!value) {
+    fail("invalid-argument", `Invalid ${key}.`);
+  }
+
+  return value;
+}
+
 export function optionalBirthDate(data: Record<string, unknown>, key: string): string | undefined {
   const value = optionalText(data, key, 10);
   if (!value) {

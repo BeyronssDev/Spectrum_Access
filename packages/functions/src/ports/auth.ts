@@ -16,7 +16,13 @@ export type UserLookup = {
   email?: string;
 };
 
+export type PasswordResetLinkSettings = {
+  url: string;
+  handleCodeInApp?: boolean;
+};
+
 export interface AuthGateway {
   getUser(lookup: UserLookup): Promise<AuthUserRecord>;
+  generatePasswordResetLink(email: string, settings: PasswordResetLinkSettings): Promise<string>;
   setCustomUserClaims(uid: string, claims: Record<string, unknown>): Promise<void>;
 }

@@ -3,6 +3,7 @@ import { ApplicationError } from "../../src/domain/errors.js";
 import { createUseCases } from "../../src/application/use-cases.js";
 import type { AuthGateway, AuthUserRecord, UserLookup } from "../../src/ports/auth.js";
 import type { Clock, TimestampValue } from "../../src/ports/clock.js";
+import type { EmailGateway, PasswordResetEmailInput } from "../../src/ports/email.js";
 import type { GooglePlaceCandidate, NearbyPlacesSearch, PlacesGateway } from "../../src/ports/places.js";
 import type { SpectrumRepository, UserDocument, VerificationProfileDocument } from "../../src/ports/repositories.js";
 import type { PlaceReviewStats } from "../../src/domain/review-stats.js";
@@ -21,12 +22,39 @@ class FakeAuthGateway implements AuthGateway {
     providerIds: ["password"],
     customClaims: {}
   };
+  usersByEmail = new Map<string, AuthUserRecord>([[this.user.email ?? "", this.user]]);
 
-  getUser(_lookup: UserLookup): Promise<AuthUserRecord> {
+  getUser(lookup: UserLookup): Promise<AuthUserRecord> {
+    if (lookup.email) {
+      const user = this.usersByEmail.get(lookup.email);
+      if (!user) {
+        throw new ApplicationError("not-found", "User not found.");
+      }
+
+      return Promise.resolve(user);
+    }
+
     return Promise.resolve(this.user);
   }
 
+  generatePasswordResetLink(email: string): Promise<string> {
+    return Promise.resolve(
+      `https://spectrum-access-499918.firebaseapp.com/__/auth/action?mode=resetPassword&oobCode=RESET_CODE&apiKey=api-key&continueUrl=${encodeURIComponent(
+        `https://spectrumaccess.info/auth/action?email=${email}`
+      )}`
+    );
+  }
+
   setCustomUserClaims(_uid: string, _claims: Record<string, unknown>): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+class FakeEmailGateway implements EmailGateway {
+  passwordResets: PasswordResetEmailInput[] = [];
+
+  sendPasswordResetEmail(input: PasswordResetEmailInput): Promise<void> {
+    this.passwordResets.push(input);
     return Promise.resolve();
   }
 }
@@ -263,17 +291,53 @@ const validEventRatings = {
 function makeUseCases() {
   const repository = new FakeRepository();
   const places = new FakePlacesGateway();
+  const auth = new FakeAuthGateway();
+  const email = new FakeEmailGateway();
   const useCases = createUseCases({
-    auth: new FakeAuthGateway(),
+    auth,
     clock: new FakeClock(),
+    email,
+    appPublicUrl: "https://spectrumaccess.info",
     places,
     repository
   });
 
-  return { places, repository, useCases };
+  return { auth, email, places, repository, useCases };
 }
 
 describe("functions use cases", () => {
+  it("sends branded password reset emails through the email port", async () => {
+    const { email, useCases } = makeUseCases();
+
+    const result = await useCases.requestPasswordReset({
+      email: "target@example.com",
+      locale: "ca"
+    });
+
+    expect(result).toEqual({ status: "accepted" });
+    expect(email.passwordResets).toHaveLength(1);
+    expect(email.passwordResets[0]).toMatchObject({
+      to: "target@example.com",
+      locale: "ca",
+      displayName: undefined
+    });
+    expect(email.passwordResets[0]?.resetUrl).toContain("https://spectrumaccess.info/auth/action");
+    expect(email.passwordResets[0]?.resetUrl).toContain("mode=resetPassword");
+    expect(email.passwordResets[0]?.resetUrl).toContain("oobCode=RESET_CODE");
+  });
+
+  it("accepts password reset requests without revealing unknown emails", async () => {
+    const { email, useCases } = makeUseCases();
+
+    const result = await useCases.requestPasswordReset({
+      email: "missing@example.com",
+      locale: "ca"
+    });
+
+    expect(result).toEqual({ status: "accepted" });
+    expect(email.passwordResets).toHaveLength(0);
+  });
+
   it("creates pending places through the repository port", async () => {
     const { repository, useCases } = makeUseCases();
 

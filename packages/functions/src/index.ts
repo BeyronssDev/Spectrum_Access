@@ -9,6 +9,7 @@ export {
   createReport,
   moderateContent,
   requestOrganizationVerification,
+  requestPasswordReset,
   requestProfessionalVerification,
   resolvePlaceForContribution,
   searchEventHistory,
