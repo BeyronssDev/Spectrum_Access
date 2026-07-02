@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { logger as functionsLogger } from "firebase-functions";
-import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
+import { HttpsError, onCall, type CallableOptions, type CallableRequest } from "firebase-functions/v2/https";
 import {
   callableOptions,
   passwordResetCallableOptions,
@@ -35,7 +35,7 @@ function authedCallable(name: string, handler: (request: CallableRequest<unknown
 function publicCallable(
   name: string,
   handler: (request: CallableRequest<unknown>) => Promise<unknown>,
-  options = callableOptions
+  options: CallableOptions = callableOptions
 ) {
   return onCall(options, async (request) => {
     try {

@@ -38,8 +38,7 @@ export const callableOptions = {
 } satisfies CallableOptions;
 export const passwordResetCallableOptions = {
   region: functionRegion,
-  secrets: [smtpPassword],
-  enforceAppCheck: true
+  secrets: [smtpPassword]
 } satisfies CallableOptions;
 export const replayProtectedCallableOptions = {
   ...callableOptions,
