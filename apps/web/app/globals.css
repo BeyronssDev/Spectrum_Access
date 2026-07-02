@@ -2437,6 +2437,7 @@ svg {
   .spectrum-app[data-focus="true"] .nav-button span,
   .spectrum-app[data-focus="true"] .nav-button > span + svg,
   .spectrum-app[data-focus="true"] .member-card div,
+  .spectrum-app[data-focus="true"] .admin-entry-card div,
   .spectrum-app[data-focus="true"] .security-card div {
     display: none;
   }
@@ -2448,6 +2449,7 @@ svg {
 
   .spectrum-app[data-focus="true"] .primary-nav,
   .spectrum-app[data-focus="true"] .side-footer {
+    min-width: 0;
     width: 100%;
   }
 
@@ -2464,9 +2466,31 @@ svg {
   }
 
   .spectrum-app[data-focus="true"] .member-card,
+  .spectrum-app[data-focus="true"] .admin-entry-card,
   .spectrum-app[data-focus="true"] .security-card {
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
     justify-content: center;
-    padding: 10px;
+    gap: 0;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .spectrum-app[data-focus="true"] .privacy-manage-action {
+    width: 100%;
+    min-height: 52px;
+    justify-content: center;
+    gap: 0;
+    overflow: hidden;
+    border-radius: 16px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .spectrum-app[data-focus="true"] .privacy-manage-action svg {
+    width: 22px;
+    height: 22px;
   }
 
   .spectrum-app[data-focus="true"] .dashboard-grid {
