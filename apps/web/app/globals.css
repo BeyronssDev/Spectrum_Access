@@ -2115,6 +2115,7 @@ svg {
 
 .auth-card {
   width: min(720px, 100%);
+  background: var(--surface-container-lowest);
   padding: 38px;
 }
 
@@ -2214,7 +2215,8 @@ svg {
 
 .auth-form input,
 .compact-form-grid input,
-.compact-form-grid select {
+.compact-form-grid select,
+.compact-form-grid textarea {
   min-height: 48px;
   width: 100%;
   border: 1px solid var(--outline-variant);
@@ -2223,6 +2225,16 @@ svg {
   color: var(--primary);
   outline: 0;
   padding: 0 14px;
+}
+
+.compact-form-grid textarea {
+  min-height: 116px;
+  padding-block: 12px;
+  resize: vertical;
+}
+
+.compact-form-grid-wide {
+  grid-column: 1 / -1;
 }
 
 .auth-submit {
@@ -2260,9 +2272,11 @@ svg {
 }
 
 .auth-professional-fields {
-  border-top: 1px solid var(--surface-container-high);
+  border: 1px solid var(--surface-container-high);
+  border-radius: 18px;
+  background: var(--surface-container-low);
   margin-top: 2px;
-  padding-top: 18px;
+  padding: 18px;
 }
 
 .auth-professional-fields .compact-form-grid {
