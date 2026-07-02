@@ -8,15 +8,21 @@ export class FirebaseAuthGateway implements AuthGateway {
   async getUser(lookup: UserLookup): Promise<AuthUserRecord> {
     const userRecord = await (lookup.uid
       ? this.auth.getUser(lookup.uid)
-      : this.auth.getUserByEmail(lookup.email ?? "")).catch(() => {
-      throw new ApplicationError("not-found", "User not found.");
+      : this.auth.getUserByEmail(lookup.email ?? "")).catch((error: unknown) => {
+      if (isAuthUserNotFoundError(error)) {
+        throw new ApplicationError("not-found", "User not found.");
+      }
+
+      throw error;
     });
+    const providerIds = userRecord.providerData.map((provider) => provider.providerId);
 
     return {
       uid: userRecord.uid,
       email: userRecord.email,
       displayName: userRecord.displayName,
-      providerIds: userRecord.providerData.map((provider) => provider.providerId),
+      providerIds,
+      hasPasswordProvider: hasPasswordProvider(userRecord, providerIds),
       customClaims: userRecord.customClaims
     };
   }
@@ -33,4 +39,17 @@ export class FirebaseAuthGateway implements AuthGateway {
 
     return this.auth.generatePasswordResetLink(email, actionCodeSettings);
   }
+}
+
+function isAuthUserNotFoundError(error: unknown): boolean {
+  const code = (error as { code?: unknown }).code;
+  return code === "auth/user-not-found";
+}
+
+function hasPasswordProvider(userRecord: { email?: string; passwordHash?: string }, providerIds: string[]): boolean {
+  return (
+    providerIds.includes("password") ||
+    (typeof userRecord.passwordHash === "string" && userRecord.passwordHash.length > 0) ||
+    (Boolean(userRecord.email) && providerIds.length === 0)
+  );
 }

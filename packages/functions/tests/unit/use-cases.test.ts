@@ -20,6 +20,7 @@ class FakeAuthGateway implements AuthGateway {
     uid: "target-user",
     email: "target@example.com",
     providerIds: ["password"],
+    hasPasswordProvider: true,
     customClaims: {}
   };
   usersByEmail = new Map<string, AuthUserRecord>([[this.user.email ?? "", this.user]]);
@@ -324,6 +325,34 @@ describe("functions use cases", () => {
     expect(email.passwordResets[0]?.resetUrl).toContain("https://spectrumaccess.info/auth/action");
     expect(email.passwordResets[0]?.resetUrl).toContain("mode=resetPassword");
     expect(email.passwordResets[0]?.resetUrl).toContain("oobCode=RESET_CODE");
+  });
+
+  it("sends password reset emails for password users without an explicit password provider id", async () => {
+    const { auth, email, useCases } = makeUseCases();
+    auth.user.providerIds = [];
+    auth.user.hasPasswordProvider = true;
+
+    const result = await useCases.requestPasswordReset({
+      email: "target@example.com",
+      locale: "ca"
+    });
+
+    expect(result).toEqual({ status: "accepted" });
+    expect(email.passwordResets).toHaveLength(1);
+  });
+
+  it("accepts password reset requests without emailing federated-only users", async () => {
+    const { auth, email, useCases } = makeUseCases();
+    auth.user.providerIds = ["google.com"];
+    auth.user.hasPasswordProvider = false;
+
+    const result = await useCases.requestPasswordReset({
+      email: "target@example.com",
+      locale: "ca"
+    });
+
+    expect(result).toEqual({ status: "accepted" });
+    expect(email.passwordResets).toHaveLength(0);
   });
 
   it("accepts password reset requests without revealing unknown emails", async () => {

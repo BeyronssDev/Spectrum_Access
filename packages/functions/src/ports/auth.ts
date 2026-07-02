@@ -8,6 +8,7 @@ export type AuthUserRecord = {
   email?: string;
   displayName?: string;
   providerIds: string[];
+  hasPasswordProvider: boolean;
   customClaims?: Record<string, unknown>;
 };
 

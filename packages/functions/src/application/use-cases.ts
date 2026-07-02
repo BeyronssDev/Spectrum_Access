@@ -131,7 +131,7 @@ export function createUseCases({ auth, clock, email, logger, appPublicUrl, place
         return accepted;
       }
 
-      if (!user.providerIds.includes("password")) {
+      if (!user.hasPasswordProvider) {
         logger?.info("Password reset request accepted without email delivery", {
           outcome: "non_password_provider",
           emailHash,
