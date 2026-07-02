@@ -2091,24 +2091,25 @@ function EventHistoryView({
   return (
     <div className="event-history-grid">
       <section className="event-history-main">
-        <div className="section-intro">
-          <CalendarDays aria-hidden="true" size={32} />
-          <div>
-            <span>{labels.experiences}</span>
-            <h2>{labels.title}</h2>
-            <p>{labels.intro}</p>
+        <div className="event-module-header">
+          <div className="event-module-title">
+            <CalendarDays aria-hidden="true" size={28} />
+            <div>
+              <span>{labels.experiences}</span>
+              <h2>{labels.title}</h2>
+              <p>{labels.intro}</p>
+            </div>
           </div>
-        </div>
-
-        <div className="event-search-row">
-          <label className="search-control">
-            <Search aria-hidden="true" size={18} />
-            <input value={query} placeholder={labels.searchPlaceholder} onChange={(event) => onQuery(event.target.value)} />
-          </label>
-          <button type="button" className="secondary-action" onClick={onLocate}>
-            <LocateFixed aria-hidden="true" size={16} />
-            {userLocation ? labels.refresh : copy[locale].mapLocationControl}
-          </button>
+          <div className="event-search-row">
+            <label className="event-search-control">
+              <Search aria-hidden="true" size={18} />
+              <input value={query} placeholder={labels.searchPlaceholder} onChange={(event) => onQuery(event.target.value)} />
+            </label>
+            <button type="button" className="secondary-action event-refresh-action" onClick={onLocate}>
+              <LocateFixed aria-hidden="true" size={16} />
+              {userLocation ? labels.refresh : copy[locale].mapLocationControl}
+            </button>
+          </div>
         </div>
 
         {history.series.length === 0 ? (
@@ -2180,146 +2181,154 @@ function EventHistoryView({
       <section className="panel event-form-panel">
         <PanelHeading title={labels.createTitle} />
         <div className="report-form">
-          <label>
-            <span>{labels.existingSeries}</span>
-            <select
-              value={draft.eventSeriesId}
-              onChange={(event) => onDraft({ eventSeriesId: event.target.value, eventEditionId: "", eventZoneId: "" })}
-            >
-              <option value="">{labels.newOption}</option>
-              {history.series.map((series) => (
-                <option key={series.id} value={series.id}>
-                  {series.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          {!draft.eventSeriesId ? (
-            <div className="compact-form-grid">
-              <label>
-                <span>{labels.catalogTitle}</span>
-                <input value={draft.seriesTitle} onChange={(event) => onDraft({ seriesTitle: event.target.value })} />
-              </label>
-              <label>
-                <span>{labels.city}</span>
-                <input value={draft.seriesCity} onChange={(event) => onDraft({ seriesCity: event.target.value })} />
-              </label>
-              <label>
-                <span>{labels.type}</span>
-                <select
-                  value={draft.seriesCategory}
-                  onChange={(event) => onDraft({ seriesCategory: event.target.value as EventCategory })}
-                >
-                  {eventCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {labels.categories[category]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>{labels.description}</span>
-                <input value={draft.seriesDescription} onChange={(event) => onDraft({ seriesDescription: event.target.value })} />
-              </label>
-            </div>
-          ) : null}
+          <div className="event-form-section">
+            <label>
+              <span>{labels.existingSeries}</span>
+              <select
+                value={draft.eventSeriesId}
+                onChange={(event) => onDraft({ eventSeriesId: event.target.value, eventEditionId: "", eventZoneId: "" })}
+              >
+                <option value="">{labels.newOption}</option>
+                {history.series.map((series) => (
+                  <option key={series.id} value={series.id}>
+                    {series.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!draft.eventSeriesId ? (
+              <div className="compact-form-grid event-creation-grid">
+                <label>
+                  <span>{labels.catalogTitle}</span>
+                  <input value={draft.seriesTitle} onChange={(event) => onDraft({ seriesTitle: event.target.value })} />
+                </label>
+                <label>
+                  <span>{labels.city}</span>
+                  <input value={draft.seriesCity} onChange={(event) => onDraft({ seriesCity: event.target.value })} />
+                </label>
+                <label>
+                  <span>{labels.type}</span>
+                  <select
+                    value={draft.seriesCategory}
+                    onChange={(event) => onDraft({ seriesCategory: event.target.value as EventCategory })}
+                  >
+                    {eventCategories.map((category) => (
+                      <option key={category} value={category}>
+                        {labels.categories[category]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{labels.description}</span>
+                  <input value={draft.seriesDescription} onChange={(event) => onDraft({ seriesDescription: event.target.value })} />
+                </label>
+              </div>
+            ) : null}
+          </div>
 
-          <label>
-            <span>{labels.existingEdition}</span>
-            <select
-              value={draft.eventEditionId}
-              onChange={(event) => onDraft({ eventEditionId: event.target.value, eventZoneId: "" })}
-            >
-              <option value="">{labels.newOption}</option>
-              {filteredEditions.map((edition) => (
-                <option key={edition.id} value={edition.id}>
-                  {edition.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          {!draft.eventEditionId ? (
-            <div className="compact-form-grid">
-              <label>
-                <span>{labels.edition}</span>
-                <input value={draft.editionTitle} onChange={(event) => onDraft({ editionTitle: event.target.value })} />
-              </label>
-              <label>
-                <span>{labels.year}</span>
-                <input
-                  type="number"
-                  min={1900}
-                  max={2200}
-                  value={draft.editionYear}
-                  onChange={(event) => onDraft({ editionYear: Number(event.target.value) })}
-                />
-              </label>
-              <label>
-                <span>{labels.startsAt}</span>
-                <input
-                  type="datetime-local"
-                  value={draft.editionStartsAt}
-                  onChange={(event) => onDraft({ editionStartsAt: event.target.value })}
-                />
-              </label>
-              <label>
-                <span>{labels.endsAt}</span>
-                <input type="datetime-local" value={draft.editionEndsAt} onChange={(event) => onDraft({ editionEndsAt: event.target.value })} />
-              </label>
-            </div>
-          ) : null}
+          <div className="event-form-section">
+            <label>
+              <span>{labels.existingEdition}</span>
+              <select
+                value={draft.eventEditionId}
+                onChange={(event) => onDraft({ eventEditionId: event.target.value, eventZoneId: "" })}
+              >
+                <option value="">{labels.newOption}</option>
+                {filteredEditions.map((edition) => (
+                  <option key={edition.id} value={edition.id}>
+                    {edition.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!draft.eventEditionId ? (
+              <div className="compact-form-grid event-creation-grid">
+                <label>
+                  <span>{labels.edition}</span>
+                  <input value={draft.editionTitle} onChange={(event) => onDraft({ editionTitle: event.target.value })} />
+                </label>
+                <label>
+                  <span>{labels.year}</span>
+                  <input
+                    type="number"
+                    min={1900}
+                    max={2200}
+                    value={draft.editionYear}
+                    onChange={(event) => onDraft({ editionYear: Number(event.target.value) })}
+                  />
+                </label>
+                <label className="span-two">
+                  <span>{labels.startsAt}</span>
+                  <input
+                    type="datetime-local"
+                    value={draft.editionStartsAt}
+                    onChange={(event) => onDraft({ editionStartsAt: event.target.value })}
+                  />
+                </label>
+                <label className="span-two">
+                  <span>{labels.endsAt}</span>
+                  <input type="datetime-local" value={draft.editionEndsAt} onChange={(event) => onDraft({ editionEndsAt: event.target.value })} />
+                </label>
+              </div>
+            ) : null}
+          </div>
 
-          <label>
-            <span>{labels.existingZone}</span>
-            <select value={draft.eventZoneId} onChange={(event) => onDraft({ eventZoneId: event.target.value })}>
-              <option value="">{labels.newOption}</option>
-              {filteredZones.map((zone) => (
-                <option key={zone.id} value={zone.id}>
-                  {zone.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {!draft.eventZoneId ? (
-            <div className="compact-form-grid">
-              <label>
-                <span>{labels.zone}</span>
-                <input value={draft.zoneName} onChange={(event) => onDraft({ zoneName: event.target.value })} />
-              </label>
-              <label>
-                <span>{labels.radiusMeters}</span>
-                <input
-                  type="number"
-                  min={10}
-                  max={5000}
-                  value={draft.zoneRadiusMeters}
-                  onChange={(event) => onDraft({ zoneRadiusMeters: Number(event.target.value) })}
-                />
-              </label>
-              <label className="span-two">
-                <span>{labels.zoneDescription}</span>
-                <input value={draft.zoneDescription} onChange={(event) => onDraft({ zoneDescription: event.target.value })} />
-              </label>
-            </div>
-          ) : null}
+          <div className="event-form-section">
+            <label>
+              <span>{labels.existingZone}</span>
+              <select value={draft.eventZoneId} onChange={(event) => onDraft({ eventZoneId: event.target.value })}>
+                <option value="">{labels.newOption}</option>
+                {filteredZones.map((zone) => (
+                  <option key={zone.id} value={zone.id}>
+                    {zone.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!draft.eventZoneId ? (
+              <div className="compact-form-grid event-creation-grid">
+                <label>
+                  <span>{labels.zone}</span>
+                  <input value={draft.zoneName} onChange={(event) => onDraft({ zoneName: event.target.value })} />
+                </label>
+                <label>
+                  <span>{labels.radiusMeters}</span>
+                  <input
+                    type="number"
+                    min={10}
+                    max={5000}
+                    value={draft.zoneRadiusMeters}
+                    onChange={(event) => onDraft({ zoneRadiusMeters: Number(event.target.value) })}
+                  />
+                </label>
+                <label className="span-two">
+                  <span>{labels.zoneDescription}</span>
+                  <input value={draft.zoneDescription} onChange={(event) => onDraft({ zoneDescription: event.target.value })} />
+                </label>
+              </div>
+            ) : null}
+          </div>
 
-          <label>
-            <span>{labels.observedAt}</span>
-            <input type="datetime-local" value={draft.observedAt} onChange={(event) => onDraft({ observedAt: event.target.value })} />
-          </label>
-          <label>
-            <span>{labels.description}</span>
-            <textarea value={draft.description} onChange={(event) => onDraft({ description: event.target.value })} />
-          </label>
-          <label className="file-input-label">
-            <Camera aria-hidden="true" size={18} />
-            <span>{photo?.name ?? labels.photo}</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => onPhoto(event.target.files?.[0] ?? null)}
-            />
-          </label>
+          <div className="event-form-section">
+            <label>
+              <span>{labels.observedAt}</span>
+              <input type="datetime-local" value={draft.observedAt} onChange={(event) => onDraft({ observedAt: event.target.value })} />
+            </label>
+            <label>
+              <span>{labels.description}</span>
+              <textarea value={draft.description} onChange={(event) => onDraft({ description: event.target.value })} />
+            </label>
+            <label className="file-input-label">
+              <Camera aria-hidden="true" size={18} />
+              <span>{photo?.name ?? labels.photo}</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => onPhoto(event.target.files?.[0] ?? null)}
+              />
+            </label>
+          </div>
 
           <div className="rating-stack">
             {(Object.entries(labels.criteria) as Array<[EventExperienceCriterion, string]>).map(([key, label]) => (
