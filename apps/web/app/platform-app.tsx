@@ -724,8 +724,14 @@ export function PlatformApp() {
                   <LogOut aria-hidden="true" size={20} />
                 </button>
               ) : (
-                <button type="button" className="secondary-action top-login-action" onClick={openAuthPanel}>
-                  <KeyRound aria-hidden="true" size={17} />
+                <button
+                  type="button"
+                  className="secondary-action top-login-action"
+                  aria-label={authCopy[locale].signInToContinue}
+                  title={authCopy[locale].signInToContinue}
+                  onClick={openAuthPanel}
+                >
+                  <UserRound aria-hidden="true" size={17} />
                   {authCopy[locale].signInToContinue}
                 </button>
               )}
