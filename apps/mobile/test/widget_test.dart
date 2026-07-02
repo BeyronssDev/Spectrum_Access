@@ -253,6 +253,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Spectrum Access'), findsWidgets);
+    expect(find.text('BETA'), findsWidgets);
     expect(find.text('Mode consulta'), findsWidgets);
     expect(find.text('Mapa Sensorial'), findsOneWidget);
     expect(find.text('Entra a Spectrum Access'), findsNothing);

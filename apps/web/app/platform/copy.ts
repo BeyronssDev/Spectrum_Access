@@ -4,6 +4,7 @@ export const copy: Record<
   Locale,
   {
     nav: Record<ViewId, string>;
+    betaLabel: string;
     status: string;
     focus: string;
     focusOn: string;
@@ -104,6 +105,7 @@ export const copy: Record<
       profiles: "Perfils",
       verified: "Verificats"
     },
+    betaLabel: "Beta",
     status: "Sessió protegida",
     focus: "Mode focus",
     focusOn: "Focus actiu",
@@ -212,6 +214,7 @@ export const copy: Record<
       profiles: "Perfiles",
       verified: "Verificados"
     },
+    betaLabel: "Beta",
     status: "Sesión protegida",
     focus: "Modo focus",
     focusOn: "Focus activo",
@@ -320,6 +323,7 @@ export const copy: Record<
       profiles: "Profiles",
       verified: "Expert"
     },
+    betaLabel: "Beta",
     status: "Protected session",
     focus: "Focus mode",
     focusOn: "Focus active",

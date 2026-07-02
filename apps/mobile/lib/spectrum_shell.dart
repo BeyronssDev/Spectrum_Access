@@ -21,6 +21,42 @@ const nearbyDiscoveryRadiusMeters = 100.0;
 const nearbyDiscoveryMaxResults = 8;
 const minimumPasswordLength = 12;
 
+class _BetaBadge extends StatelessWidget {
+  const _BetaBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = isDark
+        ? SpectrumColors.tertiaryContainer
+        : SpectrumColors.tertiary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: SpectrumColors.tertiaryContainer.withValues(
+          alpha: isDark ? 0.18 : 0.2,
+        ),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: foreground.withValues(alpha: 0.44)),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        maxLines: 1,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: foreground,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.8,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
 class SpectrumShell extends StatefulWidget {
   const SpectrumShell({
     required this.firebaseInitialization,
@@ -880,12 +916,19 @@ class _SpectrumShellState extends State<SpectrumShell> {
                 child: FittedBox(
                   alignment: Alignment.centerLeft,
                   fit: BoxFit.scaleDown,
-                  child: Text(
-                    labels.appName,
-                    maxLines: 1,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleLarge?.copyWith(fontSize: 18),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        labels.appName,
+                        maxLines: 1,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(fontSize: 18),
+                      ),
+                      const SizedBox(width: 8),
+                      _BetaBadge(label: labels.betaLabel),
+                    ],
                   ),
                 ),
               ),

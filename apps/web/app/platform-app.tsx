@@ -556,6 +556,7 @@ export function PlatformApp() {
             <div className="brand-copy">
               <div className="brand-title-row">
                 <strong>Spectrum Access</strong>
+                <span className="beta-badge">{c.betaLabel}</span>
                 <span className="mobile-screen-title" aria-hidden="true">
                   {c.nav[activeView]}
                 </span>

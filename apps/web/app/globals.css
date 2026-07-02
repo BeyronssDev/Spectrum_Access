@@ -176,6 +176,13 @@ svg {
   display: none;
 }
 
+.brand-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .official-logo {
   width: 54px;
   height: 54px;
@@ -199,6 +206,27 @@ svg {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.beta-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid rgba(204, 167, 48, 0.45);
+  border-radius: 999px;
+  background: rgba(204, 167, 48, 0.14);
+  padding: 3px 7px;
+  color: var(--tertiary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.spectrum-app[data-theme="dark"] .beta-badge {
+  border-color: rgba(233, 195, 73, 0.42);
+  background: rgba(233, 195, 73, 0.14);
+  color: var(--tertiary-container);
 }
 
 .primary-nav {
@@ -2841,15 +2869,15 @@ svg {
   }
 
   .brand-title-row {
-    display: flex;
+    flex-wrap: nowrap;
     align-items: baseline;
-    gap: 10px;
+    gap: 8px;
   }
 
   .mobile-screen-title {
     display: inline;
     flex: 0 1 auto;
-    max-width: 42%;
+    max-width: 36%;
     overflow: hidden;
     color: var(--secondary);
     font-family:

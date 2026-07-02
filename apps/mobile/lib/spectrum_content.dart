@@ -130,6 +130,7 @@ class AppCopy {
   const AppCopy({
     required this.appName,
     required this.subtitle,
+    required this.betaLabel,
     required this.home,
     required this.consult,
     required this.contribute,
@@ -218,6 +219,7 @@ class AppCopy {
 
   final String appName;
   final String subtitle;
+  final String betaLabel;
   final String home;
   final String consult;
   final String contribute;
@@ -408,6 +410,7 @@ const appCopies = {
   LocaleOption.ca: AppCopy(
     appName: 'Spectrum Access',
     subtitle: 'Sensory Accessibility',
+    betaLabel: 'Beta',
     home: 'Inici',
     consult: 'Consulta',
     contribute: 'Aportacions',
@@ -505,6 +508,7 @@ const appCopies = {
   LocaleOption.es: AppCopy(
     appName: 'Spectrum Access',
     subtitle: 'Sensory Accessibility',
+    betaLabel: 'Beta',
     home: 'Inicio',
     consult: 'Consulta',
     contribute: 'Aportaciones',
@@ -602,6 +606,7 @@ const appCopies = {
   LocaleOption.en: AppCopy(
     appName: 'Spectrum Access',
     subtitle: 'Sensory Accessibility',
+    betaLabel: 'Beta',
     home: 'Dashboard',
     consult: 'Discover',
     contribute: 'Report',
