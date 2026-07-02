@@ -6,7 +6,7 @@ export type SensoryKey = "noise" | "density" | "light" | "wait";
 export type MapLayerId = "roadmap" | "satellite" | "terrain";
 export type LocationState = "idle" | "locating" | "located" | "denied" | "unsupported" | "error";
 export type AuthMode = "login" | "register";
-export type RegisterAccountType = "user" | "professional";
+export type RegisterAccountType = "user" | "professional" | "organization";
 export type UserLocation = { lat: number; lng: number; accuracy?: number };
 
 export type ContributionDraft = {

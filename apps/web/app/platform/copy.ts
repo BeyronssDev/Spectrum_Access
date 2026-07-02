@@ -34,6 +34,8 @@ export const copy: Record<
     noPlacesTitle: string;
     noPlacesBody: string;
     noVerifiedProfiles: string;
+    noVerifiedProfessionals: string;
+    noVerifiedOrganizations: string;
     noChildProfiles: string;
     noSensoryProfile: string;
     locationRequiredForPlace: string;
@@ -84,6 +86,8 @@ export const copy: Record<
     sensoryProfile: string;
     verifiedTitle: string;
     verifiedIntro: string;
+    verifiedProfessionalsTitle: string;
+    verifiedOrganizationsTitle: string;
     license: string;
     registry: string;
     contact: string;
@@ -139,6 +143,8 @@ export const copy: Record<
     noPlacesBody:
       "Quan facis una aportació real, el lloc i les imatges quedaran pendents de moderació abans de publicar-se.",
     noVerifiedProfiles: "Encara no hi ha professionals o entitats verificades.",
+    noVerifiedProfessionals: "Encara no hi ha professionals verificats.",
+    noVerifiedOrganizations: "Encara no hi ha associacions verificades.",
     noChildProfiles: "Encara no hi ha perfils tutelats.",
     noSensoryProfile: "Encara no hi ha preferències sensorials guardades.",
     locationRequiredForPlace: "Activa la ubicació per crear un lloc nou amb coordenades reals.",
@@ -195,6 +201,8 @@ export const copy: Record<
     verifiedTitle: "Professionals i entitats verificades",
     verifiedIntro:
       "Perfils amb foto o logo, número de col·legiat o registre, i verificació manual abans de mostrar confiança pública.",
+    verifiedProfessionalsTitle: "Professionals verificats",
+    verifiedOrganizationsTitle: "Associacions verificades",
     license: "Col·legiat/da",
     registry: "Registre",
     contact: "Contactar",
@@ -249,6 +257,8 @@ export const copy: Record<
     noPlacesBody:
       "Cuando hagas una aportación real, el lugar y las imágenes quedarán pendientes de moderación antes de publicarse.",
     noVerifiedProfiles: "Todavía no hay profesionales o entidades verificadas.",
+    noVerifiedProfessionals: "Todavía no hay profesionales verificados.",
+    noVerifiedOrganizations: "Todavía no hay asociaciones verificadas.",
     noChildProfiles: "Todavía no hay perfiles tutelados.",
     noSensoryProfile: "Todavía no hay preferencias sensoriales guardadas.",
     locationRequiredForPlace: "Activa la ubicación para crear un lugar nuevo con coordenadas reales.",
@@ -305,6 +315,8 @@ export const copy: Record<
     verifiedTitle: "Profesionales y entidades verificadas",
     verifiedIntro:
       "Perfiles con foto o logo, número de colegiado o registro, y verificación manual antes de mostrar confianza pública.",
+    verifiedProfessionalsTitle: "Profesionales verificados",
+    verifiedOrganizationsTitle: "Asociaciones verificadas",
     license: "Colegiado/a",
     registry: "Registro",
     contact: "Contactar",
@@ -359,6 +371,8 @@ export const copy: Record<
     noPlacesBody:
       "When you make a real contribution, the place and images will stay pending moderation before publication.",
     noVerifiedProfiles: "No verified professionals or entities yet.",
+    noVerifiedProfessionals: "No verified professionals yet.",
+    noVerifiedOrganizations: "No verified associations yet.",
     noChildProfiles: "No tutored profiles yet.",
     noSensoryProfile: "No sensory preferences have been saved yet.",
     locationRequiredForPlace: "Enable location to create a new place with real coordinates.",
@@ -414,6 +428,8 @@ export const copy: Record<
     verifiedTitle: "Verified professionals and entities",
     verifiedIntro:
       "Profiles with photo or logo, license or registry number, and manual verification before showing public trust.",
+    verifiedProfessionalsTitle: "Verified professionals",
+    verifiedOrganizationsTitle: "Verified associations",
     license: "License",
     registry: "Registry",
     contact: "Contact",

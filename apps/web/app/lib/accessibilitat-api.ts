@@ -138,6 +138,17 @@ export type ProfessionalVerificationInput = {
   note?: string;
 };
 
+export type OrganizationVerificationInput = {
+  name: string;
+  description: string;
+  city: string;
+  website?: string;
+  registryNumber?: string;
+  logoPath?: string;
+  evidencePath?: string;
+  note?: string;
+};
+
 export type CallableResponse<T> = Promise<{ data: T }>;
 
 export interface AccessibilitatApi {
@@ -159,6 +170,9 @@ export interface AccessibilitatApi {
   completeUserOnboarding(input: CompleteUserOnboardingInput): CallableResponse<{ uid: string; status: "active"; roles: string[] }>;
   requestProfessionalVerification(
     input: ProfessionalVerificationInput
+  ): CallableResponse<{ profileId: string; verificationRequestId: string; status: "pending_verification" }>;
+  requestOrganizationVerification(
+    input: OrganizationVerificationInput
   ): CallableResponse<{ profileId: string; verificationRequestId: string; status: "pending_verification" }>;
   readCurrentAppUser(): Promise<AppUser | null>;
   subscribeToAuthState(callback: (user: User | null) => void): () => void;

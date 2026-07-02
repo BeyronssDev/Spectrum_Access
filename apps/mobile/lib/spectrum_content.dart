@@ -448,7 +448,9 @@ class AuthCopy {
     required this.register,
     required this.personalAccount,
     required this.professionalAccount,
+    required this.organizationAccount,
     required this.professionalRegisterIntro,
+    required this.organizationRegisterIntro,
     required this.email,
     required this.password,
     required this.confirmPassword,
@@ -472,21 +474,31 @@ class AuthCopy {
     required this.passwordResetSent,
     required this.passwordResetFailed,
     required this.professionalFieldsRequired,
+    required this.organizationFieldsRequired,
     required this.authFailed,
     required this.authCancelled,
     required this.authProviderDisabled,
     required this.authConfigurationError,
     required this.verificationSent,
     required this.professionalRegistrationSent,
+    required this.organizationRegistrationSent,
+    required this.verificationRequestFailed,
+    required this.retryVerification,
     required this.childAlias,
     required this.childAge,
     required this.createChildProfile,
     required this.childCreated,
     required this.professionalRequestTitle,
+    required this.professionalPublicName,
     required this.professionalName,
     required this.licenseNumber,
     required this.professionalCollege,
     required this.specialty,
+    required this.organizationName,
+    required this.organizationCity,
+    required this.organizationDescription,
+    required this.organizationWebsite,
+    required this.organizationRegistryNumber,
     required this.requestVerification,
     required this.verificationRequested,
   });
@@ -497,7 +509,9 @@ class AuthCopy {
   final String register;
   final String personalAccount;
   final String professionalAccount;
+  final String organizationAccount;
   final String professionalRegisterIntro;
+  final String organizationRegisterIntro;
   final String email;
   final String password;
   final String confirmPassword;
@@ -521,21 +535,31 @@ class AuthCopy {
   final String passwordResetSent;
   final String passwordResetFailed;
   final String professionalFieldsRequired;
+  final String organizationFieldsRequired;
   final String authFailed;
   final String authCancelled;
   final String authProviderDisabled;
   final String authConfigurationError;
   final String verificationSent;
   final String professionalRegistrationSent;
+  final String organizationRegistrationSent;
+  final String verificationRequestFailed;
+  final String retryVerification;
   final String childAlias;
   final String childAge;
   final String createChildProfile;
   final String childCreated;
   final String professionalRequestTitle;
+  final String professionalPublicName;
   final String professionalName;
   final String licenseNumber;
   final String professionalCollege;
   final String specialty;
+  final String organizationName;
+  final String organizationCity;
+  final String organizationDescription;
+  final String organizationWebsite;
+  final String organizationRegistryNumber;
   final String requestVerification;
   final String verificationRequested;
 }
@@ -567,7 +591,7 @@ const appCopies = {
     helpCard: 'Targeta d’ajuda',
     openHelpCard: 'Obrir targeta',
     openFullMap: 'Obrir mapa complet',
-    verifiedProfessionals: 'Professionals verificats',
+    verifiedProfessionals: 'Professionals i associacions verificades',
     viewAll: 'Veure tots',
     close: 'Tancar',
     search: 'Cerca llocs, ciutat o categoria',
@@ -630,7 +654,8 @@ const appCopies = {
     noPlacesTitle: 'Encara no hi ha llocs publicats',
     noPlacesBody:
         'Quan facis una aportació real, el lloc i les imatges quedaran pendents de moderació.',
-    noVerifiedProfiles: 'Encara no hi ha professionals verificats.',
+    noVerifiedProfiles:
+        'Encara no hi ha professionals o associacions verificades.',
     noChildProfiles: 'Encara no hi ha perfils tutelats.',
     createPlace: 'Crear lloc nou',
     placeName: 'Nom del lloc',
@@ -684,7 +709,7 @@ const appCopies = {
     helpCard: 'Tarjeta de ayuda',
     openHelpCard: 'Abrir tarjeta',
     openFullMap: 'Abrir mapa completo',
-    verifiedProfessionals: 'Profesionales verificados',
+    verifiedProfessionals: 'Profesionales y asociaciones verificadas',
     viewAll: 'Ver todos',
     close: 'Cerrar',
     search: 'Busca lugares, ciudad o categoría',
@@ -747,7 +772,8 @@ const appCopies = {
     noPlacesTitle: 'Todavía no hay lugares publicados',
     noPlacesBody:
         'Cuando hagas una aportación real, el lugar y las imágenes quedarán pendientes de moderación.',
-    noVerifiedProfiles: 'Todavía no hay profesionales verificados.',
+    noVerifiedProfiles:
+        'Todavía no hay profesionales o asociaciones verificadas.',
     noChildProfiles: 'Todavía no hay perfiles tutelados.',
     createPlace: 'Crear lugar nuevo',
     placeName: 'Nombre del lugar',
@@ -801,7 +827,7 @@ const appCopies = {
     helpCard: 'Help card',
     openHelpCard: 'Open card',
     openFullMap: 'Open full map',
-    verifiedProfessionals: 'Verified professionals',
+    verifiedProfessionals: 'Verified professionals and associations',
     viewAll: 'View all',
     close: 'Close',
     search: 'Search places, city or category',
@@ -862,7 +888,7 @@ const appCopies = {
     noPlacesTitle: 'No published places yet',
     noPlacesBody:
         'When you make a real contribution, the place and images will stay pending moderation.',
-    noVerifiedProfiles: 'No verified professionals yet.',
+    noVerifiedProfiles: 'No verified professionals or associations yet.',
     noChildProfiles: 'No tutored profiles yet.',
     createPlace: 'Create new place',
     placeName: 'Place name',
@@ -901,8 +927,11 @@ const authCopies = {
     register: 'Crear compte',
     personalAccount: 'Usuari',
     professionalAccount: 'Professional',
+    organizationAccount: 'Associació',
     professionalRegisterIntro:
         'El compte es crearà ara, però la verificació professional quedarà pendent fins que un administrador l’aprovi.',
+    organizationRegisterIntro:
+        'El compte es crearà ara, però la verificació de l’associació quedarà pendent fins que un administrador l’aprovi.',
     email: 'Email',
     password: 'Contrasenya',
     confirmPassword: 'Repeteix la contrasenya',
@@ -929,7 +958,9 @@ const authCopies = {
     passwordResetFailed:
         'No s’ha pogut enviar el correu de restabliment. Torna-ho a provar.',
     professionalFieldsRequired:
-        'Omple les dades professionals per enviar la verificació.',
+        'Omple les dades del professional per enviar la verificació.',
+    organizationFieldsRequired:
+        'Omple el nom, la ciutat i la descripció de l’associació.',
     authFailed: 'No s’ha pogut completar l’autenticació.',
     authCancelled: 'Has cancel·lat l’autenticació.',
     authProviderDisabled: 'No s’ha pogut completar l’autenticació.',
@@ -937,15 +968,26 @@ const authCopies = {
     verificationSent: 'Compte creat. Revisa el correu de verificació.',
     professionalRegistrationSent:
         'Compte creat. La verificació professional queda pendent de revisió.',
+    organizationRegistrationSent:
+        'Compte creat. La verificació de l’associació queda pendent de revisió.',
+    verificationRequestFailed:
+        'El compte s’ha creat, però no s’ha pogut enviar la sol·licitud de verificació. Revisa les dades i torna-ho a provar.',
+    retryVerification: 'Reintentar verificació',
     childAlias: 'Àlies infantil',
     childAge: 'Franja d’edat',
     createChildProfile: 'Crear perfil tutelat',
     childCreated: 'Perfil tutelat creat.',
     professionalRequestTitle: 'Sol·licitar perfil professional',
+    professionalPublicName: 'Nom professional públic',
     professionalName: 'Nom professional',
-    licenseNumber: 'Número de col·legiat/da',
-    professionalCollege: 'Col·legi professional',
-    specialty: 'Especialitat',
+    licenseNumber: 'Acreditació o número de col·legiat/da',
+    professionalCollege: 'Col·legi o entitat professional',
+    specialty: 'Especialitat o àmbit',
+    organizationName: 'Nom de l’associació',
+    organizationCity: 'Ciutat',
+    organizationDescription: 'Descripció de l’associació',
+    organizationWebsite: 'Web opcional',
+    organizationRegistryNumber: 'Número de registre opcional',
     requestVerification: 'Enviar verificació',
     verificationRequested: 'Sol·licitud enviada a revisió.',
   ),
@@ -957,8 +999,11 @@ const authCopies = {
     register: 'Crear cuenta',
     personalAccount: 'Usuario',
     professionalAccount: 'Profesional',
+    organizationAccount: 'Asociación',
     professionalRegisterIntro:
         'La cuenta se creará ahora, pero la verificación profesional quedará pendiente hasta que un administrador la apruebe.',
+    organizationRegisterIntro:
+        'La cuenta se creará ahora, pero la verificación de la asociación quedará pendiente hasta que un administrador la apruebe.',
     email: 'Email',
     password: 'Contraseña',
     confirmPassword: 'Repite la contraseña',
@@ -985,7 +1030,9 @@ const authCopies = {
     passwordResetFailed:
         'No se ha podido enviar el correo de restablecimiento. Inténtalo de nuevo.',
     professionalFieldsRequired:
-        'Rellena los datos profesionales para enviar la verificación.',
+        'Rellena los datos del profesional para enviar la verificación.',
+    organizationFieldsRequired:
+        'Rellena el nombre, la ciudad y la descripción de la asociación.',
     authFailed: 'No se ha podido completar la autenticación.',
     authCancelled: 'Has cancelado la autenticación.',
     authProviderDisabled: 'No se ha podido completar la autenticación.',
@@ -993,15 +1040,26 @@ const authCopies = {
     verificationSent: 'Cuenta creada. Revisa el correo de verificación.',
     professionalRegistrationSent:
         'Cuenta creada. La verificación profesional queda pendiente de revisión.',
+    organizationRegistrationSent:
+        'Cuenta creada. La verificación de la asociación queda pendiente de revisión.',
+    verificationRequestFailed:
+        'La cuenta se ha creado, pero no se ha podido enviar la solicitud de verificación. Revisa los datos e inténtalo de nuevo.',
+    retryVerification: 'Reintentar verificación',
     childAlias: 'Alias infantil',
     childAge: 'Franja de edad',
     createChildProfile: 'Crear perfil tutelado',
     childCreated: 'Perfil tutelado creado.',
     professionalRequestTitle: 'Solicitar perfil profesional',
+    professionalPublicName: 'Nombre profesional público',
     professionalName: 'Nombre profesional',
-    licenseNumber: 'Número de colegiado/a',
-    professionalCollege: 'Colegio profesional',
-    specialty: 'Especialidad',
+    licenseNumber: 'Acreditación o número de colegiado/a',
+    professionalCollege: 'Colegio o entidad profesional',
+    specialty: 'Especialidad o ámbito',
+    organizationName: 'Nombre de la asociación',
+    organizationCity: 'Ciudad',
+    organizationDescription: 'Descripción de la asociación',
+    organizationWebsite: 'Web opcional',
+    organizationRegistryNumber: 'Número de registro opcional',
     requestVerification: 'Enviar verificación',
     verificationRequested: 'Solicitud enviada a revisión.',
   ),
@@ -1013,8 +1071,11 @@ const authCopies = {
     register: 'Create account',
     personalAccount: 'User',
     professionalAccount: 'Professional',
+    organizationAccount: 'Association',
     professionalRegisterIntro:
         'The account will be created now, but professional verification stays pending until an administrator approves it.',
+    organizationRegisterIntro:
+        'The account will be created now, but association verification stays pending until an administrator approves it.',
     email: 'Email',
     password: 'Password',
     confirmPassword: 'Repeat password',
@@ -1040,7 +1101,9 @@ const authCopies = {
         'If this email is registered, you will receive a password reset link.',
     passwordResetFailed: 'We could not send the reset email. Please try again.',
     professionalFieldsRequired:
-        'Fill in the professional details to send verification.',
+        'Fill in the professional details before sending verification.',
+    organizationFieldsRequired:
+        'Fill in the association name, city and description.',
     authFailed: 'Authentication could not be completed.',
     authCancelled: 'Authentication was cancelled.',
     authProviderDisabled: 'Authentication could not be completed.',
@@ -1048,15 +1111,26 @@ const authCopies = {
     verificationSent: 'Account created. Check the verification email.',
     professionalRegistrationSent:
         'Account created. Professional verification is pending review.',
+    organizationRegistrationSent:
+        'Account created. Association verification is pending review.',
+    verificationRequestFailed:
+        'The account was created, but the verification request could not be sent. Review the details and try again.',
+    retryVerification: 'Retry verification',
     childAlias: 'Child alias',
     childAge: 'Age range',
     createChildProfile: 'Create tutored profile',
     childCreated: 'Tutored profile created.',
     professionalRequestTitle: 'Request professional profile',
+    professionalPublicName: 'Public professional name',
     professionalName: 'Professional name',
-    licenseNumber: 'License number',
-    professionalCollege: 'Professional college',
-    specialty: 'Specialty',
+    licenseNumber: 'Credential or license number',
+    professionalCollege: 'Professional college or entity',
+    specialty: 'Specialty or field',
+    organizationName: 'Association name',
+    organizationCity: 'City',
+    organizationDescription: 'Association description',
+    organizationWebsite: 'Optional website',
+    organizationRegistryNumber: 'Optional registry number',
     requestVerification: 'Send verification',
     verificationRequested: 'Request sent for review.',
   ),

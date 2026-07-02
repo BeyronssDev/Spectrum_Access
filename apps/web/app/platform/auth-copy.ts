@@ -15,7 +15,9 @@ export const authCopy: Record<
     accountType: string;
     registerAsUser: string;
     registerAsProfessional: string;
+    registerAsOrganization: string;
     professionalRegistrationTitle: string;
+    organizationRegistrationTitle: string;
     continueWithGoogle: string;
     continueWithApple: string;
     emailLogin: string;
@@ -38,7 +40,11 @@ export const authCopy: Record<
     authFailed: string;
     emailVerificationSent: string;
     professionalVerificationSent: string;
+    organizationVerificationSent: string;
+    verificationRequestFailed: string;
+    retryVerification: string;
     professionalFieldsRequired: string;
+    organizationFieldsRequired: string;
     contributionSent: string;
     createNewPlace: string;
     useSelectedPlace: string;
@@ -51,11 +57,17 @@ export const authCopy: Record<
     createChildProfile: string;
     childProfileCreated: string;
     professionalRequestTitle: string;
+    professionalPublicName: string;
     professionalName: string;
     licenseNumber: string;
     professionalCollege: string;
     professionalType: string;
     specialty: string;
+    organizationName: string;
+    organizationCity: string;
+    organizationDescription: string;
+    organizationWebsite: string;
+    organizationRegistryNumber: string;
     requestVerification: string;
     verificationRequested: string;
   }
@@ -73,8 +85,10 @@ export const authCopy: Record<
     cityOptional: "Ciutat opcional",
     accountType: "Tipus de compte",
     registerAsUser: "Usuari",
-    registerAsProfessional: "Professional",
-    professionalRegistrationTitle: "Dades professionals",
+    registerAsProfessional: "Professional especialitzat",
+    registerAsOrganization: "Associació",
+    professionalRegistrationTitle: "Dades del professional",
+    organizationRegistrationTitle: "Dades de l'associació",
     continueWithGoogle: "Continuar amb Google",
     continueWithApple: "Continuar amb Apple",
     emailLogin: "Entrar amb email",
@@ -98,7 +112,11 @@ export const authCopy: Record<
     authFailed: "No s'ha pogut completar l'autenticació. Torna-ho a provar.",
     emailVerificationSent: "Compte creat. T'hem enviat un correu de verificació.",
     professionalVerificationSent: "Compte professional creat. T'hem enviat el correu de verificació i la sol·licitud queda pendent de revisió.",
-    professionalFieldsRequired: "Omple les dades professionals abans de crear el compte.",
+    organizationVerificationSent: "Compte d'associació creat. T'hem enviat el correu de verificació i la sol·licitud queda pendent de revisió.",
+    verificationRequestFailed: "El compte s'ha creat, però no s'ha pogut enviar la sol·licitud de verificació. Revisa les dades i torna-ho a provar.",
+    retryVerification: "Reintentar verificació",
+    professionalFieldsRequired: "Omple les dades del professional abans d'enviar la verificació.",
+    organizationFieldsRequired: "Omple el nom, la ciutat i la descripció de l'associació.",
     contributionSent: "Aportació enviada a moderació.",
     createNewPlace: "Crear lloc nou",
     useSelectedPlace: "Usar el lloc seleccionat",
@@ -111,11 +129,17 @@ export const authCopy: Record<
     createChildProfile: "Crear perfil tutelat",
     childProfileCreated: "Perfil tutelat creat.",
     professionalRequestTitle: "Sol·licitar perfil professional",
+    professionalPublicName: "Nom professional públic",
     professionalName: "Nom professional",
-    licenseNumber: "Número de col·legiat/da",
-    professionalCollege: "Col·legi professional",
+    licenseNumber: "Acreditació o número de col·legiat/da",
+    professionalCollege: "Col·legi o entitat professional",
     professionalType: "Tipus de professional",
-    specialty: "Especialitat",
+    specialty: "Especialitat o àmbit",
+    organizationName: "Nom de l'associació",
+    organizationCity: "Ciutat",
+    organizationDescription: "Descripció de l'associació",
+    organizationWebsite: "Web opcional",
+    organizationRegistryNumber: "Número de registre opcional",
     requestVerification: "Enviar verificació",
     verificationRequested: "Sol·licitud enviada. Queda pendent de revisió manual."
   },
@@ -132,8 +156,10 @@ export const authCopy: Record<
     cityOptional: "Ciudad opcional",
     accountType: "Tipo de cuenta",
     registerAsUser: "Usuario",
-    registerAsProfessional: "Profesional",
-    professionalRegistrationTitle: "Datos profesionales",
+    registerAsProfessional: "Profesional especializado",
+    registerAsOrganization: "Asociación",
+    professionalRegistrationTitle: "Datos del profesional",
+    organizationRegistrationTitle: "Datos de la asociación",
     continueWithGoogle: "Continuar con Google",
     continueWithApple: "Continuar con Apple",
     emailLogin: "Entrar con email",
@@ -157,7 +183,11 @@ export const authCopy: Record<
     authFailed: "No se ha podido completar la autenticación. Inténtalo de nuevo.",
     emailVerificationSent: "Cuenta creada. Te hemos enviado un correo de verificación.",
     professionalVerificationSent: "Cuenta profesional creada. Te hemos enviado el correo de verificación y la solicitud queda pendiente de revisión.",
-    professionalFieldsRequired: "Rellena los datos profesionales antes de crear la cuenta.",
+    organizationVerificationSent: "Cuenta de asociación creada. Te hemos enviado el correo de verificación y la solicitud queda pendiente de revisión.",
+    verificationRequestFailed: "La cuenta se ha creado, pero no se ha podido enviar la solicitud de verificación. Revisa los datos e inténtalo de nuevo.",
+    retryVerification: "Reintentar verificación",
+    professionalFieldsRequired: "Rellena los datos del profesional antes de enviar la verificación.",
+    organizationFieldsRequired: "Rellena el nombre, la ciudad y la descripción de la asociación.",
     contributionSent: "Aportación enviada a moderación.",
     createNewPlace: "Crear lugar nuevo",
     useSelectedPlace: "Usar el lugar seleccionado",
@@ -170,11 +200,17 @@ export const authCopy: Record<
     createChildProfile: "Crear perfil tutelado",
     childProfileCreated: "Perfil tutelado creado.",
     professionalRequestTitle: "Solicitar perfil profesional",
+    professionalPublicName: "Nombre profesional público",
     professionalName: "Nombre profesional",
-    licenseNumber: "Número de colegiado/a",
-    professionalCollege: "Colegio profesional",
+    licenseNumber: "Acreditación o número de colegiado/a",
+    professionalCollege: "Colegio o entidad profesional",
     professionalType: "Tipo de profesional",
-    specialty: "Especialidad",
+    specialty: "Especialidad o ámbito",
+    organizationName: "Nombre de la asociación",
+    organizationCity: "Ciudad",
+    organizationDescription: "Descripción de la asociación",
+    organizationWebsite: "Web opcional",
+    organizationRegistryNumber: "Número de registro opcional",
     requestVerification: "Enviar verificación",
     verificationRequested: "Solicitud enviada. Queda pendiente de revisión manual."
   },
@@ -191,8 +227,10 @@ export const authCopy: Record<
     cityOptional: "Optional city",
     accountType: "Account type",
     registerAsUser: "User",
-    registerAsProfessional: "Professional",
+    registerAsProfessional: "Specialist professional",
+    registerAsOrganization: "Association",
     professionalRegistrationTitle: "Professional details",
+    organizationRegistrationTitle: "Association details",
     continueWithGoogle: "Continue with Google",
     continueWithApple: "Continue with Apple",
     emailLogin: "Sign in with email",
@@ -216,7 +254,11 @@ export const authCopy: Record<
     authFailed: "Authentication could not be completed. Please try again.",
     emailVerificationSent: "Account created. We sent you a verification email.",
     professionalVerificationSent: "Professional account created. We sent you a verification email and the request is pending review.",
-    professionalFieldsRequired: "Fill in the professional details before creating the account.",
+    organizationVerificationSent: "Association account created. We sent you a verification email and the request is pending review.",
+    verificationRequestFailed: "The account was created, but the verification request could not be sent. Review the details and try again.",
+    retryVerification: "Retry verification",
+    professionalFieldsRequired: "Fill in the professional details before sending verification.",
+    organizationFieldsRequired: "Fill in the association name, city and description.",
     contributionSent: "Contribution sent to moderation.",
     createNewPlace: "Create new place",
     useSelectedPlace: "Use selected place",
@@ -229,11 +271,17 @@ export const authCopy: Record<
     createChildProfile: "Create tutored profile",
     childProfileCreated: "Tutored profile created.",
     professionalRequestTitle: "Request professional profile",
+    professionalPublicName: "Public professional name",
     professionalName: "Professional name",
-    licenseNumber: "License number",
-    professionalCollege: "Professional college",
+    licenseNumber: "Credential or license number",
+    professionalCollege: "Professional college or entity",
     professionalType: "Professional type",
-    specialty: "Specialty",
+    specialty: "Specialty or field",
+    organizationName: "Association name",
+    organizationCity: "City",
+    organizationDescription: "Association description",
+    organizationWebsite: "Optional website",
+    organizationRegistryNumber: "Optional registry number",
     requestVerification: "Send verification",
     verificationRequested: "Request sent. It remains pending manual review."
   }

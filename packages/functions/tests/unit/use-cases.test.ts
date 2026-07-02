@@ -45,6 +45,11 @@ class FakeRepository implements SpectrumRepository {
   createdEventZones: Array<Record<string, unknown>> = [];
   createdEventExperiences: Array<Record<string, unknown>> = [];
   createdReviews: Array<Record<string, unknown>> = [];
+  createdVerificationRequests: Array<{
+    profileCollection: "professionalProfiles" | "organizationProfiles";
+    profile: Record<string, unknown>;
+    verification: Record<string, unknown>;
+  }> = [];
   rateLimitAllowed = true;
   reservedRateLimits: Array<Record<string, unknown>> = [];
 
@@ -152,6 +157,7 @@ class FakeRepository implements SpectrumRepository {
     profile: Record<string, unknown>;
     verification: Record<string, unknown>;
   }): Promise<{ profileId: string; verificationRequestId: string }> {
+    this.createdVerificationRequests.push(_input);
     return Promise.resolve({ profileId: "profile-1", verificationRequestId: "verification-1" });
   }
 
@@ -543,6 +549,80 @@ describe("functions use cases", () => {
         }
       )
     ).rejects.toMatchObject(new ApplicationError("permission-denied", "The child profile does not belong to this tutor."));
+  });
+
+  it("creates professional verification requests in the professional profile collection", async () => {
+    const { repository, useCases } = makeUseCases();
+
+    const result = await useCases.requestProfessionalVerification(
+      { uid: "professional-1", token: {} },
+      {
+        professionalName: "Dra. Prova",
+        licenseNumber: "COL 12345",
+        professionalCollege: "Col·legi Oficial",
+        specialty: "Psicologia autisme"
+      }
+    );
+
+    expect(result).toEqual({ profileId: "profile-1", verificationRequestId: "verification-1", status: "pending_verification" });
+    expect(repository.createdVerificationRequests[0]).toMatchObject({
+      profileCollection: "professionalProfiles",
+      profile: {
+        ownerUid: "professional-1",
+        professionalName: "Dra. Prova",
+        licenseNumber: "COL 12345",
+        professionalCollege: "Col·legi Oficial",
+        specialty: "Psicologia autisme",
+        verificationStatus: "pending_verification",
+        createdAt: "now",
+        updatedAt: "now"
+      },
+      verification: {
+        ownerUid: "professional-1",
+        profileType: "professional",
+        status: "open",
+        createdAt: "now",
+        updatedAt: "now"
+      }
+    });
+  });
+
+  it("creates organization verification requests in the organization profile collection", async () => {
+    const { repository, useCases } = makeUseCases();
+
+    const result = await useCases.requestOrganizationVerification(
+      { uid: "organization-1", token: {} },
+      {
+        name: "Associació Autisme Prova",
+        description: "Entitat de suport a famílies i persones autistes.",
+        city: "Barcelona",
+        website: "https://example.org",
+        registryNumber: "REG-123"
+      }
+    );
+
+    expect(result).toEqual({ profileId: "profile-1", verificationRequestId: "verification-1", status: "pending_verification" });
+    expect(repository.createdVerificationRequests[0]).toMatchObject({
+      profileCollection: "organizationProfiles",
+      profile: {
+        ownerUid: "organization-1",
+        name: "Associació Autisme Prova",
+        description: "Entitat de suport a famílies i persones autistes.",
+        city: "Barcelona",
+        website: "https://example.org",
+        registryNumber: "REG-123",
+        verificationStatus: "pending_verification",
+        createdAt: "now",
+        updatedAt: "now"
+      },
+      verification: {
+        ownerUid: "organization-1",
+        profileType: "organization",
+        status: "open",
+        createdAt: "now",
+        updatedAt: "now"
+      }
+    });
   });
 
   it("completes onboarding while preserving an existing createdAt", async () => {

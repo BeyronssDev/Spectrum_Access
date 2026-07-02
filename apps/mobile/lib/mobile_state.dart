@@ -1,6 +1,6 @@
 enum LocationStatus { idle, locating, located, denied, unavailable, error }
 
-enum RegistrationKind { user, professional }
+enum RegistrationKind { user, professional, organization }
 
 class DeviceLocation {
   const DeviceLocation({

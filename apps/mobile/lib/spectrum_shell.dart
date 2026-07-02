@@ -84,6 +84,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _authSubmitting = false;
   bool _userProfileEditing = false;
   bool _userProfileSubmitting = false;
+  bool _qualifiedAccountCreated = false;
   bool _placesLoading = false;
   bool _placesReloadQueued = false;
   bool _eventsLoading = false;
@@ -113,13 +114,17 @@ class _SpectrumShellState extends State<SpectrumShell> {
       TextEditingController();
   final TextEditingController _authCityController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
-  final TextEditingController _professionalNameController =
-      TextEditingController();
   final TextEditingController _licenseNumberController =
       TextEditingController();
   final TextEditingController _professionalCollegeController =
       TextEditingController();
   final TextEditingController _specialtyController = TextEditingController();
+  final TextEditingController _organizationDescriptionController =
+      TextEditingController();
+  final TextEditingController _organizationWebsiteController =
+      TextEditingController();
+  final TextEditingController _organizationRegistryController =
+      TextEditingController();
   final TextEditingController _userProfileNameController =
       TextEditingController();
   final TextEditingController _userProfileCityController =
@@ -186,10 +191,12 @@ class _SpectrumShellState extends State<SpectrumShell> {
     _authPublicNameController.dispose();
     _authCityController.dispose();
     _notesController.dispose();
-    _professionalNameController.dispose();
     _licenseNumberController.dispose();
     _professionalCollegeController.dispose();
     _specialtyController.dispose();
+    _organizationDescriptionController.dispose();
+    _organizationWebsiteController.dispose();
+    _organizationRegistryController.dispose();
     _userProfileNameController.dispose();
     _userProfileCityController.dispose();
     _userProfileAddressController.dispose();
@@ -440,6 +447,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
       _showHome = false;
       _showRegister = showRegister;
       _authMessage = null;
+      _qualifiedAccountCreated = false;
     });
   }
 
@@ -508,11 +516,16 @@ class _SpectrumShellState extends State<SpectrumShell> {
     final email = _authEmailController.text.trim();
     final password = _authPasswordController.text;
     final confirmPassword = _authPasswordRepeatController.text;
-    final professionalName = _professionalNameController.text.trim();
+    final city = _authCityController.text.trim();
     final licenseNumber = _licenseNumberController.text.trim();
     final professionalCollege = _professionalCollegeController.text.trim();
     final specialty = _specialtyController.text.trim();
+    final organizationDescription = _organizationDescriptionController.text
+        .trim();
+    final organizationWebsite = _organizationWebsiteController.text.trim();
+    final organizationRegistry = _organizationRegistryController.text.trim();
     final isProfessional = _registrationKind == RegistrationKind.professional;
+    final isOrganization = _registrationKind == RegistrationKind.organization;
 
     if (publicName.isEmpty ||
         email.isEmpty ||
@@ -538,35 +551,75 @@ class _SpectrumShellState extends State<SpectrumShell> {
     }
 
     if (isProfessional &&
-        (professionalName.isEmpty ||
-            licenseNumber.isEmpty ||
+        (licenseNumber.isEmpty ||
             professionalCollege.isEmpty ||
             specialty.isEmpty)) {
       setState(() => _authMessage = labels.professionalFieldsRequired);
       return Future<void>.value();
     }
 
+    if (isOrganization && (city.isEmpty || organizationDescription.isEmpty)) {
+      setState(() => _authMessage = labels.organizationFieldsRequired);
+      return Future<void>.value();
+    }
+
     return _runAuthAction(() async {
       final service = _service();
-      await service.registerWithEmail(
-        email: email,
-        password: password,
-        publicName: publicName,
-        city: _authCityController.text.trim(),
-        locale: _locale.name,
-      );
+      if (!_qualifiedAccountCreated) {
+        await service.registerWithEmail(
+          email: email,
+          password: password,
+          publicName: publicName,
+          city: city,
+          locale: _locale.name,
+        );
+      }
       if (isProfessional) {
-        await service.requestProfessionalVerification(
-          professionalName: professionalName,
-          licenseNumber: licenseNumber,
-          professionalCollege: professionalCollege,
-          specialty: specialty,
-        );
-        setStateIfMounted(
-          () => _authMessage = labels.professionalRegistrationSent,
-        );
+        try {
+          await service.requestProfessionalVerification(
+            professionalName: publicName,
+            licenseNumber: licenseNumber,
+            professionalCollege: professionalCollege,
+            specialty: specialty,
+          );
+        } catch (_) {
+          setStateIfMounted(() {
+            _qualifiedAccountCreated = true;
+            _authMessage = labels.verificationRequestFailed;
+          });
+          return;
+        }
+        setStateIfMounted(() {
+          _qualifiedAccountCreated = false;
+          _authMessage = labels.professionalRegistrationSent;
+        });
+      } else if (isOrganization) {
+        try {
+          await service.requestOrganizationVerification(
+            name: publicName,
+            description: organizationDescription,
+            city: city,
+            website: organizationWebsite.isEmpty ? null : organizationWebsite,
+            registryNumber: organizationRegistry.isEmpty
+                ? null
+                : organizationRegistry,
+          );
+        } catch (_) {
+          setStateIfMounted(() {
+            _qualifiedAccountCreated = true;
+            _authMessage = labels.verificationRequestFailed;
+          });
+          return;
+        }
+        setStateIfMounted(() {
+          _qualifiedAccountCreated = false;
+          _authMessage = labels.organizationRegistrationSent;
+        });
       } else {
-        setStateIfMounted(() => _authMessage = labels.verificationSent);
+        setStateIfMounted(() {
+          _qualifiedAccountCreated = false;
+          _authMessage = labels.verificationSent;
+        });
       }
     });
   }
@@ -1404,7 +1457,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
           onSignIn: () => _openAuthScreen(),
         );
       case MobileTab.contribute:
-        if (!isAuthenticated) {
+        if (!isAuthenticated || _qualifiedAccountCreated) {
           return _protectedAuthScreen(labels, authLabels);
         }
         return ReportScreen(
@@ -1463,21 +1516,30 @@ class _SpectrumShellState extends State<SpectrumShell> {
       showRegister: _showRegister,
       isSubmitting: _authSubmitting,
       authUnavailable: _authUnavailable,
+      verificationRetryPending: _qualifiedAccountCreated,
       message: _authMessage,
       emailController: _authEmailController,
       passwordController: _authPasswordController,
       passwordRepeatController: _authPasswordRepeatController,
       publicNameController: _authPublicNameController,
       cityController: _authCityController,
-      professionalNameController: _professionalNameController,
       licenseNumberController: _licenseNumberController,
       professionalCollegeController: _professionalCollegeController,
       specialtyController: _specialtyController,
+      organizationDescriptionController: _organizationDescriptionController,
+      organizationWebsiteController: _organizationWebsiteController,
+      organizationRegistryController: _organizationRegistryController,
       registrationKind: _registrationKind,
       standalone: false,
-      onToggleMode: () => setState(() => _showRegister = !_showRegister),
-      onRegistrationKindChanged: (kind) =>
-          setState(() => _registrationKind = kind),
+      onToggleMode: () => setState(() {
+        _showRegister = !_showRegister;
+        _qualifiedAccountCreated = false;
+      }),
+      onRegistrationKindChanged: (kind) => setState(() {
+        _registrationKind = kind;
+        _qualifiedAccountCreated = false;
+        _authMessage = null;
+      }),
       onEmailSubmit: _showRegister ? _registerWithEmail : _signInWithEmail,
       onPasswordReset: _requestPasswordReset,
       onGoogle: _signInWithGoogle,
@@ -1492,16 +1554,19 @@ class AuthScreen extends StatelessWidget {
     required this.showRegister,
     required this.isSubmitting,
     required this.authUnavailable,
+    required this.verificationRetryPending,
     required this.message,
     required this.emailController,
     required this.passwordController,
     required this.passwordRepeatController,
     required this.publicNameController,
     required this.cityController,
-    required this.professionalNameController,
     required this.licenseNumberController,
     required this.professionalCollegeController,
     required this.specialtyController,
+    required this.organizationDescriptionController,
+    required this.organizationWebsiteController,
+    required this.organizationRegistryController,
     required this.registrationKind,
     required this.onToggleMode,
     required this.onRegistrationKindChanged,
@@ -1517,16 +1582,19 @@ class AuthScreen extends StatelessWidget {
   final bool showRegister;
   final bool isSubmitting;
   final bool authUnavailable;
+  final bool verificationRetryPending;
   final String? message;
   final TextEditingController emailController;
   final TextEditingController passwordController;
   final TextEditingController passwordRepeatController;
   final TextEditingController publicNameController;
   final TextEditingController cityController;
-  final TextEditingController professionalNameController;
   final TextEditingController licenseNumberController;
   final TextEditingController professionalCollegeController;
   final TextEditingController specialtyController;
+  final TextEditingController organizationDescriptionController;
+  final TextEditingController organizationWebsiteController;
+  final TextEditingController organizationRegistryController;
   final RegistrationKind registrationKind;
   final VoidCallback onToggleMode;
   final ValueChanged<RegistrationKind> onRegistrationKindChanged;
@@ -1540,6 +1608,17 @@ class AuthScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final professionalRegister =
         showRegister && registrationKind == RegistrationKind.professional;
+    final organizationRegister =
+        showRegister && registrationKind == RegistrationKind.organization;
+    final qualifiedRegister = professionalRegister || organizationRegister;
+    final nameLabel = professionalRegister
+        ? authLabels.professionalPublicName
+        : organizationRegister
+        ? authLabels.organizationName
+        : authLabels.publicName;
+    final cityLabel = organizationRegister
+        ? authLabels.organizationCity
+        : authLabels.cityOptional;
     final content = SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
@@ -1592,6 +1671,11 @@ class AuthScreen extends StatelessWidget {
                         label: Text(authLabels.professionalAccount),
                         icon: const Icon(Icons.verified_user_outlined),
                       ),
+                      ButtonSegment(
+                        value: RegistrationKind.organization,
+                        label: Text(authLabels.organizationAccount),
+                        icon: const Icon(Icons.groups_outlined),
+                      ),
                     ],
                     selected: {registrationKind},
                     onSelectionChanged: (values) =>
@@ -1599,8 +1683,12 @@ class AuthScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                 ],
-                if (professionalRegister) ...[
-                  StatusMessage(message: authLabels.professionalRegisterIntro),
+                if (qualifiedRegister) ...[
+                  StatusMessage(
+                    message: professionalRegister
+                        ? authLabels.professionalRegisterIntro
+                        : authLabels.organizationRegisterIntro,
+                  ),
                   const SizedBox(height: 18),
                 ] else ...[
                   OutlinedButton.icon(
@@ -1621,9 +1709,7 @@ class AuthScreen extends StatelessWidget {
                 if (showRegister) ...[
                   TextField(
                     controller: publicNameController,
-                    decoration: InputDecoration(
-                      labelText: authLabels.publicName,
-                    ),
+                    decoration: InputDecoration(labelText: nameLabel),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -1663,18 +1749,9 @@ class AuthScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   TextField(
                     controller: cityController,
-                    decoration: InputDecoration(
-                      labelText: authLabels.cityOptional,
-                    ),
+                    decoration: InputDecoration(labelText: cityLabel),
                   ),
                   if (professionalRegister) ...[
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: professionalNameController,
-                      decoration: InputDecoration(
-                        labelText: authLabels.professionalName,
-                      ),
-                    ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: licenseNumberController,
@@ -1697,6 +1774,31 @@ class AuthScreen extends StatelessWidget {
                       ),
                     ),
                   ],
+                  if (organizationRegister) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: organizationDescriptionController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: authLabels.organizationDescription,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: organizationWebsiteController,
+                      keyboardType: TextInputType.url,
+                      decoration: InputDecoration(
+                        labelText: authLabels.organizationWebsite,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: organizationRegistryController,
+                      decoration: InputDecoration(
+                        labelText: authLabels.organizationRegistryNumber,
+                      ),
+                    ),
+                  ],
                 ],
                 const SizedBox(height: 18),
                 FilledButton.icon(
@@ -1710,7 +1812,9 @@ class AuthScreen extends StatelessWidget {
                         )
                       : const Icon(Icons.mail_outline),
                   label: Text(
-                    showRegister
+                    showRegister && verificationRetryPending
+                        ? authLabels.retryVerification
+                        : showRegister
                         ? authLabels.emailRegister
                         : authLabels.emailLogin,
                   ),

@@ -25,6 +25,7 @@ import type {
   CreateEventZoneInput,
   CreatePlaceInput,
   CreateReportInput,
+  OrganizationVerificationInput,
   ProfessionalVerificationInput,
   ResolvePlaceForContributionInput,
   SearchEventHistoryInput,
@@ -145,6 +146,14 @@ async function requestProfessionalVerification(input: ProfessionalVerificationIn
     ProfessionalVerificationInput,
     { profileId: string; verificationRequestId: string; status: "pending_verification" }
   >("requestProfessionalVerification");
+  return callable(input);
+}
+
+async function requestOrganizationVerification(input: OrganizationVerificationInput) {
+  const callable = getCallable<
+    OrganizationVerificationInput,
+    { profileId: string; verificationRequestId: string; status: "pending_verification" }
+  >("requestOrganizationVerification");
   return callable(input);
 }
 
@@ -308,6 +317,7 @@ export function createFirebaseAccessibilitatApi(): AccessibilitatApi {
     createChildProfile,
     completeUserOnboarding,
     requestProfessionalVerification,
+    requestOrganizationVerification,
     readCurrentAppUser,
     subscribeToAuthState,
     registerWithEmailPassword,

@@ -56,6 +56,7 @@ import {
   readStorageDownloadUrl,
   registerWithEmailPassword,
   requestPasswordReset,
+  requestOrganizationVerification,
   requestProfessionalVerification,
   resolvePlaceForContribution,
   searchNearbyPlaces,
@@ -65,6 +66,7 @@ import {
   subscribeToAuthState,
   uploadPlaceImage,
   uploadEventExperiencePhoto,
+  type OrganizationVerificationInput,
   type ProfessionalVerificationInput
 } from "./lib/firebase-actions";
 import { loadGoogleMaps, type GoogleMarkerInstance } from "./lib/google-maps";
@@ -133,6 +135,10 @@ type EventHistoryDraft = {
   observedAt: string;
   description: string;
 };
+
+type QualifiedVerificationRequest =
+  | { accountType: "professional"; input: ProfessionalVerificationInput }
+  | { accountType: "organization"; input: OrganizationVerificationInput };
 
 const defaultEventRatings: Record<EventExperienceCriterion, number> = {
   noise: 3,
@@ -384,6 +390,8 @@ export function PlatformApp() {
   const [privacyConsentLoaded, setPrivacyConsentLoaded] = useState(false);
   const [privacyPreferencesOpen, setPrivacyPreferencesOpen] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [pendingVerificationRequest, setPendingVerificationRequest] = useState<QualifiedVerificationRequest | null>(null);
+  const [isRetryingVerification, setIsRetryingVerification] = useState(false);
   const [isSubmittingContribution, setIsSubmittingContribution] = useState(false);
   const [isSubmittingEventExperience, setIsSubmittingEventExperience] = useState(false);
   const [contributionMessage, setContributionMessage] = useState<string | null>(null);
@@ -691,7 +699,6 @@ export function PlatformApp() {
     password: string;
     publicName: string;
     city?: string;
-    professional?: ProfessionalVerificationInput;
   }) => {
     await registerWithEmailPassword({
       email: input.email,
@@ -700,12 +707,51 @@ export function PlatformApp() {
       city: input.city,
       locale
     });
-    if (input.professional) {
-      await requestProfessionalVerification(input.professional);
-    }
     await refreshAppProfile();
+  };
+
+  const handleVerificationRequest = async (request: QualifiedVerificationRequest) => {
+    if (request.accountType === "professional") {
+      await requestProfessionalVerification(request.input);
+    } else {
+      await requestOrganizationVerification(request.input);
+    }
+
+    await refreshAppProfile();
+  };
+
+  const handleVerificationFailure = (request: QualifiedVerificationRequest) => {
+    setPendingVerificationRequest(request);
+    setAuthMessage(authCopy[locale].verificationRequestFailed);
+  };
+
+  const handleRegistrationComplete = (accountType: RegisterAccountType) => {
+    setPendingVerificationRequest(null);
     setAuthPanelOpen(false);
-    setAuthMessage(input.professional ? authCopy[locale].professionalVerificationSent : authCopy[locale].emailVerificationSent);
+    const messages = authCopy[locale];
+    const nextMessage =
+      accountType === "professional"
+        ? messages.professionalVerificationSent
+        : accountType === "organization"
+          ? messages.organizationVerificationSent
+          : messages.emailVerificationSent;
+    setAuthMessage(nextMessage);
+  };
+
+  const retryPendingVerification = async () => {
+    if (!pendingVerificationRequest || isRetryingVerification) {
+      return;
+    }
+
+    setIsRetryingVerification(true);
+    try {
+      await handleVerificationRequest(pendingVerificationRequest);
+      handleRegistrationComplete(pendingVerificationRequest.accountType);
+    } catch {
+      setAuthMessage(authCopy[locale].verificationRequestFailed);
+    } finally {
+      setIsRetryingVerification(false);
+    }
   };
 
   const handleEmailLogin = async (input: { email: string; password: string }) => {
@@ -1203,6 +1249,9 @@ export function PlatformApp() {
               onDarkMode={setDarkMode}
               onEmailLogin={handleEmailLogin}
               onEmailRegister={handleEmailRegister}
+              onVerificationRequest={handleVerificationRequest}
+              onVerificationFailure={handleVerificationFailure}
+              onRegistrationComplete={handleRegistrationComplete}
               onPasswordReset={handlePasswordReset}
               onGoogle={handleGoogleLogin}
               onApple={handleAppleLogin}
@@ -1323,7 +1372,39 @@ export function PlatformApp() {
         </section>
       </div>
 
-      {!authUser && authPanelOpen ? (
+      {pendingVerificationRequest ? (
+        <div className="auth-modal-backdrop" role="dialog" aria-modal="true" aria-label={authCopy[locale].retryVerification}>
+          <div className="auth-modal">
+            <button
+              type="button"
+              className="auth-modal-close"
+              aria-label="Tancar"
+              onClick={() => setPendingVerificationRequest(null)}
+            >
+              <Minus aria-hidden="true" size={20} />
+            </button>
+            <section className="auth-shell auth-shell-inline">
+              <div className="auth-card panel">
+                <div className="auth-copy">
+                  <h1>{authCopy[locale].retryVerification}</h1>
+                  <p>{authMessage ?? authCopy[locale].verificationRequestFailed}</p>
+                </div>
+                <button
+                  type="button"
+                  className="primary-action auth-submit"
+                  disabled={isRetryingVerification}
+                  onClick={() => void retryPendingVerification()}
+                >
+                  <Mail aria-hidden="true" size={17} />
+                  {isRetryingVerification ? "..." : authCopy[locale].retryVerification}
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      ) : null}
+
+      {!pendingVerificationRequest && authPanelOpen ? (
         <div className="auth-modal-backdrop" role="dialog" aria-modal="true" aria-label={authCopy[locale].signInRequiredTitle}>
           <div className="auth-modal">
             <button type="button" className="auth-modal-close" aria-label="Tancar" onClick={() => setAuthPanelOpen(false)}>
@@ -1339,6 +1420,9 @@ export function PlatformApp() {
               onDarkMode={setDarkMode}
               onEmailLogin={handleEmailLogin}
               onEmailRegister={handleEmailRegister}
+              onVerificationRequest={handleVerificationRequest}
+              onVerificationFailure={handleVerificationFailure}
+              onRegistrationComplete={handleRegistrationComplete}
               onPasswordReset={handlePasswordReset}
               onGoogle={handleGoogleLogin}
               onApple={handleAppleLogin}
@@ -1385,6 +1469,9 @@ function AuthGate({
   onDarkMode,
   onEmailLogin,
   onEmailRegister,
+  onVerificationRequest,
+  onVerificationFailure,
+  onRegistrationComplete,
   onPasswordReset,
   onGoogle,
   onApple
@@ -1402,8 +1489,10 @@ function AuthGate({
     password: string;
     publicName: string;
     city?: string;
-    professional?: ProfessionalVerificationInput;
   }) => Promise<void>;
+  onVerificationRequest: (request: QualifiedVerificationRequest) => Promise<void>;
+  onVerificationFailure: (request: QualifiedVerificationRequest) => void;
+  onRegistrationComplete: (accountType: RegisterAccountType) => void;
   onPasswordReset: (input: { email: string }) => Promise<void>;
   onGoogle: () => Promise<void>;
   onApple: () => Promise<void>;
@@ -1415,16 +1504,31 @@ function AuthGate({
   const [passwordRepeat, setPasswordRepeat] = useState("");
   const [publicName, setPublicName] = useState("");
   const [city, setCity] = useState("");
-  const [professionalForm, setProfessionalForm] = useState<ProfessionalVerificationInput>({
-    professionalName: "",
+  const [professionalForm, setProfessionalForm] = useState<Omit<ProfessionalVerificationInput, "professionalName">>({
     licenseNumber: "",
     professionalCollege: "",
     specialty: ""
   });
+  const [organizationForm, setOrganizationForm] = useState<Omit<OrganizationVerificationInput, "name" | "city">>({
+    description: "",
+    website: "",
+    registryNumber: ""
+  });
+  const [qualifiedAccountCreated, setQualifiedAccountCreated] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localMessage, setLocalMessage] = useState<string | null>(null);
 
   const isValidEmail = (value: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value.trim());
+  const isQualifiedRegistration = mode === "register" && accountType !== "user";
+  const accountNameLabel =
+    accountType === "professional" ? c.professionalPublicName : accountType === "organization" ? c.organizationName : c.publicName;
+  const cityLabel = accountType === "organization" ? c.organizationCity : c.cityOptional;
+
+  const selectAccountType = (nextAccountType: RegisterAccountType) => {
+    setAccountType(nextAccountType);
+    setQualifiedAccountCreated(false);
+    setLocalMessage(null);
+  };
 
   const runAuth = async (action: () => Promise<void>, errorMessage = c.authFailed) => {
     if (isSubmitting) {
@@ -1445,6 +1549,19 @@ function AuthGate({
   const submitEmail = () => {
     void runAuth(async () => {
       if (mode === "register") {
+        const normalizedEmail = email.trim();
+        const normalizedName = publicName.trim();
+        const normalizedCity = city.trim();
+        if (!normalizedName || !normalizedEmail || !password || !passwordRepeat) {
+          setLocalMessage(c.requiredFields);
+          return;
+        }
+
+        if (!isValidEmail(normalizedEmail)) {
+          setLocalMessage(c.invalidEmail);
+          return;
+        }
+
         if (password !== passwordRepeat) {
           setLocalMessage(c.passwordsMismatch);
           return;
@@ -1455,22 +1572,69 @@ function AuthGate({
           return;
         }
 
-        const professional =
-          accountType === "professional"
-            ? {
-                professionalName: professionalForm.professionalName.trim(),
-                licenseNumber: professionalForm.licenseNumber.trim(),
-                professionalCollege: professionalForm.professionalCollege.trim(),
-                specialty: professionalForm.specialty.trim()
-              }
-            : undefined;
+        let verificationRequest: QualifiedVerificationRequest | null = null;
 
-        if (professional && Object.values(professional).some((value) => !value)) {
-          setLocalMessage(c.professionalFieldsRequired);
-          return;
+        if (accountType === "professional") {
+          const professional = {
+            professionalName: normalizedName,
+            licenseNumber: professionalForm.licenseNumber.trim(),
+            professionalCollege: professionalForm.professionalCollege.trim(),
+            specialty: professionalForm.specialty.trim()
+          };
+
+          if (Object.values(professional).some((value) => !value)) {
+            setLocalMessage(c.professionalFieldsRequired);
+            return;
+          }
+
+          verificationRequest = { accountType: "professional", input: professional };
         }
 
-        await onEmailRegister({ email, password, publicName, city, professional });
+        if (accountType === "organization") {
+          const organization: OrganizationVerificationInput = {
+            name: normalizedName,
+            city: normalizedCity,
+            description: organizationForm.description.trim()
+          };
+          const website = organizationForm.website?.trim();
+          const registryNumber = organizationForm.registryNumber?.trim();
+          if (website) {
+            organization.website = website;
+          }
+          if (registryNumber) {
+            organization.registryNumber = registryNumber;
+          }
+
+          if (!organization.name || !organization.city || !organization.description) {
+            setLocalMessage(c.organizationFieldsRequired);
+            return;
+          }
+
+          verificationRequest = { accountType: "organization", input: organization };
+        }
+
+        if (!qualifiedAccountCreated) {
+          await onEmailRegister({
+            email: normalizedEmail,
+            password,
+            publicName: normalizedName,
+            city: normalizedCity || undefined
+          });
+        }
+
+        if (verificationRequest) {
+          try {
+            await onVerificationRequest(verificationRequest);
+          } catch {
+            setQualifiedAccountCreated(true);
+            setLocalMessage(c.verificationRequestFailed);
+            onVerificationFailure(verificationRequest);
+            return;
+          }
+        }
+
+        setQualifiedAccountCreated(false);
+        onRegistrationComplete(accountType);
         return;
       }
 
@@ -1526,47 +1690,71 @@ function AuthGate({
           <p>{c.signedOutIntro}</p>
         </div>
         <div className="auth-mode-tabs" role="tablist" aria-label="Auth mode">
-          <button type="button" data-active={mode === "register"} onClick={() => setMode("register")}>
+          <button
+            type="button"
+            data-active={mode === "register"}
+            onClick={() => {
+              setMode("register");
+              setQualifiedAccountCreated(false);
+            }}
+          >
             <UserPlus aria-hidden="true" size={17} />
             {c.register}
           </button>
-          <button type="button" data-active={mode === "login"} onClick={() => setMode("login")}>
+          <button
+            type="button"
+            data-active={mode === "login"}
+            onClick={() => {
+              setMode("login");
+              setQualifiedAccountCreated(false);
+            }}
+          >
             <KeyRound aria-hidden="true" size={17} />
             {c.login}
           </button>
         </div>
-        <div className="auth-provider-grid">
-          <button type="button" className="secondary-action" disabled={isSubmitting} onClick={() => void runAuth(onGoogle)}>
-            <GoogleLogo size={18} />
-            {c.continueWithGoogle}
-          </button>
-          <button type="button" className="secondary-action" disabled={isSubmitting} onClick={() => void runAuth(onApple)}>
-            <AppleLogo size={18} />
-            {c.continueWithApple}
-          </button>
-        </div>
+        {!isQualifiedRegistration ? (
+          <div className="auth-provider-grid">
+            <button type="button" className="secondary-action" disabled={isSubmitting} onClick={() => void runAuth(onGoogle)}>
+              <GoogleLogo size={18} />
+              {c.continueWithGoogle}
+            </button>
+            <button type="button" className="secondary-action" disabled={isSubmitting} onClick={() => void runAuth(onApple)}>
+              <AppleLogo size={18} />
+              {c.continueWithApple}
+            </button>
+          </div>
+        ) : null}
         <div className="auth-form">
           {mode === "register" ? (
             <>
               <div className="auth-field-group">
                 <span>{c.accountType}</span>
                 <div className="auth-mode-tabs account-type-tabs" role="radiogroup" aria-label={c.accountType}>
-                  <button type="button" data-active={accountType === "user"} onClick={() => setAccountType("user")}>
+                  <button type="button" data-active={accountType === "user"} onClick={() => selectAccountType("user")}>
                     <UserRound aria-hidden="true" size={17} />
                     {c.registerAsUser}
                   </button>
                   <button
                     type="button"
                     data-active={accountType === "professional"}
-                    onClick={() => setAccountType("professional")}
+                    onClick={() => selectAccountType("professional")}
                   >
                     <ShieldCheck aria-hidden="true" size={17} />
                     {c.registerAsProfessional}
                   </button>
+                  <button
+                    type="button"
+                    data-active={accountType === "organization"}
+                    onClick={() => selectAccountType("organization")}
+                  >
+                    <UsersRound aria-hidden="true" size={17} />
+                    {c.registerAsOrganization}
+                  </button>
                 </div>
               </div>
               <label>
-                <span>{c.publicName}</span>
+                <span>{accountNameLabel}</span>
                 <input value={publicName} onChange={(event) => setPublicName(event.target.value)} />
               </label>
             </>
@@ -1597,22 +1785,13 @@ function AuthGate({
                 <input type="password" value={passwordRepeat} onChange={(event) => setPasswordRepeat(event.target.value)} />
               </label>
               <label>
-                <span>{c.cityOptional}</span>
+                <span>{cityLabel}</span>
                 <input value={city} onChange={(event) => setCity(event.target.value)} />
               </label>
               {accountType === "professional" ? (
                 <div className="auth-professional-fields">
                   <span>{c.professionalRegistrationTitle}</span>
                   <div className="compact-form-grid">
-                    <label>
-                      <span>{c.professionalName}</span>
-                      <input
-                        value={professionalForm.professionalName}
-                        onChange={(event) =>
-                          setProfessionalForm((current) => ({ ...current, professionalName: event.target.value }))
-                        }
-                      />
-                    </label>
                     <label>
                       <span>{c.licenseNumber}</span>
                       <input
@@ -1641,12 +1820,51 @@ function AuthGate({
                   </div>
                 </div>
               ) : null}
+              {accountType === "organization" ? (
+                <div className="auth-professional-fields">
+                  <span>{c.organizationRegistrationTitle}</span>
+                  <div className="compact-form-grid">
+                    <label className="compact-form-grid-wide">
+                      <span>{c.organizationDescription}</span>
+                      <textarea
+                        value={organizationForm.description}
+                        onChange={(event) =>
+                          setOrganizationForm((current) => ({ ...current, description: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{c.organizationWebsite}</span>
+                      <input
+                        type="url"
+                        value={organizationForm.website}
+                        onChange={(event) => setOrganizationForm((current) => ({ ...current, website: event.target.value }))}
+                      />
+                    </label>
+                    <label>
+                      <span>{c.organizationRegistryNumber}</span>
+                      <input
+                        value={organizationForm.registryNumber}
+                        onChange={(event) =>
+                          setOrganizationForm((current) => ({ ...current, registryNumber: event.target.value }))
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
+              ) : null}
             </>
           ) : null}
         </div>
         <button type="button" className="primary-action auth-submit" disabled={isSubmitting} onClick={submitEmail}>
           <Mail aria-hidden="true" size={17} />
-          {isSubmitting ? "..." : mode === "register" ? c.emailRegister : c.emailLogin}
+          {isSubmitting
+            ? "..."
+            : mode === "register" && qualifiedAccountCreated
+              ? c.retryVerification
+              : mode === "register"
+                ? c.emailRegister
+                : c.emailLogin}
         </button>
         {localMessage || message ? <p className="form-status">{localMessage ?? message}</p> : null}
       </div>
@@ -1663,6 +1881,9 @@ function AuthRequiredView({
   onDarkMode,
   onEmailLogin,
   onEmailRegister,
+  onVerificationRequest,
+  onVerificationFailure,
+  onRegistrationComplete,
   onPasswordReset,
   onGoogle,
   onApple
@@ -1675,6 +1896,9 @@ function AuthRequiredView({
   onDarkMode: (enabled: boolean) => void;
   onEmailLogin: (input: { email: string; password: string }) => Promise<void>;
   onEmailRegister: (input: { email: string; password: string; publicName: string; city?: string }) => Promise<void>;
+  onVerificationRequest: (request: QualifiedVerificationRequest) => Promise<void>;
+  onVerificationFailure: (request: QualifiedVerificationRequest) => void;
+  onRegistrationComplete: (accountType: RegisterAccountType) => void;
   onPasswordReset: (input: { email: string }) => Promise<void>;
   onGoogle: () => Promise<void>;
   onApple: () => Promise<void>;
@@ -1696,6 +1920,9 @@ function AuthRequiredView({
         onDarkMode={onDarkMode}
         onEmailLogin={onEmailLogin}
         onEmailRegister={onEmailRegister}
+        onVerificationRequest={onVerificationRequest}
+        onVerificationFailure={onVerificationFailure}
+        onRegistrationComplete={onRegistrationComplete}
         onPasswordReset={onPasswordReset}
         onGoogle={onGoogle}
         onApple={onApple}
@@ -2760,52 +2987,58 @@ function VerifiedView({
       </section>
 
       <section className="verified-list">
-        {verifiedProfessionals.length > 0 || verifiedOrganizations.length > 0 ? (
-          <>
-            {verifiedProfessionals.map((professional) => (
-              <article key={professional.id} className="panel verified-profile-card">
-                <span className="portrait">{professional.initials}</span>
-                <div>
-                  <h3>{professional.name}</h3>
-                  <p>
-                    {professional.role} · {professional.city} · {professional.distance}
-                  </p>
-                  <strong>
-                    {c.license}: {professional.license}
-                  </strong>
-                  <span>{professional.college}</span>
-                  <em>{professional.specialty}</em>
-                </div>
-                <VerifiedBadge label={c.verified} />
-                <button type="button" className="secondary-action" disabled title={c.unavailableAction}>
-                  {c.contact}
-                </button>
-              </article>
-            ))}
-
-            {verifiedOrganizations.map((organization) => (
-              <article key={organization.id} className="panel verified-profile-card">
-                <span className="portrait entity">{organization.initials}</span>
-                <div>
-                  <h3>{organization.name}</h3>
-                  <p>
-                    {organization.city} · {organization.distance}
-                  </p>
-                  <strong>
-                    {c.registry}: {organization.registry}
-                  </strong>
-                  <span>{organization.description}</span>
-                </div>
-                <VerifiedBadge label={c.verified} />
-                <button type="button" className="secondary-action" disabled title={c.unavailableAction}>
-                  {c.contact}
-                </button>
-              </article>
-            ))}
-          </>
+        <h3>{c.verifiedProfessionalsTitle}</h3>
+        {verifiedProfessionals.length > 0 ? (
+          verifiedProfessionals.map((professional) => (
+            <article key={professional.id} className="panel verified-profile-card">
+              <span className="portrait">{professional.initials}</span>
+              <div>
+                <h3>{professional.name}</h3>
+                <p>
+                  {professional.role} · {professional.city} · {professional.distance}
+                </p>
+                <strong>
+                  {c.license}: {professional.license}
+                </strong>
+                <span>{professional.college}</span>
+                <em>{professional.specialty}</em>
+              </div>
+              <VerifiedBadge label={c.verified} />
+              <button type="button" className="secondary-action" disabled title={c.unavailableAction}>
+                {c.contact}
+              </button>
+            </article>
+          ))
         ) : (
           <article className="panel verified-profile-card">
-            <EmptyState icon={ShieldCheck} title={c.verifiedTitle} body={c.noVerifiedProfiles} />
+            <EmptyState icon={ShieldCheck} title={c.verifiedProfessionalsTitle} body={c.noVerifiedProfessionals} />
+          </article>
+        )}
+
+        <h3>{c.verifiedOrganizationsTitle}</h3>
+        {verifiedOrganizations.length > 0 ? (
+          verifiedOrganizations.map((organization) => (
+            <article key={organization.id} className="panel verified-profile-card">
+              <span className="portrait entity">{organization.initials}</span>
+              <div>
+                <h3>{organization.name}</h3>
+                <p>
+                  {organization.city} · {organization.distance}
+                </p>
+                <strong>
+                  {c.registry}: {organization.registry}
+                </strong>
+                <span>{organization.description}</span>
+              </div>
+              <VerifiedBadge label={c.verified} />
+              <button type="button" className="secondary-action" disabled title={c.unavailableAction}>
+                {c.contact}
+              </button>
+            </article>
+          ))
+        ) : (
+          <article className="panel verified-profile-card">
+            <EmptyState icon={UsersRound} title={c.verifiedOrganizationsTitle} body={c.noVerifiedOrganizations} />
           </article>
         )}
       </section>

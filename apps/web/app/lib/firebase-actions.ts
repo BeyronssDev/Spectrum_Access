@@ -8,6 +8,7 @@ export type {
   CreateEventZoneInput,
   CreatePlaceInput,
   CreateReportInput,
+  OrganizationVerificationInput,
   ProfessionalVerificationInput,
   SearchEventHistoryInput,
   SubmitCommentInput,
@@ -31,6 +32,7 @@ export const createReport = firebaseApi.createReport;
 export const createChildProfile = firebaseApi.createChildProfile;
 export const completeUserOnboarding = firebaseApi.completeUserOnboarding;
 export const requestProfessionalVerification = firebaseApi.requestProfessionalVerification;
+export const requestOrganizationVerification = firebaseApi.requestOrganizationVerification;
 export const readCurrentAppUser = firebaseApi.readCurrentAppUser;
 export const subscribeToAuthState = firebaseApi.subscribeToAuthState;
 export const registerWithEmailPassword = firebaseApi.registerWithEmailPassword;

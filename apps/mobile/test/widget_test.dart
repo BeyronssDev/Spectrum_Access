@@ -358,6 +358,47 @@ void main() {
     expect(find.text('Nom públic'), findsNothing);
   });
 
+  testWidgets(
+    'shows separate registration fields for users professionals and associations',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(const SpectrumAccessApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Aportacions'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Usuari'), findsOneWidget);
+      expect(find.text('Professional'), findsOneWidget);
+      expect(find.text('Associació'), findsOneWidget);
+      expect(find.text('Nom públic'), findsOneWidget);
+      expect(find.text('Continuar amb Google'), findsOneWidget);
+      expect(find.text('Continuar amb Apple'), findsOneWidget);
+
+      await tester.tap(find.text('Professional'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nom professional públic'), findsOneWidget);
+      expect(
+        find.text('Acreditació o número de col·legiat/da'),
+        findsOneWidget,
+      );
+      expect(find.text('Col·legi o entitat professional'), findsOneWidget);
+      expect(find.text('Especialitat o àmbit'), findsOneWidget);
+      expect(find.text('Continuar amb Google'), findsNothing);
+      expect(find.text('Continuar amb Apple'), findsNothing);
+
+      await tester.tap(find.text('Associació'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nom de l’associació'), findsOneWidget);
+      expect(find.text('Ciutat'), findsWidgets);
+      expect(find.text('Descripció de l’associació'), findsOneWidget);
+      expect(find.text('Web opcional'), findsOneWidget);
+      expect(find.text('Número de registre opcional'), findsOneWidget);
+      expect(find.text('Acreditació o número de col·legiat/da'), findsNothing);
+    },
+  );
+
   testWidgets('does not show old Firestore places before location discovery', (
     WidgetTester tester,
   ) async {
