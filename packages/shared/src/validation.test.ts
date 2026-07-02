@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   isAuthProviderId,
+  isAdultBirthDate,
+  isBirthDate,
   isEventExperienceRating,
   isLocale,
   isPlaceSource,
@@ -41,6 +43,17 @@ describe("shared validation", () => {
     assert.equal(isPlaceSource("spectrum"), true);
     assert.equal(isPlaceSource("google_places"), true);
     assert.equal(isPlaceSource("google"), false);
+  });
+
+  it("validates birth dates and adult age gates", () => {
+    const now = new Date(Date.UTC(2026, 6, 2));
+
+    assert.equal(isBirthDate("2008-07-02"), true);
+    assert.equal(isBirthDate("2008-02-31"), false);
+    assert.equal(isBirthDate("02/07/2008"), false);
+    assert.equal(isAdultBirthDate("2008-07-02", now), true);
+    assert.equal(isAdultBirthDate("2008-07-03", now), false);
+    assert.equal(isAdultBirthDate("2010-01-01", now), false);
   });
 
   it("requires complete sensory ratings", () => {

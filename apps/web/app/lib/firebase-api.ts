@@ -192,7 +192,14 @@ function providerIds(user: User, fallback: AuthProviderId): AuthProviderId[] {
   return ids.length > 0 ? Array.from(new Set(ids)) : [fallback];
 }
 
-async function finishAuthOnboarding(user: User, locale: Locale, fallbackProvider: AuthProviderId, city?: string) {
+async function finishAuthOnboarding(input: {
+  user: User;
+  locale: Locale;
+  fallbackProvider: AuthProviderId;
+  city?: string;
+  birthDate?: string;
+}) {
+  const { user, locale, fallbackProvider, city, birthDate } = input;
   const publicName = fallbackPublicName(user);
   await completeUserOnboarding({
     publicName,
@@ -200,14 +207,30 @@ async function finishAuthOnboarding(user: User, locale: Locale, fallbackProvider
     email: user.email ?? undefined,
     city: city?.trim() || undefined,
     locale,
-    authProviders: providerIds(user, fallbackProvider)
+    authProviders: providerIds(user, fallbackProvider),
+    ...(birthDate ? { birthDate } : {})
   });
+}
+
+async function finishFederatedAuth(user: User, locale: Locale, fallbackProvider: AuthProviderId, birthDate?: string) {
+  const existingProfile = await readCurrentAppUser();
+  if (existingProfile) {
+    return { status: "complete" as const, user };
+  }
+
+  if (!birthDate) {
+    return { status: "age_gate_required" as const, user, providerId: fallbackProvider };
+  }
+
+  await finishAuthOnboarding({ user, locale, fallbackProvider, birthDate });
+  return { status: "complete" as const, user };
 }
 
 async function registerWithEmailPassword(input: {
   email: string;
   password: string;
   publicName: string;
+  birthDate: string;
   city?: string;
   locale: Locale;
 }) {
@@ -221,7 +244,8 @@ async function registerWithEmailPassword(input: {
     email: credential.user.email ?? input.email,
     city: input.city?.trim() || undefined,
     locale: input.locale,
-    authProviders: ["password"]
+    authProviders: ["password"],
+    birthDate: input.birthDate
   });
   return credential.user;
 }
@@ -229,7 +253,10 @@ async function registerWithEmailPassword(input: {
 async function loginWithEmailPassword(input: { email: string; password: string; locale: Locale }) {
   const app = requireFirebaseApp();
   const credential = await signInWithEmailAndPassword(getAuth(app), input.email, input.password);
-  await finishAuthOnboarding(credential.user, input.locale, "password");
+  const existingProfile = await readCurrentAppUser();
+  if (!existingProfile) {
+    await finishAuthOnboarding({ user: credential.user, locale: input.locale, fallbackProvider: "password" });
+  }
   return credential.user;
 }
 
@@ -249,21 +276,39 @@ async function requestPasswordReset(input: { email: string; locale: Locale }) {
   }
 }
 
-async function loginWithGoogle(locale: Locale) {
+async function loginWithGoogle(input: { locale: Locale; birthDate?: string }) {
   const app = requireFirebaseApp();
   const credential = await signInWithPopup(getAuth(app), new GoogleAuthProvider());
-  await finishAuthOnboarding(credential.user, locale, "google.com");
-  return credential.user;
+  return finishFederatedAuth(credential.user, input.locale, "google.com", input.birthDate);
 }
 
-async function loginWithApple(locale: Locale) {
+async function loginWithApple(input: { locale: Locale; birthDate?: string }) {
   const app = requireFirebaseApp();
   const provider = new OAuthProvider("apple.com");
   provider.addScope("email");
   provider.addScope("name");
   const credential = await signInWithPopup(getAuth(app), provider);
-  await finishAuthOnboarding(credential.user, locale, "apple.com");
-  return credential.user;
+  return finishFederatedAuth(credential.user, input.locale, "apple.com", input.birthDate);
+}
+
+async function completeFederatedAgeGate(input: { locale: Locale; providerId: AuthProviderId; birthDate: string }) {
+  const app = requireFirebaseApp();
+  const user = getAuth(app).currentUser;
+  if (!user) {
+    throw new Error("auth-required");
+  }
+
+  await finishAuthOnboarding({
+    user,
+    locale: input.locale,
+    fallbackProvider: input.providerId,
+    birthDate: input.birthDate
+  });
+  return user;
+}
+
+async function cancelFederatedAgeGate() {
+  await logout();
 }
 
 async function logout() {
@@ -325,6 +370,8 @@ export function createFirebaseAccessibilitatApi(): AccessibilitatApi {
     requestPasswordReset,
     loginWithGoogle,
     loginWithApple,
+    completeFederatedAgeGate,
+    cancelFederatedAgeGate,
     logout,
     uploadPlaceImage,
     uploadEventExperiencePhoto,

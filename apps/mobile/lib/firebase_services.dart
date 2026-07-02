@@ -64,6 +64,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     String? displayName,
     String? email,
     String? city,
+    String? birthDate,
     required List<String> authProviders,
   }) {
     return _functions.httpsCallable('completeUserOnboarding').call({
@@ -71,6 +72,8 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       if (displayName != null) 'displayName': displayName,
       if (email != null) 'email': email,
       if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+      if (birthDate != null && birthDate.trim().isNotEmpty)
+        'birthDate': birthDate.trim(),
       'locale': locale,
       'authProviders': authProviders,
     });
@@ -81,6 +84,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     required String email,
     required String password,
     required String publicName,
+    required String birthDate,
     required String locale,
     String? city,
   }) async {
@@ -95,6 +99,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       displayName: publicName,
       email: credential.user?.email ?? email,
       city: city,
+      birthDate: birthDate,
       locale: locale,
       authProviders: const ['password'],
     );
@@ -199,7 +204,10 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
   }
 
   @override
-  Future<void> signInWithGoogle({required String locale}) async {
+  Future<void> signInWithGoogle({
+    required String locale,
+    String? birthDate,
+  }) async {
     await _ensureGoogleSignInInitialized();
     final googleUser = await GoogleSignIn.instance.authenticate();
     final googleAuth = googleUser.authentication;
@@ -211,6 +219,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       userCredential.user,
       locale,
       'google.com',
+      birthDate: birthDate,
     );
   }
 
@@ -220,7 +229,10 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
   }
 
   @override
-  Future<void> signInWithApple({required String locale}) async {
+  Future<void> signInWithApple({
+    required String locale,
+    String? birthDate,
+  }) async {
     final appleCredential = await SignInWithApple.getAppleIDCredential(
       scopes: [
         AppleIDAuthorizationScopes.email,
@@ -243,7 +255,12 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     if (fullName.isNotEmpty && userCredential.user?.displayName == null) {
       await userCredential.user?.updateDisplayName(fullName);
     }
-    await _completeOnboardingFromUser(userCredential.user, locale, 'apple.com');
+    await _completeOnboardingFromUser(
+      userCredential.user,
+      locale,
+      'apple.com',
+      birthDate: birthDate,
+    );
   }
 
   @override
@@ -266,10 +283,18 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
   Future<void> _completeOnboardingFromUser(
     User? user,
     String locale,
-    String fallbackProvider,
-  ) async {
+    String fallbackProvider, {
+    String? birthDate,
+  }) async {
     if (user == null) {
       throw StateError('auth-user-missing');
+    }
+    if (await loadCurrentUserProfile() != null) {
+      return;
+    }
+    if (birthDate == null || birthDate.trim().isEmpty) {
+      await signOut();
+      throw StateError('age-gate-required');
     }
 
     final publicName = user.displayName?.trim().isNotEmpty == true
@@ -293,6 +318,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       displayName: user.displayName ?? publicName,
       email: user.email,
       locale: locale,
+      birthDate: birthDate,
       authProviders: authProviders.isEmpty ? [fallbackProvider] : authProviders,
     );
   }

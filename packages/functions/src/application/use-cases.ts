@@ -4,9 +4,11 @@ import {
   type EventHistorySearchResult,
   type EventSeries,
   type EventZone,
+  isAdultBirthDate,
   isAuthProviderId,
   type DiscoveredPlace,
   type Locale,
+  minimumAccountAge,
   type Place,
   type UserRole,
   type VerificationRequestType
@@ -28,6 +30,7 @@ import type { GooglePlaceCandidate, PlacesGateway } from "../ports/places.js";
 import type { SpectrumRepository } from "../ports/repositories.js";
 import {
   optionalBoolean,
+  optionalBirthDate,
   optionalChildAgeRange,
   optionalEmail,
   optionalOwnerPath,
@@ -240,12 +243,27 @@ export function createUseCases({ auth, clock, places, repository }: UseCaseDepen
       const authProviders = readAuthProviders(data.authProviders);
       const email = optionalEmail(data, "email") ?? (typeof context.token.email === "string" ? context.token.email : undefined);
       const city = optionalText(data, "city", 120);
+      const birthDate = optionalBirthDate(data, "birthDate");
       const existing = await repository.getUser(uid);
       if (existing?.status === "disabled") {
         fail("permission-denied", "This account is disabled.");
       }
+      if (!existing && !birthDate) {
+        fail("failed-precondition", "Adult confirmation is required.");
+      }
+      if (birthDate && !isAdultBirthDate(birthDate)) {
+        fail("permission-denied", "Adult account registration requires age 18 or older.");
+      }
 
       const roles = ensureUserRoles(existing?.roles, "user", true);
+      const adultGate = birthDate
+        ? {
+            adultConfirmed: true,
+            minimumAge: minimumAccountAge,
+            method: "self_declared",
+            confirmedAt: now
+          }
+        : undefined;
 
       await repository.saveUser(uid, {
         uid,
@@ -257,6 +275,7 @@ export function createUseCases({ auth, clock, places, repository }: UseCaseDepen
         roles,
         status: "active",
         locale,
+        ...(adultGate ? { adultGate } : {}),
         onboardingCompletedAt: existing?.onboardingCompletedAt ?? now,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now

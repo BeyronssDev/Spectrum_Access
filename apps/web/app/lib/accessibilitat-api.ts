@@ -126,7 +126,16 @@ export type CompleteUserOnboardingInput = {
   city?: string;
   locale: Locale;
   authProviders: AuthProviderId[];
+  birthDate?: string;
 };
+
+export type AgeGateInput = {
+  birthDate: string;
+};
+
+export type FederatedAuthResult =
+  | { status: "complete"; user: User }
+  | { status: "age_gate_required"; user: User; providerId: AuthProviderId };
 
 export type ProfessionalVerificationInput = {
   professionalName: string;
@@ -180,13 +189,16 @@ export interface AccessibilitatApi {
     email: string;
     password: string;
     publicName: string;
+    birthDate: string;
     city?: string;
     locale: Locale;
   }): Promise<User>;
   loginWithEmailPassword(input: { email: string; password: string; locale: Locale }): Promise<User>;
   requestPasswordReset(input: { email: string; locale: Locale }): Promise<void>;
-  loginWithGoogle(locale: Locale): Promise<User>;
-  loginWithApple(locale: Locale): Promise<User>;
+  loginWithGoogle(input: { locale: Locale; birthDate?: string }): Promise<FederatedAuthResult>;
+  loginWithApple(input: { locale: Locale; birthDate?: string }): Promise<FederatedAuthResult>;
+  completeFederatedAgeGate(input: { locale: Locale; providerId: AuthProviderId; birthDate: string }): Promise<User>;
+  cancelFederatedAgeGate(): Promise<void>;
   logout(): Promise<void>;
   uploadPlaceImage(
     placeId: string,

@@ -39,7 +39,15 @@ import {
 } from "lucide-react";
 import type { User } from "firebase/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { eventCategories, type AppUser, type EventCategory, type EventExperienceCriterion, type EventHistorySearchResult } from "@accessibilitat/shared";
+import {
+  eventCategories,
+  isAdultBirthDate,
+  type AppUser,
+  type AuthProviderId,
+  type EventCategory,
+  type EventExperienceCriterion,
+  type EventHistorySearchResult
+} from "@accessibilitat/shared";
 import { disableGoogleAnalytics, initializeGoogleAnalytics } from "./lib/google-analytics";
 import {
   createChildProfile,
@@ -47,6 +55,8 @@ import {
   createEventSeries,
   createEventZone,
   createPlace,
+  cancelFederatedAgeGate,
+  completeFederatedAgeGate,
   listActivePlaces,
   loginWithApple,
   loginWithEmailPassword,
@@ -106,6 +116,7 @@ import type {
 import { AppleLogo, EmptyState, GoogleLogo, OfficialLogo, PanelHeading, ProfileCard, ToggleButton } from "./platform/ui-elements";
 
 const minimumPasswordLength = 12;
+type FederatedAgeGateProvider = Extract<AuthProviderId, "google.com" | "apple.com">;
 const nearbyPlaceSearchLimit = 10;
 const nearbyPlaceDisplayLimit = 5;
 const eventSearchRadiusMeters = 10000;
@@ -482,6 +493,12 @@ export function PlatformApp() {
   }, [locale]);
 
   useEffect(() => {
+    if (authChecked && authUser && !appUser && !authPanelOpen) {
+      setAuthPanelOpen(true);
+    }
+  }, [appUser, authChecked, authPanelOpen, authUser]);
+
+  useEffect(() => {
     let active = true;
 
     listActivePlaces()
@@ -698,12 +715,14 @@ export function PlatformApp() {
     email: string;
     password: string;
     publicName: string;
+    birthDate: string;
     city?: string;
   }) => {
     await registerWithEmailPassword({
       email: input.email,
       password: input.password,
       publicName: input.publicName,
+      birthDate: input.birthDate,
       city: input.city,
       locale
     });
@@ -764,16 +783,34 @@ export function PlatformApp() {
     await requestPasswordReset({ ...input, locale });
   };
 
-  const handleGoogleLogin = async () => {
-    await loginWithGoogle(locale);
+  const handleGoogleLogin = async (input?: { birthDate?: string }) => {
+    const result = await loginWithGoogle({ locale, birthDate: input?.birthDate });
+    if (result.status === "complete") {
+      await refreshAppProfile();
+      setAuthPanelOpen(false);
+    }
+    return result;
+  };
+
+  const handleAppleLogin = async (input?: { birthDate?: string }) => {
+    const result = await loginWithApple({ locale, birthDate: input?.birthDate });
+    if (result.status === "complete") {
+      await refreshAppProfile();
+      setAuthPanelOpen(false);
+    }
+    return result;
+  };
+
+  const handleFederatedAgeGateComplete = async (input: { providerId: FederatedAgeGateProvider; birthDate: string }) => {
+    await completeFederatedAgeGate({ locale, providerId: input.providerId, birthDate: input.birthDate });
     await refreshAppProfile();
     setAuthPanelOpen(false);
   };
 
-  const handleAppleLogin = async () => {
-    await loginWithApple(locale);
-    await refreshAppProfile();
-    setAuthPanelOpen(false);
+  const handleFederatedAgeGateCancel = async () => {
+    await cancelFederatedAgeGate();
+    setAuthUser(null);
+    setAppUser(null);
   };
 
   const handleLogout = async () => {
@@ -815,7 +852,7 @@ export function PlatformApp() {
       return;
     }
 
-    if (!authUser) {
+    if (!authUser || !appUser) {
       setActiveView("contribute");
       setContributionMessage(authCopy[locale].signInRequiredIntro);
       return;
@@ -915,7 +952,7 @@ export function PlatformApp() {
       return;
     }
 
-    if (!authUser) {
+    if (!authUser || !appUser) {
       setActiveView("events");
       setEventMessage(authCopy[locale].signInRequiredIntro);
       return;
@@ -1017,7 +1054,7 @@ export function PlatformApp() {
     }
   };
 
-  const isAuthenticated = Boolean(authUser);
+  const isAuthenticated = Boolean(authUser && appUser);
   const mapsConsentGranted = Boolean(privacyConsent?.maps);
   const sessionStatusLabel = !authChecked
     ? authCopy[locale].loadingSession
@@ -1255,6 +1292,8 @@ export function PlatformApp() {
               onPasswordReset={handlePasswordReset}
               onGoogle={handleGoogleLogin}
               onApple={handleAppleLogin}
+              onFederatedAgeGateComplete={handleFederatedAgeGateComplete}
+              onFederatedAgeGateCancel={handleFederatedAgeGateCancel}
             />
           ) : null}
 
@@ -1426,6 +1465,8 @@ export function PlatformApp() {
               onPasswordReset={handlePasswordReset}
               onGoogle={handleGoogleLogin}
               onApple={handleAppleLogin}
+              onFederatedAgeGateComplete={handleFederatedAgeGateComplete}
+              onFederatedAgeGateCancel={handleFederatedAgeGateCancel}
             />
           </div>
         </div>
@@ -1474,7 +1515,9 @@ function AuthGate({
   onRegistrationComplete,
   onPasswordReset,
   onGoogle,
-  onApple
+  onApple,
+  onFederatedAgeGateComplete,
+  onFederatedAgeGateCancel
 }: {
   copy: (typeof authCopy)[Locale];
   locale: Locale;
@@ -1488,22 +1531,31 @@ function AuthGate({
     email: string;
     password: string;
     publicName: string;
+    birthDate: string;
     city?: string;
   }) => Promise<void>;
   onVerificationRequest: (request: QualifiedVerificationRequest) => Promise<void>;
   onVerificationFailure: (request: QualifiedVerificationRequest) => void;
   onRegistrationComplete: (accountType: RegisterAccountType) => void;
   onPasswordReset: (input: { email: string }) => Promise<void>;
-  onGoogle: () => Promise<void>;
-  onApple: () => Promise<void>;
+  onGoogle: (input?: { birthDate?: string }) => Promise<{ status: "complete" } | { status: "age_gate_required"; providerId: AuthProviderId }>;
+  onApple: (input?: { birthDate?: string }) => Promise<{ status: "complete" } | { status: "age_gate_required"; providerId: AuthProviderId }>;
+  onFederatedAgeGateComplete: (input: { providerId: FederatedAgeGateProvider; birthDate: string }) => Promise<void>;
+  onFederatedAgeGateCancel: () => Promise<void>;
 }) {
   const [mode, setMode] = useState<AuthMode>("register");
   const [accountType, setAccountType] = useState<RegisterAccountType>("user");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [publicName, setPublicName] = useState("");
   const [city, setCity] = useState("");
+  const [pendingFederatedAgeGate, setPendingFederatedAgeGate] = useState<{
+    providerId: FederatedAgeGateProvider;
+    mode: "before_auth" | "after_auth";
+  } | null>(null);
+  const [federatedBirthDate, setFederatedBirthDate] = useState("");
   const [professionalForm, setProfessionalForm] = useState<Omit<ProfessionalVerificationInput, "professionalName">>({
     licenseNumber: "",
     professionalCollege: "",
@@ -1523,6 +1575,13 @@ function AuthGate({
   const accountNameLabel =
     accountType === "professional" ? c.professionalPublicName : accountType === "organization" ? c.organizationName : c.publicName;
   const cityLabel = accountType === "organization" ? c.organizationCity : c.cityOptional;
+  const validateBirthDate = (value: string) => {
+    if (!value.trim()) {
+      return c.adultGateRequired;
+    }
+
+    return isAdultBirthDate(value.trim()) ? null : c.adultGateUnderage;
+  };
 
   const selectAccountType = (nextAccountType: RegisterAccountType) => {
     setAccountType(nextAccountType);
@@ -1552,8 +1611,15 @@ function AuthGate({
         const normalizedEmail = email.trim();
         const normalizedName = publicName.trim();
         const normalizedCity = city.trim();
+        const normalizedBirthDate = birthDate.trim();
         if (!normalizedName || !normalizedEmail || !password || !passwordRepeat) {
           setLocalMessage(c.requiredFields);
+          return;
+        }
+
+        const birthDateError = validateBirthDate(normalizedBirthDate);
+        if (birthDateError) {
+          setLocalMessage(birthDateError);
           return;
         }
 
@@ -1618,6 +1684,7 @@ function AuthGate({
             email: normalizedEmail,
             password,
             publicName: normalizedName,
+            birthDate: normalizedBirthDate,
             city: normalizedCity || undefined
           });
         }
@@ -1659,6 +1726,99 @@ function AuthGate({
       setLocalMessage(c.passwordResetSent);
     }, c.passwordResetFailed);
   };
+
+  const startFederatedAuth = (providerId: FederatedAgeGateProvider) => {
+    if (mode === "register") {
+      setPendingFederatedAgeGate({ providerId, mode: "before_auth" });
+      setFederatedBirthDate(birthDate);
+      setLocalMessage(null);
+      return;
+    }
+
+    const action = providerId === "google.com" ? onGoogle : onApple;
+    void runAuth(async () => {
+      const result = await action();
+      if (result.status === "age_gate_required") {
+        setPendingFederatedAgeGate({ providerId, mode: "after_auth" });
+        setFederatedBirthDate("");
+      }
+    });
+  };
+
+  const submitFederatedAgeGate = () => {
+    if (!pendingFederatedAgeGate) {
+      return;
+    }
+
+    void runAuth(async () => {
+      const normalizedBirthDate = federatedBirthDate.trim();
+      const birthDateError = validateBirthDate(normalizedBirthDate);
+      if (birthDateError) {
+        setLocalMessage(birthDateError);
+        return;
+      }
+
+      if (pendingFederatedAgeGate.mode === "before_auth") {
+        const action = pendingFederatedAgeGate.providerId === "google.com" ? onGoogle : onApple;
+        const result = await action({ birthDate: normalizedBirthDate });
+        if (result.status === "age_gate_required") {
+          setPendingFederatedAgeGate({ providerId: result.providerId as FederatedAgeGateProvider, mode: "after_auth" });
+          return;
+        }
+      } else {
+        await onFederatedAgeGateComplete({
+          providerId: pendingFederatedAgeGate.providerId,
+          birthDate: normalizedBirthDate
+        });
+      }
+
+      setPendingFederatedAgeGate(null);
+      setFederatedBirthDate("");
+    });
+  };
+
+  const cancelPendingFederatedAgeGate = () => {
+    const pendingMode = pendingFederatedAgeGate?.mode;
+    setPendingFederatedAgeGate(null);
+    setFederatedBirthDate("");
+    setLocalMessage(null);
+    if (pendingMode === "after_auth") {
+      void runAuth(onFederatedAgeGateCancel);
+    }
+  };
+
+  if (pendingFederatedAgeGate) {
+    const providerLabel = pendingFederatedAgeGate.providerId === "google.com" ? c.continueWithGoogle : c.continueWithApple;
+    return (
+      <section className={`auth-shell ${variant === "inline" ? "auth-shell-inline" : ""}`}>
+        <div className="auth-card panel">
+          <div className="auth-copy">
+            <h1>{c.adultGateTitle}</h1>
+            <p>{c.adultGateIntro}</p>
+          </div>
+          <div className="auth-form">
+            <label>
+              <span>{c.birthDate}</span>
+              <input
+                type="date"
+                value={federatedBirthDate}
+                placeholder={c.birthDateHint}
+                onChange={(event) => setFederatedBirthDate(event.target.value)}
+              />
+            </label>
+          </div>
+          <button type="button" className="primary-action auth-submit" disabled={isSubmitting} onClick={submitFederatedAgeGate}>
+            {pendingFederatedAgeGate.providerId === "google.com" ? <GoogleLogo size={17} /> : <AppleLogo size={17} />}
+            {isSubmitting ? "..." : `${c.adultGateContinue} · ${providerLabel}`}
+          </button>
+          <button type="button" className="auth-link-action" disabled={isSubmitting} onClick={cancelPendingFederatedAgeGate}>
+            {c.adultGateCancel}
+          </button>
+          {localMessage || message ? <p className="form-status">{localMessage ?? message}</p> : null}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={`auth-shell ${variant === "inline" ? "auth-shell-inline" : ""}`}>
@@ -1715,11 +1875,11 @@ function AuthGate({
         </div>
         {!isQualifiedRegistration ? (
           <div className="auth-provider-grid">
-            <button type="button" className="secondary-action" disabled={isSubmitting} onClick={() => void runAuth(onGoogle)}>
+            <button type="button" className="secondary-action" disabled={isSubmitting} onClick={() => startFederatedAuth("google.com")}>
               <GoogleLogo size={18} />
               {c.continueWithGoogle}
             </button>
-            <button type="button" className="secondary-action" disabled={isSubmitting} onClick={() => void runAuth(onApple)}>
+            <button type="button" className="secondary-action" disabled={isSubmitting} onClick={() => startFederatedAuth("apple.com")}>
               <AppleLogo size={18} />
               {c.continueWithApple}
             </button>
@@ -1783,6 +1943,15 @@ function AuthGate({
               <label>
                 <span>{c.confirmPassword}</span>
                 <input type="password" value={passwordRepeat} onChange={(event) => setPasswordRepeat(event.target.value)} />
+              </label>
+              <label>
+                <span>{c.birthDate}</span>
+                <input
+                  type="date"
+                  value={birthDate}
+                  placeholder={c.birthDateHint}
+                  onChange={(event) => setBirthDate(event.target.value)}
+                />
               </label>
               <label>
                 <span>{cityLabel}</span>
@@ -1886,7 +2055,9 @@ function AuthRequiredView({
   onRegistrationComplete,
   onPasswordReset,
   onGoogle,
-  onApple
+  onApple,
+  onFederatedAgeGateComplete,
+  onFederatedAgeGateCancel
 }: {
   copy: (typeof authCopy)[Locale];
   locale: Locale;
@@ -1895,13 +2066,15 @@ function AuthRequiredView({
   onLocale: (locale: Locale) => void;
   onDarkMode: (enabled: boolean) => void;
   onEmailLogin: (input: { email: string; password: string }) => Promise<void>;
-  onEmailRegister: (input: { email: string; password: string; publicName: string; city?: string }) => Promise<void>;
+  onEmailRegister: (input: { email: string; password: string; publicName: string; birthDate: string; city?: string }) => Promise<void>;
   onVerificationRequest: (request: QualifiedVerificationRequest) => Promise<void>;
   onVerificationFailure: (request: QualifiedVerificationRequest) => void;
   onRegistrationComplete: (accountType: RegisterAccountType) => void;
   onPasswordReset: (input: { email: string }) => Promise<void>;
-  onGoogle: () => Promise<void>;
-  onApple: () => Promise<void>;
+  onGoogle: (input?: { birthDate?: string }) => Promise<{ status: "complete" } | { status: "age_gate_required"; providerId: AuthProviderId }>;
+  onApple: (input?: { birthDate?: string }) => Promise<{ status: "complete" } | { status: "age_gate_required"; providerId: AuthProviderId }>;
+  onFederatedAgeGateComplete: (input: { providerId: FederatedAgeGateProvider; birthDate: string }) => Promise<void>;
+  onFederatedAgeGateCancel: () => Promise<void>;
 }) {
   return (
     <div className="protected-view">
@@ -1926,6 +2099,8 @@ function AuthRequiredView({
         onPasswordReset={onPasswordReset}
         onGoogle={onGoogle}
         onApple={onApple}
+        onFederatedAgeGateComplete={onFederatedAgeGateComplete}
+        onFederatedAgeGateCancel={onFederatedAgeGateCancel}
       />
     </div>
   );

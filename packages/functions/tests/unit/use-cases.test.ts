@@ -646,6 +646,64 @@ describe("functions use cases", () => {
     });
   });
 
+  it("requires adult confirmation when onboarding creates a new user", async () => {
+    const { repository, useCases } = makeUseCases();
+
+    await expect(
+      useCases.completeUserOnboarding(
+        { uid: "user-1", token: { email: "user@example.com" } },
+        {
+          publicName: "Usuari",
+          locale: "ca",
+          authProviders: ["password"]
+        }
+      )
+    ).rejects.toMatchObject(new ApplicationError("failed-precondition", "Adult confirmation is required."));
+    expect(repository.users.get("user-1")).toBeUndefined();
+  });
+
+  it("stores an adult self-declaration when onboarding a new user", async () => {
+    const { repository, useCases } = makeUseCases();
+
+    await useCases.completeUserOnboarding(
+      { uid: "user-1", token: { email: "user@example.com" } },
+      {
+        publicName: "Usuari",
+        locale: "ca",
+        authProviders: ["password"],
+        birthDate: "2000-01-01"
+      }
+    );
+
+    expect(repository.users.get("user-1")).toMatchObject({
+      email: "user@example.com",
+      publicName: "Usuari",
+      adultGate: {
+        adultConfirmed: true,
+        minimumAge: 18,
+        method: "self_declared",
+        confirmedAt: "now"
+      }
+    });
+  });
+
+  it("rejects underage onboarding declarations", async () => {
+    const { repository, useCases } = makeUseCases();
+
+    await expect(
+      useCases.completeUserOnboarding(
+        { uid: "user-1", token: { email: "user@example.com" } },
+        {
+          publicName: "Usuari",
+          locale: "ca",
+          authProviders: ["password"],
+          birthDate: "2020-01-01"
+        }
+      )
+    ).rejects.toMatchObject(new ApplicationError("permission-denied", "Adult account registration requires age 18 or older."));
+    expect(repository.users.get("user-1")).toBeUndefined();
+  });
+
   it("does not reactivate disabled users during onboarding", async () => {
     const { repository, useCases } = makeUseCases();
     repository.users.set("user-1", {

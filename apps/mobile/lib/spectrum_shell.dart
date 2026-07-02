@@ -113,6 +113,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
   final TextEditingController _authPublicNameController =
       TextEditingController();
   final TextEditingController _authCityController = TextEditingController();
+  final TextEditingController _authBirthDateController =
+      TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _licenseNumberController =
       TextEditingController();
@@ -190,6 +192,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
     _authPasswordRepeatController.dispose();
     _authPublicNameController.dispose();
     _authCityController.dispose();
+    _authBirthDateController.dispose();
     _notesController.dispose();
     _licenseNumberController.dispose();
     _professionalCollegeController.dispose();
@@ -459,6 +462,52 @@ class _SpectrumShellState extends State<SpectrumShell> {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim());
   }
 
+  DateTime? _parseBirthDate(String value) {
+    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(value.trim());
+    if (match == null) {
+      return null;
+    }
+
+    final year = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    final day = int.tryParse(match.group(3)!);
+    if (year == null || month == null || day == null) {
+      return null;
+    }
+
+    final parsed = DateTime.utc(year, month, day);
+    if (parsed.year != year || parsed.month != month || parsed.day != day) {
+      return null;
+    }
+    return parsed;
+  }
+
+  bool _isAdultBirthDate(String value) {
+    final birthDate = _parseBirthDate(value);
+    if (birthDate == null) {
+      return false;
+    }
+
+    final today = DateTime.now().toUtc();
+    var age = today.year - birthDate.year;
+    final hadBirthdayThisYear =
+        today.month > birthDate.month ||
+        (today.month == birthDate.month && today.day >= birthDate.day);
+    if (!hadBirthdayThisYear) {
+      age -= 1;
+    }
+
+    return age >= 18;
+  }
+
+  String? _birthDateValidationMessage(String value) {
+    final labels = authCopies[_locale]!;
+    if (_parseBirthDate(value) == null) {
+      return labels.adultGateRequired;
+    }
+    return _isAdultBirthDate(value) ? null : labels.adultGateUnderage;
+  }
+
   Future<void> _runAuthAction(
     Future<void> Function() action, {
     String? failureMessage,
@@ -517,6 +566,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
     final password = _authPasswordController.text;
     final confirmPassword = _authPasswordRepeatController.text;
     final city = _authCityController.text.trim();
+    final birthDate = _authBirthDateController.text.trim();
     final licenseNumber = _licenseNumberController.text.trim();
     final professionalCollege = _professionalCollegeController.text.trim();
     final specialty = _specialtyController.text.trim();
@@ -537,6 +587,12 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
     if (!_isValidEmail(email)) {
       setState(() => _authMessage = labels.invalidEmail);
+      return Future<void>.value();
+    }
+
+    final birthDateMessage = _birthDateValidationMessage(birthDate);
+    if (birthDateMessage != null) {
+      setState(() => _authMessage = birthDateMessage);
       return Future<void>.value();
     }
 
@@ -570,6 +626,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
           email: email,
           password: password,
           publicName: publicName,
+          birthDate: birthDate,
           city: city,
           locale: _locale.name,
         );
@@ -669,14 +726,42 @@ class _SpectrumShellState extends State<SpectrumShell> {
   }
 
   Future<void> _signInWithGoogle() {
+    final birthDate = _showRegister
+        ? _authBirthDateController.text.trim()
+        : null;
+    if (_showRegister) {
+      final birthDateMessage = _birthDateValidationMessage(birthDate ?? '');
+      if (birthDateMessage != null) {
+        setState(() => _authMessage = birthDateMessage);
+        return Future<void>.value();
+      }
+    }
+
     return _runAuthAction(() async {
-      await _service().signInWithGoogle(locale: _locale.name);
+      await _service().signInWithGoogle(
+        locale: _locale.name,
+        birthDate: birthDate,
+      );
     });
   }
 
   Future<void> _signInWithApple() {
+    final birthDate = _showRegister
+        ? _authBirthDateController.text.trim()
+        : null;
+    if (_showRegister) {
+      final birthDateMessage = _birthDateValidationMessage(birthDate ?? '');
+      if (birthDateMessage != null) {
+        setState(() => _authMessage = birthDateMessage);
+        return Future<void>.value();
+      }
+    }
+
     return _runAuthAction(() async {
-      await _service().signInWithApple(locale: _locale.name);
+      await _service().signInWithApple(
+        locale: _locale.name,
+        birthDate: birthDate,
+      );
     });
   }
 
@@ -1523,6 +1608,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
       passwordRepeatController: _authPasswordRepeatController,
       publicNameController: _authPublicNameController,
       cityController: _authCityController,
+      birthDateController: _authBirthDateController,
       licenseNumberController: _licenseNumberController,
       professionalCollegeController: _professionalCollegeController,
       specialtyController: _specialtyController,
@@ -1561,6 +1647,7 @@ class AuthScreen extends StatelessWidget {
     required this.passwordRepeatController,
     required this.publicNameController,
     required this.cityController,
+    required this.birthDateController,
     required this.licenseNumberController,
     required this.professionalCollegeController,
     required this.specialtyController,
@@ -1589,6 +1676,7 @@ class AuthScreen extends StatelessWidget {
   final TextEditingController passwordRepeatController;
   final TextEditingController publicNameController;
   final TextEditingController cityController;
+  final TextEditingController birthDateController;
   final TextEditingController licenseNumberController;
   final TextEditingController professionalCollegeController;
   final TextEditingController specialtyController;
@@ -1680,6 +1768,15 @@ class AuthScreen extends StatelessWidget {
                     selected: {registrationKind},
                     onSelectionChanged: (values) =>
                         onRegistrationKindChanged(values.first),
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: birthDateController,
+                    keyboardType: TextInputType.datetime,
+                    decoration: InputDecoration(
+                      labelText: authLabels.birthDate,
+                      hintText: authLabels.birthDateHint,
+                    ),
                   ),
                   const SizedBox(height: 18),
                 ],

@@ -75,6 +75,7 @@ abstract interface class SpectrumApplicationService {
     required String email,
     required String password,
     required String publicName,
+    required String birthDate,
     required String locale,
     String? city,
   });
@@ -100,9 +101,9 @@ abstract interface class SpectrumApplicationService {
     String? profilePhotoContentType,
   });
 
-  Future<void> signInWithGoogle({required String locale});
+  Future<void> signInWithGoogle({required String locale, String? birthDate});
 
-  Future<void> signInWithApple({required String locale});
+  Future<void> signInWithApple({required String locale, String? birthDate});
 
   Future<void> signOut();
 

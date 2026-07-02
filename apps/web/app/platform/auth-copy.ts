@@ -10,6 +10,14 @@ export const authCopy: Record<
     email: string;
     password: string;
     confirmPassword: string;
+    birthDate: string;
+    birthDateHint: string;
+    adultGateTitle: string;
+    adultGateIntro: string;
+    adultGateRequired: string;
+    adultGateUnderage: string;
+    adultGateContinue: string;
+    adultGateCancel: string;
     publicName: string;
     cityOptional: string;
     accountType: string;
@@ -81,6 +89,15 @@ export const authCopy: Record<
     email: "Email",
     password: "Contrasenya",
     confirmPassword: "Repeteix la contrasenya",
+    birthDate: "Data de naixement",
+    birthDateHint: "AAAA-MM-DD",
+    adultGateTitle: "Confirmació d'edat",
+    adultGateIntro:
+      "Per crear un compte autònom cal tenir 18 anys o més. Els menors poden participar mitjançant un tutor.",
+    adultGateRequired: "Introdueix una data de naixement vàlida.",
+    adultGateUnderage: "No es pot crear un compte autònom si ets menor de 18 anys.",
+    adultGateContinue: "Continuar",
+    adultGateCancel: "Cancel·lar",
     publicName: "Nom públic",
     cityOptional: "Ciutat opcional",
     accountType: "Tipus de compte",
@@ -152,6 +169,15 @@ export const authCopy: Record<
     email: "Email",
     password: "Contraseña",
     confirmPassword: "Repite la contraseña",
+    birthDate: "Fecha de nacimiento",
+    birthDateHint: "AAAA-MM-DD",
+    adultGateTitle: "Confirmación de edad",
+    adultGateIntro:
+      "Para crear una cuenta autónoma hay que tener 18 años o más. Los menores pueden participar mediante un tutor.",
+    adultGateRequired: "Introduce una fecha de nacimiento válida.",
+    adultGateUnderage: "No se puede crear una cuenta autónoma si eres menor de 18 años.",
+    adultGateContinue: "Continuar",
+    adultGateCancel: "Cancelar",
     publicName: "Nombre público",
     cityOptional: "Ciudad opcional",
     accountType: "Tipo de cuenta",
@@ -223,6 +249,15 @@ export const authCopy: Record<
     email: "Email",
     password: "Password",
     confirmPassword: "Repeat password",
+    birthDate: "Date of birth",
+    birthDateHint: "YYYY-MM-DD",
+    adultGateTitle: "Age confirmation",
+    adultGateIntro:
+      "To create an independent account you must be 18 or older. Minors can participate through a tutor.",
+    adultGateRequired: "Enter a valid date of birth.",
+    adultGateUnderage: "You cannot create an independent account if you are under 18.",
+    adultGateContinue: "Continue",
+    adultGateCancel: "Cancel",
     publicName: "Public name",
     cityOptional: "Optional city",
     accountType: "Account type",

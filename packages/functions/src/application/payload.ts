@@ -3,6 +3,7 @@ import {
   commentTargetTypeSet,
   eventCategorySet,
   isAuthProviderId,
+  isBirthDate,
   isEventExperienceRating,
   isLocale,
   isRecord,
@@ -171,6 +172,19 @@ export function optionalEmail(data: Record<string, unknown>, key: string): strin
   }
 
   return value.toLowerCase();
+}
+
+export function optionalBirthDate(data: Record<string, unknown>, key: string): string | undefined {
+  const value = optionalText(data, key, 10);
+  if (!value) {
+    return undefined;
+  }
+
+  if (!isBirthDate(value)) {
+    fail("invalid-argument", `Invalid ${key}.`);
+  }
+
+  return value;
 }
 
 export function optionalBoolean(data: Record<string, unknown>, key: string): boolean | undefined {

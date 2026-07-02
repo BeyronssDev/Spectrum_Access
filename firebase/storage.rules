@@ -7,7 +7,7 @@ service firebase.storage {
     }
 
     function isOwner(uid) {
-      return signedIn() && request.auth.uid == uid;
+      return hasActiveUserProfile() && request.auth.uid == uid;
     }
 
     function hasClaim(claim) {
@@ -16,6 +16,12 @@ service firebase.storage {
 
     function isModerator() {
       return hasClaim("superAdmin") || hasClaim("moderator") || hasClaim("admin");
+    }
+
+    function hasActiveUserProfile() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == "active";
     }
 
     function validImage() {

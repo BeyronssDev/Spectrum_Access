@@ -4,6 +4,7 @@ import {
   eventCategories,
   eventExperienceCriteria,
   locales,
+  minimumAccountAge,
   moderationStatuses,
   placeCategories,
   placeSources,
@@ -83,6 +84,36 @@ export function isLocale(value: unknown): value is (typeof locales)[number] {
 
 export function isAuthProviderId(value: unknown): value is (typeof authProviderIds)[number] {
   return typeof value === "string" && authProviderIdSet.has(value);
+}
+
+export function isBirthDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+}
+
+export function isAdultBirthDate(value: unknown, now = new Date(), minimumAge = minimumAccountAge): value is string {
+  if (!isBirthDate(value)) {
+    return false;
+  }
+
+  const [birthYear, birthMonth, birthDay] = value.split("-").map(Number);
+  const currentYear = now.getUTCFullYear();
+  const currentMonth = now.getUTCMonth() + 1;
+  const currentDay = now.getUTCDate();
+  const hadBirthdayThisYear =
+    currentMonth > birthMonth || (currentMonth === birthMonth && currentDay >= birthDay);
+  const age = currentYear - birthYear - (hadBirthdayThisYear ? 0 : 1);
+
+  return age >= minimumAge;
 }
 
 export function isPlaceSource(value: unknown): value is (typeof placeSources)[number] {

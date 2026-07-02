@@ -31,11 +31,59 @@ afterAll(async () => {
   await testEnv.cleanup();
 });
 
+const adultGate = {
+  adultConfirmed: true,
+  minimumAge: 18,
+  method: "self_declared",
+  confirmedAt: new Date("2026-06-20T00:00:00.000Z")
+};
+
+function activeUserDoc(uid: string) {
+  return {
+    uid,
+    displayName: "Test User",
+    publicName: "Test User",
+    authProviders: ["password"],
+    roles: ["user"],
+    status: "active",
+    locale: "ca",
+    adultGate,
+    createdAt: "2026-06-20T00:00:00.000Z",
+    updatedAt: "2026-06-20T00:00:00.000Z"
+  };
+}
+
+async function seedActiveUsers(...uids: string[]) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await Promise.all(uids.map((uid) => db.collection("users").doc(uid).set(activeUserDoc(uid))));
+  });
+}
+
 describe("Firestore security rules", () => {
   it("allows base user creation without elevated roles", async () => {
     const userDb = testEnv.authenticatedContext("user-a").firestore();
 
     await assertSucceeds(
+      userDb.collection("users").doc("user-a").set({
+        uid: "user-a",
+        displayName: "Test User",
+        publicName: "Test User",
+        authProviders: ["password"],
+        roles: ["user"],
+        status: "active",
+        locale: "ca",
+        adultGate,
+        createdAt: "2026-06-20T00:00:00.000Z",
+        updatedAt: "2026-06-20T00:00:00.000Z"
+      })
+    );
+  });
+
+  it("blocks base user creation without adult confirmation", async () => {
+    const userDb = testEnv.authenticatedContext("user-a").firestore();
+
+    await assertFails(
       userDb.collection("users").doc("user-a").set({
         uid: "user-a",
         displayName: "Test User",
@@ -62,6 +110,7 @@ describe("Firestore security rules", () => {
         roles: ["user", "professional", "admin"],
         status: "active",
         locale: "ca",
+        adultGate,
         createdAt: "2026-06-20T00:00:00.000Z",
         updatedAt: "2026-06-20T00:00:00.000Z"
       })
@@ -90,6 +139,7 @@ describe("Firestore security rules", () => {
   });
 
   it("forces user-created place images to start pending", async () => {
+    await seedActiveUsers("user-a");
     const userDb = testEnv.authenticatedContext("user-a").firestore();
 
     await assertSucceeds(
@@ -131,6 +181,7 @@ describe("Firestore security rules", () => {
   });
 
   it("lets users upload only their own profile photos", async () => {
+    await seedActiveUsers("user-a", "user-b");
     const ownerStorage = testEnv.authenticatedContext("user-a").storage();
     const otherStorage = testEnv.authenticatedContext("user-b").storage();
     const imageDataUrl =
@@ -150,6 +201,7 @@ describe("Firestore security rules", () => {
   });
 
   it("lets tutors manage only their own child profiles", async () => {
+    await seedActiveUsers("tutor-a", "tutor-b");
     const tutorDb = testEnv.authenticatedContext("tutor-a").firestore();
     const otherDb = testEnv.authenticatedContext("tutor-b").firestore();
 
@@ -168,6 +220,7 @@ describe("Firestore security rules", () => {
   });
 
   it("forces user-created comments to start pending", async () => {
+    await seedActiveUsers("user-a");
     const userDb = testEnv.authenticatedContext("user-a").firestore();
 
     await assertSucceeds(
@@ -237,6 +290,7 @@ describe("Firestore security rules", () => {
   it("still lets authors edit their own pending reviews and comments", async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore();
+      await db.collection("users").doc("user-a").set(activeUserDoc("user-a"));
       await db.collection("reviews").doc("pending-review").set({
         placeId: "place-1",
         authorUid: "user-a",
@@ -276,6 +330,7 @@ describe("Firestore security rules", () => {
   it("keeps event history pending content private until moderation", async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore();
+      await db.collection("users").doc("user-a").set(activeUserDoc("user-a"));
       await db.collection("eventSeries").doc("active-series").set({
         title: "Festa Major",
         category: "festa_major",
@@ -332,6 +387,7 @@ describe("Firestore security rules", () => {
   });
 
   it("forces user-created event experiences to start pending with their own photo path", async () => {
+    await seedActiveUsers("user-a");
     const userDb = testEnv.authenticatedContext("user-a").firestore();
 
     await assertSucceeds(
@@ -392,6 +448,7 @@ describe("Firestore security rules", () => {
   });
 
   it("forces professional verification profiles to start pending", async () => {
+    await seedActiveUsers("professional-a");
     const userDb = testEnv.authenticatedContext("professional-a").firestore();
 
     await assertSucceeds(
@@ -420,6 +477,7 @@ describe("Firestore security rules", () => {
   it("keeps pending verification profiles private until they are verified", async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore();
+      await db.collection("users").doc("professional-a").set(activeUserDoc("professional-a"));
       await db.collection("professionalProfiles").doc("pending-professional").set({
         ownerUid: "professional-a",
         professionalName: "Professional Pendent",
@@ -447,6 +505,7 @@ describe("Firestore security rules", () => {
 
   it("requires owner edits to verified profiles to return to pending verification", async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().collection("users").doc("professional-a").set(activeUserDoc("professional-a"));
       await context.firestore().collection("professionalProfiles").doc("verified-professional").set({
         ownerUid: "professional-a",
         professionalName: "Professional Verificat",
@@ -479,6 +538,7 @@ describe("Firestore security rules", () => {
 
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore();
+      await db.collection("users").doc("professional-a").set(activeUserDoc("professional-a"));
       await db.collection("professionalProfiles").doc("verified-professional").set({
         ownerUid: "professional-a",
         professionalName: "Professional Verificat",

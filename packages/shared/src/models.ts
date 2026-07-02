@@ -110,6 +110,17 @@ export type VerificationRequestType = (typeof verificationRequestTypes)[number];
 export const authProviderIds = ["password", "google.com", "apple.com"] as const;
 export type AuthProviderId = (typeof authProviderIds)[number];
 
+export const minimumAccountAge = 18;
+export const adultGateMethods = ["self_declared"] as const;
+export type AdultGateMethod = (typeof adultGateMethods)[number];
+
+export interface AdultGate {
+  adultConfirmed: true;
+  minimumAge: typeof minimumAccountAge;
+  method: AdultGateMethod;
+  confirmedAt: string;
+}
+
 export type SensoryRating = Record<SensoryCriterion, number>;
 export type EventExperienceRating = Record<EventExperienceCriterion, number>;
 
@@ -127,6 +138,7 @@ export interface AppUser {
   roles: UserRole[];
   status: "active" | "disabled";
   locale: Locale;
+  adultGate?: AdultGate;
   onboardingCompletedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -139,6 +151,7 @@ export interface CompleteUserOnboardingInput {
   city?: string;
   locale: Locale;
   authProviders: AuthProviderId[];
+  birthDate?: string;
 }
 
 export interface ChildProfile {

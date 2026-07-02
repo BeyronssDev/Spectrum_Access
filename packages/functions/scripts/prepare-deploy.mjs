@@ -21,10 +21,21 @@ const packageJson = {
     node: "22"
   },
   dependencies: {
+    "@google-cloud/functions-framework": "5.0.5",
     "firebase-admin": "13.10.0",
     "firebase-functions": "7.2.5"
   }
 };
+
+const pnpmWorkspace = `packages: []
+
+onlyBuiltDependencies:
+  - "@firebase/util"
+  - "protobufjs"
+allowBuilds:
+  "@firebase/util": true
+  protobufjs: true
+`;
 
 await rm(deployDir, { recursive: true, force: true });
 await mkdir(deployDir, { recursive: true });
@@ -49,6 +60,7 @@ await writeFile(
   path.join(deployDir, "package.json"),
   `${JSON.stringify(packageJson, null, 2)}\n`
 );
+await writeFile(path.join(deployDir, "pnpm-workspace.yaml"), pnpmWorkspace);
 
 async function runPnpm(args) {
   await new Promise((resolve, reject) => {

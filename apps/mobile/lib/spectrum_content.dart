@@ -454,6 +454,10 @@ class AuthCopy {
     required this.email,
     required this.password,
     required this.confirmPassword,
+    required this.birthDate,
+    required this.birthDateHint,
+    required this.adultGateRequired,
+    required this.adultGateUnderage,
     required this.publicName,
     required this.cityOptional,
     required this.continueWithGoogle,
@@ -515,6 +519,10 @@ class AuthCopy {
   final String email;
   final String password;
   final String confirmPassword;
+  final String birthDate;
+  final String birthDateHint;
+  final String adultGateRequired;
+  final String adultGateUnderage;
   final String publicName;
   final String cityOptional;
   final String continueWithGoogle;
@@ -935,6 +943,11 @@ const authCopies = {
     email: 'Email',
     password: 'Contrasenya',
     confirmPassword: 'Repeteix la contrasenya',
+    birthDate: 'Data de naixement',
+    birthDateHint: 'AAAA-MM-DD',
+    adultGateRequired: 'Introdueix una data de naixement vàlida.',
+    adultGateUnderage:
+        'No es pot crear un compte autònom si ets menor de 18 anys.',
     publicName: 'Nom públic',
     cityOptional: 'Ciutat opcional',
     continueWithGoogle: 'Continuar amb Google',
@@ -1007,6 +1020,11 @@ const authCopies = {
     email: 'Email',
     password: 'Contraseña',
     confirmPassword: 'Repite la contraseña',
+    birthDate: 'Fecha de nacimiento',
+    birthDateHint: 'AAAA-MM-DD',
+    adultGateRequired: 'Introduce una fecha de nacimiento válida.',
+    adultGateUnderage:
+        'No se puede crear una cuenta autónoma si eres menor de 18 años.',
     publicName: 'Nombre público',
     cityOptional: 'Ciudad opcional',
     continueWithGoogle: 'Continuar con Google',
@@ -1079,6 +1097,11 @@ const authCopies = {
     email: 'Email',
     password: 'Password',
     confirmPassword: 'Repeat password',
+    birthDate: 'Date of birth',
+    birthDateHint: 'YYYY-MM-DD',
+    adultGateRequired: 'Enter a valid date of birth.',
+    adultGateUnderage:
+        'You cannot create an independent account if you are under 18.',
     publicName: 'Public name',
     cityOptional: 'Optional city',
     continueWithGoogle: 'Continue with Google',

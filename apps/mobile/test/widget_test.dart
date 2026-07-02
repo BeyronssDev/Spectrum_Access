@@ -144,6 +144,7 @@ class FakeProfileService implements SpectrumApplicationService {
     required String email,
     required String password,
     required String publicName,
+    required String birthDate,
     required String locale,
     String? city,
   }) async {}
@@ -162,10 +163,16 @@ class FakeProfileService implements SpectrumApplicationService {
   }) async {}
 
   @override
-  Future<void> signInWithGoogle({required String locale}) async {}
+  Future<void> signInWithGoogle({
+    required String locale,
+    String? birthDate,
+  }) async {}
 
   @override
-  Future<void> signInWithApple({required String locale}) async {}
+  Future<void> signInWithApple({
+    required String locale,
+    String? birthDate,
+  }) async {}
 
   @override
   Future<void> signOut() async {}
@@ -345,6 +352,7 @@ void main() {
     expect(find.text('Entra a Spectrum Access'), findsOneWidget);
     expect(find.text('Continuar amb Google'), findsOneWidget);
     expect(find.text('Continuar amb Apple'), findsOneWidget);
+    expect(find.text('Data de naixement'), findsOneWidget);
     expect(find.text('Registrar amb email'), findsOneWidget);
     expect(find.text('Has oblidat la teva contrasenya?'), findsNothing);
     expect(find.byTooltip('Idioma'), findsOneWidget);
@@ -371,6 +379,7 @@ void main() {
       expect(find.text('Professional'), findsOneWidget);
       expect(find.text('Associació'), findsOneWidget);
       expect(find.text('Nom públic'), findsOneWidget);
+      expect(find.text('Data de naixement'), findsOneWidget);
       expect(find.text('Continuar amb Google'), findsOneWidget);
       expect(find.text('Continuar amb Apple'), findsOneWidget);
 

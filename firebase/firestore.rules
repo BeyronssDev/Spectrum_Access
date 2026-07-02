@@ -7,7 +7,7 @@ service cloud.firestore {
     }
 
     function isOwner(uid) {
-      return signedIn() && request.auth.uid == uid;
+      return hasActiveUserProfile() && request.auth.uid == uid;
     }
 
     function hasClaim(claim) {
@@ -20,6 +20,12 @@ service cloud.firestore {
 
     function isModerator() {
       return hasClaim("superAdmin") || hasClaim("moderator") || hasClaim("admin");
+    }
+
+    function hasActiveUserProfile() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == "active";
     }
 
     function isActive() {
@@ -71,18 +77,36 @@ service cloud.firestore {
         && request.resource.data.authProviders.hasOnly(["password", "google.com", "apple.com"]);
     }
 
+    function validAdultGate() {
+      return request.resource.data.adultGate is map
+        && request.resource.data.adultGate.adultConfirmed == true
+        && request.resource.data.adultGate.minimumAge == 18
+        && request.resource.data.adultGate.method == "self_declared"
+        && request.resource.data.adultGate.confirmedAt is timestamp;
+    }
+
+    function immutableAdultGate() {
+      return (
+        !resource.data.keys().hasAny(["adultGate"])
+        && !request.resource.data.keys().hasAny(["adultGate"])
+      ) || request.resource.data.adultGate == resource.data.adultGate;
+    }
+
     match /users/{uid} {
       allow read: if isOwner(uid) || isModerator();
-      allow create: if isOwner(uid)
+      allow create: if signedIn()
+        && request.auth.uid == uid
         && request.resource.data.uid == uid
         && request.resource.data.status == "active"
         && validBaseUserRoles()
         && validUserLocale()
-        && validAuthProviders();
+        && validAuthProviders()
+        && validAdultGate();
       allow update: if isOwner(uid)
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.roles == resource.data.roles
-        && request.resource.data.status == resource.data.status;
+        && request.resource.data.status == resource.data.status
+        && immutableAdultGate();
       allow delete: if isAdmin();
     }
 
@@ -92,17 +116,17 @@ service cloud.firestore {
     }
 
     match /childProfiles/{profileId} {
-      allow read: if signedIn() && resource.data.tutorUid == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.tutorUid == request.auth.uid;
-      allow update: if signedIn()
+      allow read: if hasActiveUserProfile() && resource.data.tutorUid == request.auth.uid;
+      allow create: if hasActiveUserProfile() && request.resource.data.tutorUid == request.auth.uid;
+      allow update: if hasActiveUserProfile()
         && resource.data.tutorUid == request.auth.uid
         && request.resource.data.tutorUid == resource.data.tutorUid;
-      allow delete: if signedIn() && resource.data.tutorUid == request.auth.uid;
+      allow delete: if hasActiveUserProfile() && resource.data.tutorUid == request.auth.uid;
     }
 
     match /places/{placeId} {
       allow read: if isActive() || isModerator();
-      allow create: if signedIn()
+      allow create: if hasActiveUserProfile()
         && request.resource.data.createdBy == request.auth.uid
         && createsPendingContent();
       allow update: if isModerator();
@@ -111,7 +135,7 @@ service cloud.firestore {
 
     match /reviews/{reviewId} {
       allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.authorUid);
-      allow create: if signedIn()
+      allow create: if hasActiveUserProfile()
         && request.resource.data.authorUid == request.auth.uid
         && createsPendingContent()
         && (
@@ -124,7 +148,7 @@ service cloud.firestore {
 
     match /comments/{commentId} {
       allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.authorUid);
-      allow create: if signedIn()
+      allow create: if hasActiveUserProfile()
         && request.resource.data.authorUid == request.auth.uid
         && createsPendingContent();
       allow update: if isModerator() || ownerCanEditPendingAuthoredContent();
@@ -133,7 +157,7 @@ service cloud.firestore {
 
     match /placeImages/{imageId} {
       allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.authorUid);
-      allow create: if signedIn()
+      allow create: if hasActiveUserProfile()
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.status == "pending"
         && request.resource.data.scanStatus == "not_configured";
@@ -143,7 +167,7 @@ service cloud.firestore {
 
     match /eventSeries/{eventSeriesId} {
       allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.createdBy);
-      allow create: if signedIn()
+      allow create: if hasActiveUserProfile()
         && request.resource.data.createdBy == request.auth.uid
         && createsPendingContent();
       allow update: if isModerator() || ownerCanEditPendingCreatedContent();
@@ -152,7 +176,7 @@ service cloud.firestore {
 
     match /eventEditions/{eventEditionId} {
       allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.createdBy);
-      allow create: if signedIn()
+      allow create: if hasActiveUserProfile()
         && request.resource.data.createdBy == request.auth.uid
         && createsPendingContent();
       allow update: if isModerator() || ownerCanEditPendingCreatedContent();
@@ -161,7 +185,7 @@ service cloud.firestore {
 
     match /eventZones/{eventZoneId} {
       allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.createdBy);
-      allow create: if signedIn()
+      allow create: if hasActiveUserProfile()
         && request.resource.data.createdBy == request.auth.uid
         && createsPendingContent();
       allow update: if isModerator() || ownerCanEditPendingCreatedContent();
@@ -170,7 +194,7 @@ service cloud.firestore {
 
     match /eventExperiences/{experienceId} {
       allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.authorUid);
-      allow create: if signedIn()
+      allow create: if hasActiveUserProfile()
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.status == "pending"
         && request.resource.data.photoPath is string
@@ -180,14 +204,14 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow create: if signedIn() && request.resource.data.reporterUid == request.auth.uid;
+      allow create: if hasActiveUserProfile() && request.resource.data.reporterUid == request.auth.uid;
       allow read: if isModerator() || isOwner(resource.data.reporterUid);
       allow update, delete: if isModerator();
     }
 
     match /professionalProfiles/{profileId} {
       allow read: if resource.data.verificationStatus == "verified" || isModerator() || isOwner(resource.data.ownerUid);
-      allow create: if signedIn()
+      allow create: if hasActiveUserProfile()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.verificationStatus == "pending_verification";
       allow update: if isModerator() || ownerCanResubmitVerificationProfile();
@@ -196,7 +220,7 @@ service cloud.firestore {
 
     match /organizationProfiles/{profileId} {
       allow read: if resource.data.verificationStatus == "verified" || isModerator() || isOwner(resource.data.ownerUid);
-      allow create: if signedIn()
+      allow create: if hasActiveUserProfile()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.verificationStatus == "pending_verification";
       allow update: if isModerator() || ownerCanResubmitVerificationProfile();
@@ -204,7 +228,7 @@ service cloud.firestore {
     }
 
     match /verificationRequests/{requestId} {
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow create: if hasActiveUserProfile() && request.resource.data.ownerUid == request.auth.uid;
       allow read: if isModerator() || isOwner(resource.data.ownerUid);
       allow update, delete: if isModerator();
     }
