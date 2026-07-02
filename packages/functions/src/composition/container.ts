@@ -49,6 +49,7 @@ export const useCases = createUseCases({
   auth,
   clock,
   email,
+  logger,
   appPublicUrl: process.env.APP_PUBLIC_URL,
   places,
   repository

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   type EventEdition,
   type EventExperience,
@@ -27,6 +28,7 @@ import { ensureUserRoles } from "../domain/roles.js";
 import type { AuthGateway, AuthUserRecord, RequestContext } from "../ports/auth.js";
 import type { Clock } from "../ports/clock.js";
 import type { EmailGateway } from "../ports/email.js";
+import type { AppLogger } from "../ports/logger.js";
 import type { GooglePlaceCandidate, PlacesGateway } from "../ports/places.js";
 import type { SpectrumRepository } from "../ports/repositories.js";
 import {
@@ -61,6 +63,7 @@ export type UseCaseDependencies = {
   auth: AuthGateway;
   clock: Clock;
   email: EmailGateway;
+  logger?: AppLogger;
   appPublicUrl?: string;
   places: PlacesGateway;
   repository: SpectrumRepository;
@@ -79,7 +82,7 @@ export type RateLimitReservation = {
   windowSeconds: number;
 };
 
-export function createUseCases({ auth, clock, email, appPublicUrl, places, repository }: UseCaseDependencies) {
+export function createUseCases({ auth, clock, email, logger, appPublicUrl, places, repository }: UseCaseDependencies) {
   return {
     async searchNearbyPlaces(rawData: unknown, rateLimit?: RateLimitReservation) {
       if (rateLimit) {
@@ -117,24 +120,53 @@ export function createUseCases({ auth, clock, email, appPublicUrl, places, repos
       const requestedEmail = requireEmail(data, "email");
       const locale = requireLocale(data);
       const accepted = { status: "accepted" as const };
+      const emailHash = hashValue(requestedEmail);
       const user = await getPasswordResetUser(auth, requestedEmail);
 
-      if (!user || !user.providerIds.includes("password")) {
+      if (!user) {
+        logger?.info("Password reset request accepted without email delivery", {
+          outcome: "unknown_user",
+          emailHash
+        });
         return accepted;
       }
 
-      const baseUrl = readAppPublicUrl(appPublicUrl);
-      const firebaseLink = await auth.generatePasswordResetLink(user.email ?? requestedEmail, {
-        url: `${baseUrl}/auth/action`,
-        handleCodeInApp: false
-      });
-      const resetUrl = buildBrandedPasswordResetUrl(firebaseLink, baseUrl, locale);
-      await email.sendPasswordResetEmail({
-        to: user.email ?? requestedEmail,
-        displayName: user.displayName,
-        locale,
-        resetUrl
-      });
+      if (!user.providerIds.includes("password")) {
+        logger?.info("Password reset request accepted without email delivery", {
+          outcome: "non_password_provider",
+          emailHash,
+          uidHash: hashValue(user.uid)
+        });
+        return accepted;
+      }
+
+      try {
+        const baseUrl = readAppPublicUrl(appPublicUrl);
+        const firebaseLink = await auth.generatePasswordResetLink(user.email ?? requestedEmail, {
+          url: `${baseUrl}/auth/action`,
+          handleCodeInApp: false
+        });
+        const resetUrl = buildBrandedPasswordResetUrl(firebaseLink, baseUrl, locale);
+        await email.sendPasswordResetEmail({
+          to: user.email ?? requestedEmail,
+          displayName: user.displayName,
+          locale,
+          resetUrl
+        });
+        logger?.info("Password reset email sent", {
+          outcome: "sent",
+          emailHash,
+          uidHash: hashValue(user.uid)
+        });
+      } catch (error) {
+        logger?.error("Password reset email failed", {
+          outcome: "failed",
+          emailHash,
+          uidHash: hashValue(user.uid),
+          ...readErrorMetadata(error)
+        });
+        throw error;
+      }
 
       return accepted;
     },
@@ -777,6 +809,23 @@ function buildBrandedPasswordResetUrl(firebaseLink: string, appPublicUrl: string
   }
 
   return target.toString();
+}
+
+function hashValue(value: string): string {
+  return createHash("sha256").update(value).digest("hex").slice(0, 16);
+}
+
+function readErrorMetadata(error: unknown): Record<string, unknown> {
+  if (!(error instanceof Error)) {
+    return { errorName: "UnknownError" };
+  }
+
+  const details = error as Error & { code?: unknown; responseCode?: unknown };
+  return {
+    errorName: error.name,
+    errorCode: typeof details.code === "string" ? details.code : undefined,
+    responseCode: typeof details.responseCode === "number" ? details.responseCode : undefined
+  };
 }
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {

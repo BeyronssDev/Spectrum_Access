@@ -127,7 +127,7 @@ export const requestPasswordReset = publicCallable(
   "requestPasswordReset",
   async (request) => {
     await reserveCallableQuota("requestPasswordReset", request, {
-      limit: 5,
+      limit: 20,
       windowSeconds: 3600
     });
     return useCases.requestPasswordReset(request.data);
