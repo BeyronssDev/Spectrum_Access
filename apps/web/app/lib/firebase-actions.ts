@@ -3,17 +3,27 @@ import { firebaseApi } from "./firebase-api";
 export type {
   CompleteUserOnboardingInput,
   CreateChildProfileInput,
+  CreateEventEditionInput,
+  CreateEventSeriesInput,
+  CreateEventZoneInput,
   CreatePlaceInput,
   CreateReportInput,
   ProfessionalVerificationInput,
+  SearchEventHistoryInput,
   SubmitCommentInput,
+  SubmitEventExperienceInput,
   SubmitReviewInput
 } from "./accessibilitat-api";
 export { firebaseApi };
 
 export const listActivePlaces = firebaseApi.listActivePlaces;
 export const searchNearbyPlaces = firebaseApi.searchNearbyPlaces;
+export const searchEventHistory = firebaseApi.searchEventHistory;
 export const createPlace = firebaseApi.createPlace;
+export const createEventSeries = firebaseApi.createEventSeries;
+export const createEventEdition = firebaseApi.createEventEdition;
+export const createEventZone = firebaseApi.createEventZone;
+export const submitEventExperience = firebaseApi.submitEventExperience;
 export const resolvePlaceForContribution = firebaseApi.resolvePlaceForContribution;
 export const submitReview = firebaseApi.submitReview;
 export const submitComment = firebaseApi.submitComment;
@@ -30,3 +40,5 @@ export const loginWithGoogle = firebaseApi.loginWithGoogle;
 export const loginWithApple = firebaseApi.loginWithApple;
 export const logout = firebaseApi.logout;
 export const uploadPlaceImage = firebaseApi.uploadPlaceImage;
+export const uploadEventExperiencePhoto = firebaseApi.uploadEventExperiencePhoto;
+export const readStorageDownloadUrl = firebaseApi.readStorageDownloadUrl;

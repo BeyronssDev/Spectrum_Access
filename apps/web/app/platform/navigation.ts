@@ -1,4 +1,4 @@
-import { CircleHelp, Home, Search, ShieldCheck, Upload, UsersRound } from "lucide-react";
+import { CalendarDays, CircleHelp, Home, Search, ShieldCheck, Upload, UsersRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Locale, ViewId } from "./types";
 
@@ -13,6 +13,7 @@ export const locales: Record<Locale, string> = {
 export const navItems: Array<{ id: ViewId; icon: LucideIcon }> = [
   { id: "home", icon: Home },
   { id: "consult", icon: Search },
+  { id: "events", icon: CalendarDays },
   { id: "contribute", icon: Upload },
   { id: "support", icon: CircleHelp },
   { id: "profiles", icon: UsersRound },

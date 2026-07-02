@@ -10,13 +10,16 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function hasClaim(claim) {
+      return signedIn() && request.auth.token.get(claim, false) == true;
+    }
+
     function isAdmin() {
-      return signedIn() && (request.auth.token.superAdmin == true || request.auth.token.admin == true);
+      return hasClaim("superAdmin") || hasClaim("admin");
     }
 
     function isModerator() {
-      return signedIn()
-        && (request.auth.token.superAdmin == true || request.auth.token.moderator == true || request.auth.token.admin == true);
+      return hasClaim("superAdmin") || hasClaim("moderator") || hasClaim("admin");
     }
 
     function isActive() {
@@ -35,6 +38,13 @@ service cloud.firestore {
       return isOwner(resource.data.authorUid)
         && resource.data.status == "pending"
         && immutableOwner("authorUid")
+        && request.resource.data.status == "pending";
+    }
+
+    function ownerCanEditPendingCreatedContent() {
+      return isOwner(resource.data.createdBy)
+        && resource.data.status == "pending"
+        && immutableOwner("createdBy")
         && request.resource.data.status == "pending";
     }
 
@@ -128,6 +138,44 @@ service cloud.firestore {
         && request.resource.data.status == "pending"
         && request.resource.data.scanStatus == "not_configured";
       allow update: if isModerator();
+      allow delete: if isModerator();
+    }
+
+    match /eventSeries/{eventSeriesId} {
+      allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.createdBy);
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && createsPendingContent();
+      allow update: if isModerator() || ownerCanEditPendingCreatedContent();
+      allow delete: if isModerator();
+    }
+
+    match /eventEditions/{eventEditionId} {
+      allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.createdBy);
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && createsPendingContent();
+      allow update: if isModerator() || ownerCanEditPendingCreatedContent();
+      allow delete: if isModerator();
+    }
+
+    match /eventZones/{eventZoneId} {
+      allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.createdBy);
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && createsPendingContent();
+      allow update: if isModerator() || ownerCanEditPendingCreatedContent();
+      allow delete: if isModerator();
+    }
+
+    match /eventExperiences/{experienceId} {
+      allow read: if resource.data.status == "active" || isModerator() || isOwner(resource.data.authorUid);
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.photoPath is string
+        && request.resource.data.photoPath.matches("event-experience-images/" + request.auth.uid + "/" + experienceId + "/[^/]+");
+      allow update: if isModerator() || ownerCanEditPendingAuthoredContent();
       allow delete: if isModerator();
     }
 

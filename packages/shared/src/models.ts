@@ -49,6 +49,16 @@ export const placeCategories = [
 ] as const;
 export type PlaceCategory = (typeof placeCategories)[number];
 
+export const eventCategories = [
+  "festa_major",
+  "sant_joan",
+  "correfoc",
+  "local_festival",
+  "performance",
+  "other"
+] as const;
+export type EventCategory = (typeof eventCategories)[number];
+
 export const placeSources = ["spectrum", "google_places"] as const;
 export type PlaceSource = (typeof placeSources)[number];
 
@@ -66,6 +76,17 @@ export const sensoryCriteria = [
 ] as const;
 export type SensoryCriterion = (typeof sensoryCriteria)[number];
 
+export const eventExperienceCriteria = [
+  "noise",
+  "crowd",
+  "lighting",
+  "waitingTime",
+  "temperature",
+  "perceivedSafety",
+  "exitEase"
+] as const;
+export type EventExperienceCriterion = (typeof eventExperienceCriteria)[number];
+
 export const commentTargetTypes = ["place", "review"] as const;
 export type CommentTargetType = (typeof commentTargetTypes)[number];
 
@@ -74,6 +95,10 @@ export const reportTargetTypes = [
   "review",
   "comment",
   "image",
+  "event_series",
+  "event_edition",
+  "event_zone",
+  "event_experience",
   "professional",
   "organization"
 ] as const;
@@ -86,6 +111,7 @@ export const authProviderIds = ["password", "google.com", "apple.com"] as const;
 export type AuthProviderId = (typeof authProviderIds)[number];
 
 export type SensoryRating = Record<SensoryCriterion, number>;
+export type EventExperienceRating = Record<EventExperienceCriterion, number>;
 
 export interface AppUser {
   uid: string;
@@ -168,6 +194,73 @@ export interface DiscoveredPlace {
   criterionAverages?: Partial<Record<SensoryCriterion, number>>;
   hasSpectrumData: boolean;
   updatedAt?: string;
+}
+
+export interface EventSeries {
+  id: string;
+  title: string;
+  category: EventCategory;
+  city: string;
+  description: string;
+  status: ModerationStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventEdition {
+  id: string;
+  eventSeriesId: string;
+  title: string;
+  year: number;
+  startsAt: string;
+  endsAt: string;
+  status: ModerationStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventZone {
+  id: string;
+  eventSeriesId: string;
+  eventEditionId: string;
+  name: string;
+  description: string;
+  position: {
+    latitude: number;
+    longitude: number;
+  };
+  radiusMeters: number;
+  status: ModerationStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventExperience {
+  id: string;
+  eventSeriesId: string;
+  eventEditionId: string;
+  eventZoneId: string;
+  authorUid: string;
+  observedAt: string;
+  ratings: EventExperienceRating;
+  description: string;
+  photoPath: string;
+  status: ModerationStatus;
+  createdAt: string;
+  updatedAt: string;
+  moderatedAt?: string;
+  moderatedBy?: string;
+  moderationReason?: string;
+}
+
+export interface EventHistorySearchResult {
+  series: EventSeries[];
+  editions: EventEdition[];
+  zones: EventZone[];
+  experiences: EventExperience[];
 }
 
 export interface Review {

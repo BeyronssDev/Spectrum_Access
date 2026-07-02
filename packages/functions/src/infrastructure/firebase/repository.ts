@@ -1,6 +1,14 @@
 import { createHash } from "node:crypto";
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
-import type { Place, Review, VerificationRequestType } from "@accessibilitat/shared";
+import type {
+  EventEdition,
+  EventExperience,
+  EventSeries,
+  EventZone,
+  Place,
+  Review,
+  VerificationRequestType
+} from "@accessibilitat/shared";
 import type { PlaceReviewStats } from "../../domain/review-stats.js";
 import type { TimestampValue } from "../../ports/clock.js";
 import type {
@@ -36,6 +44,58 @@ export class FirestoreSpectrumRepository implements SpectrumRepository {
   async listActivePlacesForDiscovery(limit: number): Promise<Place[]> {
     const snapshot = await this.db.collection("places").where("status", "==", "active").limit(limit).get();
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Place);
+  }
+
+  async listActiveEventSeries(limit: number): Promise<EventSeries[]> {
+    const snapshot = await this.db.collection("eventSeries").where("status", "==", "active").limit(limit).get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as EventSeries);
+  }
+
+  async listActiveEventEditions(limit: number): Promise<EventEdition[]> {
+    const snapshot = await this.db.collection("eventEditions").where("status", "==", "active").limit(limit).get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as EventEdition);
+  }
+
+  async listActiveEventZones(limit: number): Promise<EventZone[]> {
+    const snapshot = await this.db.collection("eventZones").where("status", "==", "active").limit(limit).get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as EventZone);
+  }
+
+  async listActiveEventExperiences(limit: number): Promise<EventExperience[]> {
+    const snapshot = await this.db
+      .collection("eventExperiences")
+      .where("status", "==", "active")
+      .orderBy("observedAt", "desc")
+      .limit(limit)
+      .get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as EventExperience);
+  }
+
+  async createEventSeries(data: Record<string, unknown>): Promise<string> {
+    const ref = this.db.collection("eventSeries").doc();
+    await ref.set({ id: ref.id, ...data });
+    return ref.id;
+  }
+
+  async createEventEdition(data: Record<string, unknown>): Promise<string> {
+    const ref = this.db.collection("eventEditions").doc();
+    await ref.set({ id: ref.id, ...data });
+    return ref.id;
+  }
+
+  async createEventZone(data: Record<string, unknown>): Promise<string> {
+    const ref = this.db.collection("eventZones").doc();
+    await ref.set({ id: ref.id, ...data });
+    return ref.id;
+  }
+
+  async createEventExperience(input: {
+    experienceId: string;
+    data: Record<string, unknown>;
+  }): Promise<string> {
+    const ref = this.db.collection("eventExperiences").doc(input.experienceId);
+    await ref.create({ id: input.experienceId, ...input.data });
+    return input.experienceId;
   }
 
   async getPlaceByGooglePlaceId(googlePlaceId: string): Promise<Place | undefined> {

@@ -1596,6 +1596,126 @@ svg {
     "form side";
 }
 
+.event-history-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.48fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.event-history-main,
+.event-card-list,
+.event-experience-list {
+  display: grid;
+  gap: 14px;
+}
+
+.event-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.event-series-card,
+.event-experience-card,
+.event-form-panel {
+  overflow: hidden;
+}
+
+.event-card-heading,
+.event-meta-row,
+.event-rating-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.event-card-heading {
+  justify-content: space-between;
+}
+
+.event-card-heading span,
+.event-meta-row span,
+.event-rating-row span,
+.event-experience-copy span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.event-card-heading strong {
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(188, 151, 92, 0.18);
+  color: var(--ink);
+}
+
+.event-experience-card {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.event-photo-frame {
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(70, 85, 101, 0.12);
+  display: grid;
+  place-items: center;
+}
+
+.event-photo-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.event-experience-copy {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.event-experience-copy > span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.file-input-label {
+  min-height: 48px;
+  border: 1px dashed rgba(70, 85, 101, 0.3);
+  border-radius: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.file-input-label input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rating-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.span-two {
+  grid-column: 1 / -1;
+}
+
 .report-intro {
   text-align: center;
 }
@@ -2386,7 +2506,19 @@ svg {
   flex: 0 0 auto;
 }
 
-.admin-grant-panel input[type="email"] {
+.admin-stacked-form {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--outline-variant);
+  padding-top: 16px;
+}
+
+.admin-stacked-form strong {
+  color: var(--primary);
+}
+
+.admin-grant-panel input,
+.admin-grant-panel select {
   min-width: 0;
   border: 1px solid var(--outline-variant);
   border-radius: 16px;
@@ -2795,11 +2927,17 @@ svg {
   .dashboard-grid,
   .consult-grid,
   .report-grid,
+  .event-history-grid,
   .support-grid,
   .profiles-grid,
   .verified-grid {
     grid-template-columns: 1fr;
     grid-template-areas: none;
+  }
+
+  .event-search-row,
+  .event-experience-card {
+    grid-template-columns: 1fr;
   }
 
   .home-layout,

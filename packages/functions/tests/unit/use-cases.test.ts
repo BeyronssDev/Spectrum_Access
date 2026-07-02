@@ -6,7 +6,7 @@ import type { Clock, TimestampValue } from "../../src/ports/clock.js";
 import type { GooglePlaceCandidate, NearbyPlacesSearch, PlacesGateway } from "../../src/ports/places.js";
 import type { SpectrumRepository, UserDocument, VerificationProfileDocument } from "../../src/ports/repositories.js";
 import type { PlaceReviewStats } from "../../src/domain/review-stats.js";
-import type { Place, Review } from "@accessibilitat/shared";
+import type { EventEdition, EventExperience, EventSeries, EventZone, Place, Review } from "@accessibilitat/shared";
 
 class FakeClock implements Clock {
   now(): TimestampValue {
@@ -35,7 +35,15 @@ class FakeRepository implements SpectrumRepository {
   users = new Map<string, UserDocument>();
   childTutors = new Map<string, string>();
   places = new Map<string, Place>();
+  eventSeries = new Map<string, EventSeries>();
+  eventEditions = new Map<string, EventEdition>();
+  eventZones = new Map<string, EventZone>();
+  eventExperiences = new Map<string, EventExperience>();
   createdPlaces: Array<Record<string, unknown>> = [];
+  createdEventSeries: Array<Record<string, unknown>> = [];
+  createdEventEditions: Array<Record<string, unknown>> = [];
+  createdEventZones: Array<Record<string, unknown>> = [];
+  createdEventExperiences: Array<Record<string, unknown>> = [];
   createdReviews: Array<Record<string, unknown>> = [];
   rateLimitAllowed = true;
   reservedRateLimits: Array<Record<string, unknown>> = [];
@@ -59,6 +67,45 @@ class FakeRepository implements SpectrumRepository {
 
   listActivePlacesForDiscovery(_limit: number): Promise<Place[]> {
     return Promise.resolve([...this.places.values()].filter((place) => place.status === "active"));
+  }
+
+  listActiveEventSeries(_limit: number): Promise<EventSeries[]> {
+    return Promise.resolve([...this.eventSeries.values()].filter((series) => series.status === "active"));
+  }
+
+  listActiveEventEditions(_limit: number): Promise<EventEdition[]> {
+    return Promise.resolve([...this.eventEditions.values()].filter((edition) => edition.status === "active"));
+  }
+
+  listActiveEventZones(_limit: number): Promise<EventZone[]> {
+    return Promise.resolve([...this.eventZones.values()].filter((zone) => zone.status === "active"));
+  }
+
+  listActiveEventExperiences(_limit: number): Promise<EventExperience[]> {
+    return Promise.resolve([...this.eventExperiences.values()].filter((experience) => experience.status === "active"));
+  }
+
+  async createEventSeries(data: Record<string, unknown>): Promise<string> {
+    this.createdEventSeries.push(data);
+    return "event-series-1";
+  }
+
+  async createEventEdition(data: Record<string, unknown>): Promise<string> {
+    this.createdEventEditions.push(data);
+    return "event-edition-1";
+  }
+
+  async createEventZone(data: Record<string, unknown>): Promise<string> {
+    this.createdEventZones.push(data);
+    return "event-zone-1";
+  }
+
+  async createEventExperience(input: {
+    experienceId: string;
+    data: Record<string, unknown>;
+  }): Promise<string> {
+    this.createdEventExperiences.push(input.data);
+    return input.experienceId;
   }
 
   getPlaceByGooglePlaceId(googlePlaceId: string): Promise<Place | undefined> {
@@ -197,6 +244,16 @@ const validRatings = {
   generalRecommendation: 5
 };
 
+const validEventRatings = {
+  noise: 4,
+  crowd: 5,
+  lighting: 3,
+  waitingTime: 2,
+  temperature: 4,
+  perceivedSafety: 3,
+  exitEase: 2
+};
+
 function makeUseCases() {
   const repository = new FakeRepository();
   const places = new FakePlacesGateway();
@@ -232,6 +289,95 @@ describe("functions use cases", () => {
       status: "pending",
       createdBy: "user-1"
     });
+  });
+
+  it("creates pending event catalog entries for normal users", async () => {
+    const { repository, useCases } = makeUseCases();
+
+    const series = await useCases.createEventSeries(
+      { uid: "user-1", token: {} },
+      {
+        title: "Festa Major",
+        category: "festa_major",
+        city: "Manresa",
+        description: "Edicio anual"
+      }
+    );
+    const edition = await useCases.createEventEdition(
+      { uid: "user-1", token: {} },
+      {
+        eventSeriesId: series.eventSeriesId,
+        title: "Festa Major 2027",
+        year: 2027,
+        startsAt: "2027-08-25T08:00:00.000Z",
+        endsAt: "2027-08-31T23:00:00.000Z"
+      }
+    );
+    const zone = await useCases.createEventZone(
+      { uid: "user-1", token: {} },
+      {
+        eventSeriesId: series.eventSeriesId,
+        eventEditionId: edition.eventEditionId,
+        name: "Plaça Major",
+        latitude: 41.724,
+        longitude: 1.826,
+        radiusMeters: 120
+      }
+    );
+
+    expect(series).toEqual({ eventSeriesId: "event-series-1", status: "pending" });
+    expect(edition).toEqual({ eventEditionId: "event-edition-1", status: "pending" });
+    expect(zone).toEqual({ eventZoneId: "event-zone-1", status: "pending" });
+    expect(repository.createdEventSeries[0]).toMatchObject({ status: "pending", createdBy: "user-1" });
+    expect(repository.createdEventEditions[0]).toMatchObject({ year: 2027, status: "pending" });
+    expect(repository.createdEventZones[0]).toMatchObject({ name: "Plaça Major", status: "pending" });
+  });
+
+  it("stores event experiences as pending with required user-owned photos", async () => {
+    const { repository, useCases } = makeUseCases();
+
+    const result = await useCases.submitEventExperience(
+      { uid: "user-1", token: {} },
+      {
+        experienceId: "experience-1",
+        eventSeriesId: "series-1",
+        eventEditionId: "edition-1",
+        eventZoneId: "zone-1",
+        observedAt: "2027-08-28T20:30:00.000Z",
+        ratings: validEventRatings,
+        description: "La plaça estava plena i hi havia molta intensitat sonora.",
+        photoPath: "event-experience-images/user-1/experience-1/plena.jpg"
+      }
+    );
+
+    expect(result).toEqual({ eventExperienceId: "experience-1", status: "pending" });
+    expect(repository.createdEventExperiences[0]).toMatchObject({
+      authorUid: "user-1",
+      status: "pending",
+      photoPath: "event-experience-images/user-1/experience-1/plena.jpg"
+    });
+  });
+
+  it("rejects event experience photos outside the contributor path", async () => {
+    const { useCases } = makeUseCases();
+
+    await expect(
+      useCases.submitEventExperience(
+        { uid: "user-1", token: {} },
+        {
+          experienceId: "experience-1",
+          eventSeriesId: "series-1",
+          eventEditionId: "edition-1",
+          eventZoneId: "zone-1",
+          observedAt: "2027-08-28T20:30:00.000Z",
+          ratings: validEventRatings,
+          description: "Text valid.",
+          photoPath: "event-experience-images/user-2/experience-1/plena.jpg"
+        }
+      )
+    ).rejects.toMatchObject(
+      new ApplicationError("permission-denied", "photoPath must belong to the authenticated user and experience.")
+    );
   });
 
   it("merges Google Places discovery with existing Spectrum stats", async () => {

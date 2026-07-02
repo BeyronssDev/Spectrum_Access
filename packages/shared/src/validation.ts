@@ -1,12 +1,15 @@
 import {
   authProviderIds,
   commentTargetTypes,
+  eventCategories,
+  eventExperienceCriteria,
   locales,
   moderationStatuses,
   placeCategories,
   placeSources,
   reportTargetTypes,
   sensoryCriteria,
+  type EventExperienceRating,
   type SensoryRating,
   userRoles,
   verificationRequestTypes,
@@ -18,10 +21,12 @@ const asSet = <T extends readonly string[]>(values: T) => new Set<string>(values
 export const localeSet = asSet(locales);
 export const userRoleSet = asSet(userRoles);
 export const placeCategorySet = asSet(placeCategories);
+export const eventCategorySet = asSet(eventCategories);
 export const placeSourceSet = asSet(placeSources);
 export const moderationStatusSet = asSet(moderationStatuses);
 export const verificationStatusSet = asSet(verificationStatuses);
 export const sensoryCriterionSet = asSet(sensoryCriteria);
+export const eventExperienceCriterionSet = asSet(eventExperienceCriteria);
 export const commentTargetTypeSet = asSet(commentTargetTypes);
 export const reportTargetTypeSet = asSet(reportTargetTypes);
 export const verificationRequestTypeSet = asSet(verificationRequestTypes);
@@ -62,6 +67,14 @@ export function isSensoryRating(value: unknown): value is SensoryRating {
   }
 
   return sensoryCriteria.every((criterion) => isScore(value[criterion]));
+}
+
+export function isEventExperienceRating(value: unknown): value is EventExperienceRating {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return eventExperienceCriteria.every((criterion) => isScore(value[criterion]));
 }
 
 export function isLocale(value: unknown): value is (typeof locales)[number] {

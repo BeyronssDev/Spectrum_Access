@@ -86,6 +86,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _userProfileSubmitting = false;
   bool _placesLoading = false;
   bool _placesReloadQueued = false;
+  bool _eventsLoading = false;
+  bool _isSubmittingEventExperience = false;
   int _selectedPlace = 0;
   int? _selectedFilter;
   LocationStatus _locationStatus = LocationStatus.idle;
@@ -98,6 +100,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
   SpectrumAuthUser? _authUser;
   SpectrumUserProfile? _userProfile;
   List<PlaceSummary> _places = const [];
+  EventHistorySummary _eventHistory = const EventHistorySummary();
+  Map<String, String> _eventPhotoUrls = const {};
   final PlaceImagePicker _imagePicker = PlaceImagePicker();
   final PlaceImagePicker _profileImagePicker = PlaceImagePicker();
   final List<PreparedPlaceImage> _selectedImages = [];
@@ -129,23 +133,43 @@ class _SpectrumShellState extends State<SpectrumShell> {
   final TextEditingController _placeAddressController = TextEditingController();
   final TextEditingController _placeDescriptionController =
       TextEditingController();
+  final TextEditingController _eventSeriesController = TextEditingController();
+  final TextEditingController _eventCityController = TextEditingController();
+  final TextEditingController _eventEditionController = TextEditingController();
+  final TextEditingController _eventZoneController = TextEditingController();
+  final TextEditingController _eventObservedAtController =
+      TextEditingController();
+  final TextEditingController _eventDescriptionController =
+      TextEditingController();
   bool _showRegister = true;
   RegistrationKind _registrationKind = RegistrationKind.user;
   String? _authMessage;
   String? _userProfileMessage;
   PreparedPlaceImage? _profilePhotoDraft;
+  PreparedPlaceImage? _eventPhotoDraft;
   bool _isSubmittingReport = false;
   String? _reportMessage;
+  String? _eventMessage;
   final Map<SensoryKey, double> _ratings = {
     SensoryKey.noise: 2,
     SensoryKey.density: 2,
     SensoryKey.light: 2,
     SensoryKey.wait: 1,
   };
+  final Map<EventSensoryKey, double> _eventRatings = {
+    EventSensoryKey.noise: 3,
+    EventSensoryKey.crowd: 3,
+    EventSensoryKey.lighting: 3,
+    EventSensoryKey.waitingTime: 3,
+    EventSensoryKey.temperature: 3,
+    EventSensoryKey.perceivedSafety: 3,
+    EventSensoryKey.exitEase: 3,
+  };
 
   @override
   void initState() {
     super.initState();
+    _eventObservedAtController.text = _formatEventDateInput(DateTime.now());
     _startFirebaseInitialization();
     unawaited(_resolveGoogleMapsAvailability());
     unawaited(_locateDeviceOnLaunch());
@@ -174,6 +198,12 @@ class _SpectrumShellState extends State<SpectrumShell> {
     _placeCityController.dispose();
     _placeAddressController.dispose();
     _placeDescriptionController.dispose();
+    _eventSeriesController.dispose();
+    _eventCityController.dispose();
+    _eventEditionController.dispose();
+    _eventZoneController.dispose();
+    _eventObservedAtController.dispose();
+    _eventDescriptionController.dispose();
     super.dispose();
   }
 
@@ -225,6 +255,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
             _firebaseInitializationTimeout?.cancel();
             _listenToAuth();
             unawaited(_loadPlaces());
+            unawaited(_loadEventHistory());
           })
           .catchError((Object error, StackTrace stackTrace) {
             if (kDebugMode || kProfileMode) {
@@ -254,7 +285,16 @@ class _SpectrumShellState extends State<SpectrumShell> {
   Future<void> _loadUserProfile() async {
     try {
       final profile = await _service().loadCurrentUserProfile();
-      setStateIfMounted(() => _userProfile = profile);
+      setStateIfMounted(() {
+        _userProfile = profile;
+        final city = profile?.city?.trim();
+        if (_eventCityController.text.trim().isEmpty &&
+            city != null &&
+            city.isNotEmpty) {
+          _eventCityController.text = city;
+        }
+      });
+      unawaited(_loadEventHistory());
     } catch (_) {
       setStateIfMounted(() => _userProfile = null);
     }
@@ -303,6 +343,81 @@ class _SpectrumShellState extends State<SpectrumShell> {
         unawaited(_loadPlaces());
       }
     }
+  }
+
+  Future<void> _loadEventHistory() async {
+    if (_eventsLoading || !_firebaseReady) {
+      return;
+    }
+
+    setStateIfMounted(() => _eventsLoading = true);
+
+    try {
+      final location = _deviceLocation;
+      final preferredCity = _eventCityController.text.trim().isNotEmpty
+          ? _eventCityController.text.trim()
+          : _userProfile?.city?.trim();
+      final history = await _service().searchEventHistory(
+        locale: _locale.name,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+        city: preferredCity,
+        radiusMeters: 10000,
+        maxResultCount: 50,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() => _eventHistory = history);
+      unawaited(_loadEventPhotoUrls(history));
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _eventHistory = const EventHistorySummary();
+        _eventPhotoUrls = const {};
+      });
+    } finally {
+      setStateIfMounted(() => _eventsLoading = false);
+    }
+  }
+
+  Future<void> _loadEventPhotoUrls(EventHistorySummary history) async {
+    final experiences = history.experiences
+        .where((experience) => experience.photoPath.trim().isNotEmpty)
+        .toList(growable: false);
+    if (experiences.isEmpty) {
+      setStateIfMounted(() => _eventPhotoUrls = const {});
+      return;
+    }
+
+    final service = _service();
+    final entries = await Future.wait(
+      experiences.map((experience) async {
+        try {
+          final url = await service.eventExperiencePhotoUrl(
+            photoPath: experience.photoPath,
+          );
+          if (url == null || url.isEmpty) {
+            return null;
+          }
+          return MapEntry(experience.id, url);
+        } catch (_) {
+          return null;
+        }
+      }),
+    );
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _eventPhotoUrls = {
+        for (final entry in entries)
+          if (entry != null) entry.key: entry.value,
+      };
+    });
   }
 
   void _clearPlaces() {
@@ -667,6 +782,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
         _selectedPlace = 0;
       });
       unawaited(_loadPlaces());
+      unawaited(_loadEventHistory());
     } catch (_) {
       setStateIfMounted(() {
         _locationStatus = LocationStatus.error;
@@ -753,6 +869,204 @@ class _SpectrumShellState extends State<SpectrumShell> {
       }
       setState(() => _reportMessage = appCopies[_locale]!.submitFailed);
     }
+  }
+
+  Future<void> _pickEventPhotoFromGallery() {
+    return _setEventPhoto(_imagePicker.pickFromGallery());
+  }
+
+  Future<void> _takeEventPhoto() {
+    return _setEventPhoto(_imagePicker.takePhoto());
+  }
+
+  Future<void> _setEventPhoto(Future<PreparedPlaceImage?> pendingImage) async {
+    try {
+      final image = await pendingImage;
+      if (!mounted || image == null) {
+        return;
+      }
+      setState(() {
+        _eventPhotoDraft = image;
+        _eventMessage = null;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _eventMessage = appCopies[_locale]!.eventSubmitFailed);
+    }
+  }
+
+  Future<void> _submitEventExperience(AppCopy labels) async {
+    if (_isSubmittingEventExperience) {
+      return;
+    }
+
+    setState(() {
+      _isSubmittingEventExperience = true;
+      _eventMessage = null;
+    });
+
+    try {
+      final service = _service();
+      if (!service.hasAuthenticatedUser) {
+        if (mounted) {
+          setState(() => _eventMessage = labels.uploadAuthRequired);
+        }
+        return;
+      }
+
+      final eventTitle = _eventSeriesController.text.trim();
+      final city = _eventCityController.text.trim().isNotEmpty
+          ? _eventCityController.text.trim()
+          : (_userProfile?.city?.trim() ?? '');
+      final zoneName = _eventZoneController.text.trim();
+      final description = _eventDescriptionController.text.trim();
+      final observedAt = _parseEventObservedAt(_eventObservedAtController.text);
+
+      if (eventTitle.isEmpty ||
+          city.isEmpty ||
+          zoneName.isEmpty ||
+          description.isEmpty ||
+          observedAt == null) {
+        if (mounted) {
+          setState(() => _eventMessage = authCopies[_locale]!.requiredFields);
+        }
+        return;
+      }
+
+      final photo = _eventPhotoDraft;
+      if (photo == null) {
+        if (mounted) {
+          setState(() => _eventMessage = labels.eventPhotoRequired);
+        }
+        return;
+      }
+
+      var location = _deviceLocation;
+      if (location == null) {
+        await _locateDeviceOnLaunch();
+        location = _deviceLocation;
+      }
+      if (location == null) {
+        if (mounted) {
+          setState(() => _eventMessage = labels.eventLocationRequired);
+        }
+        return;
+      }
+
+      final editionTitle = _eventEditionController.text.trim().isNotEmpty
+          ? _eventEditionController.text.trim()
+          : '$eventTitle ${observedAt.year}';
+      final seriesId =
+          _matchingEventSeriesId(eventTitle, city) ??
+          await service.createEventSeries(
+            title: eventTitle,
+            category: 'other',
+            city: city,
+            description: description,
+          );
+      final editionId =
+          _matchingEventEditionId(seriesId, editionTitle, observedAt.year) ??
+          await service.createEventEdition(
+            eventSeriesId: seriesId,
+            title: editionTitle,
+            year: observedAt.year,
+            startsAt: DateTime(observedAt.year),
+            endsAt: DateTime(observedAt.year, 12, 31, 23, 59, 59),
+          );
+      final zoneId =
+          _matchingEventZoneId(editionId, zoneName) ??
+          await service.createEventZone(
+            eventSeriesId: seriesId,
+            eventEditionId: editionId,
+            name: zoneName,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            radiusMeters: 150,
+            description: description,
+          );
+      final experienceId = 'mobile-${DateTime.now().microsecondsSinceEpoch}';
+      final photoPath = await service.uploadEventExperiencePhoto(
+        experienceId: experienceId,
+        bytes: photo.bytes,
+        fileName: photo.fileName,
+        contentType: photo.contentType,
+      );
+
+      await service.submitEventExperience(
+        experienceId: experienceId,
+        eventSeriesId: seriesId,
+        eventEditionId: editionId,
+        eventZoneId: zoneId,
+        observedAt: observedAt,
+        ratings: _eventRatings,
+        description: description,
+        photoPath: photoPath,
+      );
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _eventPhotoDraft = null;
+        _eventMessage = labels.eventSubmitSuccess;
+        _eventDescriptionController.clear();
+        _eventZoneController.clear();
+        _eventEditionController.clear();
+        _eventObservedAtController.text = _formatEventDateInput(DateTime.now());
+        for (final key in EventSensoryKey.values) {
+          _eventRatings[key] = 3;
+        }
+      });
+      unawaited(_loadEventHistory());
+    } catch (error, stackTrace) {
+      if (kDebugMode || kProfileMode) {
+        debugPrint('Spectrum event experience submit error: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      if (!mounted) {
+        return;
+      }
+      setState(() => _eventMessage = labels.eventSubmitFailed);
+    } finally {
+      setStateIfMounted(() => _isSubmittingEventExperience = false);
+    }
+  }
+
+  String? _matchingEventSeriesId(String title, String city) {
+    final normalizedTitle = _normalizeEventText(title);
+    final normalizedCity = _normalizeEventText(city);
+    for (final series in _eventHistory.series) {
+      if (_normalizeEventText(series.title) == normalizedTitle &&
+          _normalizeEventText(series.city) == normalizedCity) {
+        return series.id;
+      }
+    }
+    return null;
+  }
+
+  String? _matchingEventEditionId(String seriesId, String title, int year) {
+    final normalizedTitle = _normalizeEventText(title);
+    for (final edition in _eventHistory.editions) {
+      if (edition.eventSeriesId == seriesId &&
+          edition.year == year &&
+          _normalizeEventText(edition.title) == normalizedTitle) {
+        return edition.id;
+      }
+    }
+    return null;
+  }
+
+  String? _matchingEventZoneId(String editionId, String name) {
+    final normalizedName = _normalizeEventText(name);
+    for (final zone in _eventHistory.zones) {
+      if (zone.eventEditionId == editionId &&
+          _normalizeEventText(zone.name) == normalizedName) {
+        return zone.id;
+      }
+    }
+    return null;
   }
 
   Future<void> _submitReport(AppCopy labels) async {
@@ -964,6 +1278,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
             onSelected: (locale) {
               setState(() => _locale = locale);
               unawaited(_loadPlaces());
+              unawaited(_loadEventHistory());
             },
             itemBuilder: (context) => LocaleOption.values
                 .map(
@@ -1058,6 +1373,35 @@ class _SpectrumShellState extends State<SpectrumShell> {
           onPlaceChanged: (index) => setState(() => _selectedPlace = index),
           onLocate: _locateDeviceOnLaunch,
           onContribute: () => _openTab(MobileTab.contribute),
+        );
+      case MobileTab.events:
+        return EventsScreen(
+          key: const ValueKey('events'),
+          labels: labels,
+          authLabels: authLabels,
+          locale: _locale,
+          history: _eventHistory,
+          photoUrls: _eventPhotoUrls,
+          isLoading: _eventsLoading,
+          isAuthenticated: isAuthenticated,
+          seriesController: _eventSeriesController,
+          cityController: _eventCityController,
+          editionController: _eventEditionController,
+          zoneController: _eventZoneController,
+          observedAtController: _eventObservedAtController,
+          descriptionController: _eventDescriptionController,
+          ratings: _eventRatings,
+          photoDraft: _eventPhotoDraft,
+          isSubmitting: _isSubmittingEventExperience,
+          message: _eventMessage,
+          onRefresh: _loadEventHistory,
+          onRatingChanged: (key, value) =>
+              setState(() => _eventRatings[key] = value),
+          onPickFromGallery: _pickEventPhotoFromGallery,
+          onTakePhoto: _takeEventPhoto,
+          onRemovePhoto: () => setState(() => _eventPhotoDraft = null),
+          onSubmit: () => _submitEventExperience(labels),
+          onSignIn: () => _openAuthScreen(),
         );
       case MobileTab.contribute:
         if (!isAuthenticated) {
@@ -1680,6 +2024,469 @@ class ConsultScreen extends StatelessWidget {
   }
 }
 
+class EventsScreen extends StatelessWidget {
+  const EventsScreen({
+    required this.labels,
+    required this.authLabels,
+    required this.locale,
+    required this.history,
+    required this.photoUrls,
+    required this.isLoading,
+    required this.isAuthenticated,
+    required this.seriesController,
+    required this.cityController,
+    required this.editionController,
+    required this.zoneController,
+    required this.observedAtController,
+    required this.descriptionController,
+    required this.ratings,
+    required this.photoDraft,
+    required this.isSubmitting,
+    required this.message,
+    required this.onRefresh,
+    required this.onRatingChanged,
+    required this.onPickFromGallery,
+    required this.onTakePhoto,
+    required this.onRemovePhoto,
+    required this.onSubmit,
+    required this.onSignIn,
+    super.key,
+  });
+
+  final AppCopy labels;
+  final AuthCopy authLabels;
+  final LocaleOption locale;
+  final EventHistorySummary history;
+  final Map<String, String> photoUrls;
+  final bool isLoading;
+  final bool isAuthenticated;
+  final TextEditingController seriesController;
+  final TextEditingController cityController;
+  final TextEditingController editionController;
+  final TextEditingController zoneController;
+  final TextEditingController observedAtController;
+  final TextEditingController descriptionController;
+  final Map<EventSensoryKey, double> ratings;
+  final PreparedPlaceImage? photoDraft;
+  final bool isSubmitting;
+  final String? message;
+  final Future<void> Function() onRefresh;
+  final void Function(EventSensoryKey key, double value) onRatingChanged;
+  final VoidCallback onPickFromGallery;
+  final VoidCallback onTakePhoto;
+  final VoidCallback onRemovePhoto;
+  final VoidCallback onSubmit;
+  final VoidCallback onSignIn;
+
+  @override
+  Widget build(BuildContext context) {
+    final seriesById = {for (final series in history.series) series.id: series};
+    final editionsById = {
+      for (final edition in history.editions) edition.id: edition,
+    };
+    final zonesById = {for (final zone in history.zones) zone.id: zone};
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  labels.eventHistoryTitle,
+                  style: Theme.of(context).textTheme.displayLarge,
+                ),
+              ),
+              IconButton(
+                tooltip: labels.viewAll,
+                onPressed: isLoading ? null : onRefresh,
+                icon: isLoading
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_outlined),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            labels.eventHistoryIntro,
+            style: TextStyle(
+              color: mutedColor(context),
+              fontSize: 16,
+              height: 1.55,
+            ),
+          ),
+          const SizedBox(height: 22),
+          if (history.experiences.isEmpty)
+            SpectrumPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.event_busy_outlined,
+                    color: SpectrumColors.tertiary,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    labels.noEventsTitle,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    labels.noEventsBody,
+                    style: TextStyle(color: mutedColor(context), height: 1.45),
+                  ),
+                ],
+              ),
+            )
+          else
+            for (final experience in history.experiences)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: EventExperienceCard(
+                  labels: labels,
+                  locale: locale,
+                  experience: experience,
+                  series: seriesById[experience.eventSeriesId],
+                  edition: editionsById[experience.eventEditionId],
+                  zone: zonesById[experience.eventZoneId],
+                  photoUrl: photoUrls[experience.id],
+                ),
+              ),
+          const SizedBox(height: 18),
+          if (!isAuthenticated)
+            SpectrumPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.lock_outline, color: SpectrumColors.tertiary),
+                  const SizedBox(height: 12),
+                  Text(
+                    authLabels.signInRequiredTitle,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    authLabels.signInRequiredIntro,
+                    style: TextStyle(color: mutedColor(context), height: 1.45),
+                  ),
+                  const SizedBox(height: 14),
+                  FilledButton.icon(
+                    onPressed: onSignIn,
+                    icon: const Icon(Icons.login_outlined),
+                    label: Text(authLabels.signInToContinue),
+                  ),
+                ],
+              ),
+            )
+          else
+            EventExperienceForm(
+              labels: labels,
+              locale: locale,
+              seriesController: seriesController,
+              cityController: cityController,
+              editionController: editionController,
+              zoneController: zoneController,
+              observedAtController: observedAtController,
+              descriptionController: descriptionController,
+              ratings: ratings,
+              photoDraft: photoDraft,
+              isSubmitting: isSubmitting,
+              message: message,
+              onRatingChanged: onRatingChanged,
+              onPickFromGallery: onPickFromGallery,
+              onTakePhoto: onTakePhoto,
+              onRemovePhoto: onRemovePhoto,
+              onSubmit: onSubmit,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class EventExperienceCard extends StatelessWidget {
+  const EventExperienceCard({
+    required this.labels,
+    required this.locale,
+    required this.experience,
+    required this.series,
+    required this.edition,
+    required this.zone,
+    required this.photoUrl,
+    super.key,
+  });
+
+  final AppCopy labels;
+  final LocaleOption locale;
+  final EventExperienceSummary experience;
+  final EventSeriesSummary? series;
+  final EventEditionSummary? edition;
+  final EventZoneSummary? zone;
+  final String? photoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return SpectrumPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: photoUrl == null
+                  ? DecoratedBox(
+                      decoration: BoxDecoration(color: softPanelColor(context)),
+                      child: const Center(
+                        child: Icon(Icons.image_outlined, size: 34),
+                      ),
+                    )
+                  : Image.network(photoUrl!, fit: BoxFit.cover),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            series?.title ?? labels.eventHistoryTitle,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            [
+              if (edition?.title.trim().isNotEmpty == true) edition!.title,
+              if (zone?.name.trim().isNotEmpty == true) zone!.name,
+              _formatEventDisplayDate(experience.observedAt),
+            ].where((part) => part.trim().isNotEmpty).join(' · '),
+            style: TextStyle(color: mutedColor(context), height: 1.35),
+          ),
+          if (experience.description.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(experience.description, style: const TextStyle(height: 1.45)),
+          ],
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: EventSensoryKey.values.map((key) {
+              final value = experience.ratings[key]?.round() ?? 3;
+              return Chip(
+                visualDensity: VisualDensity.compact,
+                label: Text('${eventSensoryLabel(locale, key)} $value/5'),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class EventExperienceForm extends StatelessWidget {
+  const EventExperienceForm({
+    required this.labels,
+    required this.locale,
+    required this.seriesController,
+    required this.cityController,
+    required this.editionController,
+    required this.zoneController,
+    required this.observedAtController,
+    required this.descriptionController,
+    required this.ratings,
+    required this.photoDraft,
+    required this.isSubmitting,
+    required this.message,
+    required this.onRatingChanged,
+    required this.onPickFromGallery,
+    required this.onTakePhoto,
+    required this.onRemovePhoto,
+    required this.onSubmit,
+    super.key,
+  });
+
+  final AppCopy labels;
+  final LocaleOption locale;
+  final TextEditingController seriesController;
+  final TextEditingController cityController;
+  final TextEditingController editionController;
+  final TextEditingController zoneController;
+  final TextEditingController observedAtController;
+  final TextEditingController descriptionController;
+  final Map<EventSensoryKey, double> ratings;
+  final PreparedPlaceImage? photoDraft;
+  final bool isSubmitting;
+  final String? message;
+  final void Function(EventSensoryKey key, double value) onRatingChanged;
+  final VoidCallback onPickFromGallery;
+  final VoidCallback onTakePhoto;
+  final VoidCallback onRemovePhoto;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return SpectrumPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            labels.eventExperienceTitle,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: seriesController,
+            decoration: InputDecoration(labelText: labels.eventSeriesName),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: cityController,
+            decoration: InputDecoration(labelText: labels.placeCity),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: editionController,
+            decoration: InputDecoration(labelText: labels.eventEditionName),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: zoneController,
+            decoration: InputDecoration(labelText: labels.eventZoneName),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: observedAtController,
+            keyboardType: TextInputType.datetime,
+            decoration: InputDecoration(
+              labelText: labels.eventObservedAt,
+              hintText: '2027-08-28 20:30',
+            ),
+          ),
+          const SizedBox(height: 18),
+          SinglePhotoUploadBox(
+            labels: labels,
+            photoDraft: photoDraft,
+            onPickFromGallery: onPickFromGallery,
+            onTakePhoto: onTakePhoto,
+            onRemovePhoto: onRemovePhoto,
+          ),
+          const SizedBox(height: 24),
+          for (final key in EventSensoryKey.values)
+            SensoryControl(
+              label: eventSensoryLabel(locale, key),
+              word: eventSensoryWord(locale, key, ratings[key]!.round()),
+              value: ratings[key]!,
+              onChanged: (value) => onRatingChanged(key, value),
+            ),
+          Text(
+            labels.eventDescription,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: descriptionController,
+            minLines: 5,
+            maxLines: 8,
+            decoration: InputDecoration(hintText: labels.notesHint),
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 12),
+            StatusMessage(message: message!),
+          ],
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: isSubmitting ? null : onSubmit,
+            icon: isSubmitting
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.send_outlined),
+            label: Text(labels.submit),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SinglePhotoUploadBox extends StatelessWidget {
+  const SinglePhotoUploadBox({
+    required this.labels,
+    required this.photoDraft,
+    required this.onPickFromGallery,
+    required this.onTakePhoto,
+    required this.onRemovePhoto,
+    super.key,
+  });
+
+  final AppCopy labels;
+  final PreparedPlaceImage? photoDraft;
+  final VoidCallback onPickFromGallery;
+  final VoidCallback onTakePhoto;
+  final VoidCallback onRemovePhoto;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: softPanelColor(context),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.add_photo_alternate_outlined,
+                  color: SpectrumColors.tertiary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    labels.eventPhoto,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onTakePhoto,
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: Text(labels.takePhoto),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onPickFromGallery,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: Text(labels.chooseFromGallery),
+                ),
+              ],
+            ),
+            if (photoDraft != null) ...[
+              const SizedBox(height: 14),
+              PreparedImageRow(
+                image: photoDraft!,
+                labels: labels,
+                onRemove: onRemovePhoto,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class ReportScreen extends StatelessWidget {
   const ReportScreen({
     required this.labels,
@@ -2088,6 +2895,7 @@ class BottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       _NavItem(MobileTab.consult, Icons.map_outlined, labels.consult),
+      _NavItem(MobileTab.events, Icons.event_available_outlined, labels.events),
       _NavItem(
         MobileTab.contribute,
         Icons.add_circle_outline,
@@ -2991,6 +3799,38 @@ class PreparedImageRow extends StatelessWidget {
       ),
     );
   }
+}
+
+String _normalizeEventText(String value) {
+  return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+}
+
+DateTime? _parseEventObservedAt(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) {
+    return null;
+  }
+  final normalized = trimmed.contains('T')
+      ? trimmed
+      : trimmed.replaceFirst(RegExp(r'\s+'), 'T');
+  return DateTime.tryParse(normalized);
+}
+
+String _formatEventDateInput(DateTime value) {
+  final local = value.toLocal();
+  return '${local.year.toString().padLeft(4, '0')}-'
+      '${local.month.toString().padLeft(2, '0')}-'
+      '${local.day.toString().padLeft(2, '0')} '
+      '${local.hour.toString().padLeft(2, '0')}:'
+      '${local.minute.toString().padLeft(2, '0')}';
+}
+
+String _formatEventDisplayDate(String value) {
+  final parsed = DateTime.tryParse(value);
+  if (parsed == null) {
+    return value;
+  }
+  return _formatEventDateInput(parsed.toLocal());
 }
 
 String _formatImageSize(int bytes) {

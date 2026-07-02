@@ -331,8 +331,154 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
 
     return places
         .whereType<Map>()
-        .map((place) => _discoveredPlaceFromMap(Map<String, dynamic>.from(place)))
+        .map(
+          (place) => _discoveredPlaceFromMap(Map<String, dynamic>.from(place)),
+        )
         .toList(growable: false);
+  }
+
+  @override
+  Future<EventHistorySummary> searchEventHistory({
+    required String locale,
+    double? latitude,
+    double? longitude,
+    double radiusMeters = 10000,
+    int maxResultCount = 50,
+    String? city,
+  }) async {
+    final result = await _functions.httpsCallable('searchEventHistory').call({
+      'locale': locale,
+      'radiusMeters': radiusMeters,
+      'maxResultCount': maxResultCount,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+    });
+    final data = result.data;
+    if (data is! Map) {
+      return const EventHistorySummary();
+    }
+    return _eventHistoryFromMap(Map<String, dynamic>.from(data));
+  }
+
+  @override
+  Future<String> createEventSeries({
+    required String title,
+    required String category,
+    required String city,
+    String? description,
+  }) async {
+    final result = await _functions.httpsCallable('createEventSeries').call({
+      'title': title,
+      'category': category,
+      'city': city,
+      if (description != null && description.trim().isNotEmpty)
+        'description': description.trim(),
+    });
+    final data = result.data;
+    if (data is Map && data['eventSeriesId'] is String) {
+      return data['eventSeriesId'] as String;
+    }
+    throw StateError('event-series-id-missing');
+  }
+
+  @override
+  Future<String> createEventEdition({
+    required String eventSeriesId,
+    required String title,
+    required int year,
+    required DateTime startsAt,
+    required DateTime endsAt,
+  }) async {
+    final result = await _functions.httpsCallable('createEventEdition').call({
+      'eventSeriesId': eventSeriesId,
+      'title': title,
+      'year': year,
+      'startsAt': startsAt.toUtc().toIso8601String(),
+      'endsAt': endsAt.toUtc().toIso8601String(),
+    });
+    final data = result.data;
+    if (data is Map && data['eventEditionId'] is String) {
+      return data['eventEditionId'] as String;
+    }
+    throw StateError('event-edition-id-missing');
+  }
+
+  @override
+  Future<String> createEventZone({
+    required String eventSeriesId,
+    required String eventEditionId,
+    required String name,
+    required double latitude,
+    required double longitude,
+    double radiusMeters = 150,
+    String? description,
+  }) async {
+    final result = await _functions.httpsCallable('createEventZone').call({
+      'eventSeriesId': eventSeriesId,
+      'eventEditionId': eventEditionId,
+      'name': name,
+      'latitude': latitude,
+      'longitude': longitude,
+      'radiusMeters': radiusMeters,
+      if (description != null && description.trim().isNotEmpty)
+        'description': description.trim(),
+    });
+    final data = result.data;
+    if (data is Map && data['eventZoneId'] is String) {
+      return data['eventZoneId'] as String;
+    }
+    throw StateError('event-zone-id-missing');
+  }
+
+  @override
+  Future<String> uploadEventExperiencePhoto({
+    required String experienceId,
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+  }) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      throw StateError('auth-required');
+    }
+
+    final storagePath = 'event-experience-images/$uid/$experienceId/$fileName';
+    await _storage
+        .ref(storagePath)
+        .putData(bytes, SettableMetadata(contentType: contentType));
+    return storagePath;
+  }
+
+  @override
+  Future<String?> eventExperiencePhotoUrl({required String photoPath}) async {
+    if (photoPath.trim().isEmpty) {
+      return null;
+    }
+    return _storage.ref(photoPath).getDownloadURL();
+  }
+
+  @override
+  Future<void> submitEventExperience({
+    required String experienceId,
+    required String eventSeriesId,
+    required String eventEditionId,
+    required String eventZoneId,
+    required DateTime observedAt,
+    required Map<EventSensoryKey, double> ratings,
+    required String description,
+    required String photoPath,
+  }) async {
+    await _functions.httpsCallable('submitEventExperience').call({
+      'experienceId': experienceId,
+      'eventSeriesId': eventSeriesId,
+      'eventEditionId': eventEditionId,
+      'eventZoneId': eventZoneId,
+      'observedAt': observedAt.toUtc().toIso8601String(),
+      'ratings': _eventRatingsPayload(ratings),
+      'description': description,
+      'photoPath': photoPath,
+    });
   }
 
   @override
@@ -619,6 +765,105 @@ PlaceSummary _discoveredPlaceFromMap(Map<String, dynamic> data) {
   );
 }
 
+EventHistorySummary _eventHistoryFromMap(Map<String, dynamic> data) {
+  List<Map<String, dynamic>> readList(String key) {
+    final value = data[key];
+    if (value is! List) {
+      return const [];
+    }
+    return value
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList(growable: false);
+  }
+
+  return EventHistorySummary(
+    series: readList('series').map(_eventSeriesFromMap).toList(growable: false),
+    editions: readList(
+      'editions',
+    ).map(_eventEditionFromMap).toList(growable: false),
+    zones: readList('zones').map(_eventZoneFromMap).toList(growable: false),
+    experiences: readList(
+      'experiences',
+    ).map(_eventExperienceFromMap).toList(growable: false),
+  );
+}
+
+EventSeriesSummary _eventSeriesFromMap(Map<String, dynamic> data) {
+  return EventSeriesSummary(
+    id: (data['id'] as String?) ?? '',
+    title: (data['title'] as String?) ?? '',
+    category: (data['category'] as String?) ?? 'other',
+    city: (data['city'] as String?) ?? '',
+    description: (data['description'] as String?) ?? '',
+  );
+}
+
+EventEditionSummary _eventEditionFromMap(Map<String, dynamic> data) {
+  return EventEditionSummary(
+    id: (data['id'] as String?) ?? '',
+    eventSeriesId: (data['eventSeriesId'] as String?) ?? '',
+    title: (data['title'] as String?) ?? '',
+    year: (data['year'] as num?)?.toInt() ?? 0,
+    startsAt: (data['startsAt'] as String?) ?? '',
+    endsAt: (data['endsAt'] as String?) ?? '',
+  );
+}
+
+EventZoneSummary _eventZoneFromMap(Map<String, dynamic> data) {
+  final position = data['position'];
+  final latitude = position is Map
+      ? (position['latitude'] as num?)?.toDouble()
+      : null;
+  final longitude = position is Map
+      ? (position['longitude'] as num?)?.toDouble()
+      : null;
+  return EventZoneSummary(
+    id: (data['id'] as String?) ?? '',
+    eventSeriesId: (data['eventSeriesId'] as String?) ?? '',
+    eventEditionId: (data['eventEditionId'] as String?) ?? '',
+    name: (data['name'] as String?) ?? '',
+    description: (data['description'] as String?) ?? '',
+    latitude: latitude ?? 41.3851,
+    longitude: longitude ?? 2.1734,
+    radiusMeters: (data['radiusMeters'] as num?)?.toDouble() ?? 150,
+  );
+}
+
+EventExperienceSummary _eventExperienceFromMap(Map<String, dynamic> data) {
+  return EventExperienceSummary(
+    id: (data['id'] as String?) ?? '',
+    eventSeriesId: (data['eventSeriesId'] as String?) ?? '',
+    eventEditionId: (data['eventEditionId'] as String?) ?? '',
+    eventZoneId: (data['eventZoneId'] as String?) ?? '',
+    observedAt: (data['observedAt'] as String?) ?? '',
+    ratings: _eventRatingsFromMap(data['ratings']),
+    description: (data['description'] as String?) ?? '',
+    photoPath: (data['photoPath'] as String?) ?? '',
+  );
+}
+
+Map<EventSensoryKey, double> _eventRatingsFromMap(Object? value) {
+  if (value is! Map) {
+    return const {};
+  }
+
+  double score(String key) {
+    final rawValue = value[key];
+    return rawValue is num ? rawValue.toDouble() : 3;
+  }
+
+  return {
+    EventSensoryKey.noise: score('noise'),
+    EventSensoryKey.crowd: score('crowd'),
+    EventSensoryKey.lighting: score('lighting'),
+    EventSensoryKey.waitingTime: score('waitingTime'),
+    EventSensoryKey.temperature: score('temperature'),
+    EventSensoryKey.perceivedSafety: score('perceivedSafety'),
+    EventSensoryKey.exitEase: score('exitEase'),
+  };
+}
+
 String? _googlePlaceIdFromMap(Object? value) {
   if (value is! Map) {
     return null;
@@ -646,6 +891,22 @@ Map<SensoryKey, double> _criterionAveragesFromMap(Object? value) {
     if (readScore('lighting') != null) SensoryKey.light: readScore('lighting')!,
     if (readScore('waitingTime') != null)
       SensoryKey.wait: readScore('waitingTime')!,
+  };
+}
+
+Map<String, int> _eventRatingsPayload(Map<EventSensoryKey, double> ratings) {
+  int score(EventSensoryKey key) {
+    return (ratings[key] ?? 3).round().clamp(1, 5).toInt();
+  }
+
+  return {
+    'noise': score(EventSensoryKey.noise),
+    'crowd': score(EventSensoryKey.crowd),
+    'lighting': score(EventSensoryKey.lighting),
+    'waitingTime': score(EventSensoryKey.waitingTime),
+    'temperature': score(EventSensoryKey.temperature),
+    'perceivedSafety': score(EventSensoryKey.perceivedSafety),
+    'exitEase': score(EventSensoryKey.exitEase),
   };
 }
 

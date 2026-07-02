@@ -3,8 +3,11 @@
 import {
   Bell,
   Bookmark,
+  CalendarDays,
+  Camera,
   Check,
   ChevronRight,
+  Clock3,
   FileText,
   Flag,
   Globe2,
@@ -17,6 +20,7 @@ import {
   LogOut,
   Lock,
   Mail,
+  MapPinned,
   MapPin,
   MessageSquare,
   Minus,
@@ -35,10 +39,13 @@ import {
 } from "lucide-react";
 import type { User } from "firebase/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AppUser } from "@accessibilitat/shared";
+import { eventCategories, type AppUser, type EventCategory, type EventExperienceCriterion, type EventHistorySearchResult } from "@accessibilitat/shared";
 import { disableGoogleAnalytics, initializeGoogleAnalytics } from "./lib/google-analytics";
 import {
   createChildProfile,
+  createEventEdition,
+  createEventSeries,
+  createEventZone,
   createPlace,
   listActivePlaces,
   loginWithApple,
@@ -46,14 +53,18 @@ import {
   loginWithGoogle,
   logout,
   readCurrentAppUser,
+  readStorageDownloadUrl,
   registerWithEmailPassword,
   requestPasswordReset,
   requestProfessionalVerification,
   resolvePlaceForContribution,
   searchNearbyPlaces,
+  searchEventHistory,
+  submitEventExperience,
   submitReview,
   subscribeToAuthState,
   uploadPlaceImage,
+  uploadEventExperiencePhoto,
   type ProfessionalVerificationInput
 } from "./lib/firebase-actions";
 import { loadGoogleMaps, type GoogleMarkerInstance } from "./lib/google-maps";
@@ -95,6 +106,258 @@ import { AppleLogo, EmptyState, GoogleLogo, OfficialLogo, PanelHeading, ProfileC
 const minimumPasswordLength = 12;
 const nearbyPlaceSearchLimit = 10;
 const nearbyPlaceDisplayLimit = 5;
+const eventSearchRadiusMeters = 10000;
+
+const emptyEventHistory: EventHistorySearchResult = {
+  series: [],
+  editions: [],
+  zones: [],
+  experiences: []
+};
+
+type EventHistoryDraft = {
+  eventSeriesId: string;
+  eventEditionId: string;
+  eventZoneId: string;
+  seriesTitle: string;
+  seriesCategory: EventCategory;
+  seriesCity: string;
+  seriesDescription: string;
+  editionTitle: string;
+  editionYear: number;
+  editionStartsAt: string;
+  editionEndsAt: string;
+  zoneName: string;
+  zoneDescription: string;
+  zoneRadiusMeters: number;
+  observedAt: string;
+  description: string;
+};
+
+const defaultEventRatings: Record<EventExperienceCriterion, number> = {
+  noise: 3,
+  crowd: 3,
+  lighting: 3,
+  waitingTime: 3,
+  temperature: 3,
+  perceivedSafety: 3,
+  exitEase: 3
+};
+
+function createEventDraft(): EventHistoryDraft {
+  return {
+    eventSeriesId: "",
+    eventEditionId: "",
+    eventZoneId: "",
+    seriesTitle: "",
+    seriesCategory: "festa_major",
+    seriesCity: "",
+    seriesDescription: "",
+    editionTitle: "",
+    editionYear: new Date().getFullYear(),
+    editionStartsAt: "",
+    editionEndsAt: "",
+    zoneName: "",
+    zoneDescription: "",
+    zoneRadiusMeters: 150,
+    observedAt: "",
+    description: ""
+  };
+}
+
+const eventCopy: Record<
+  Locale,
+  {
+    title: string;
+    intro: string;
+    searchPlaceholder: string;
+    refresh: string;
+    noEventsTitle: string;
+    noEventsBody: string;
+    experiences: string;
+    createTitle: string;
+    catalogTitle: string;
+    submit: string;
+    submitted: string;
+    failed: string;
+    photoRequired: string;
+    locationRequired: string;
+    existingSeries: string;
+    existingEdition: string;
+    existingZone: string;
+    newOption: string;
+    photo: string;
+    observedAt: string;
+    description: string;
+    city: string;
+    type: string;
+    edition: string;
+    editions: string;
+    year: string;
+    startsAt: string;
+    endsAt: string;
+    zone: string;
+    zones: string;
+    radiusMeters: string;
+    zoneDescription: string;
+    categories: Record<EventCategory, string>;
+    criteria: Record<EventExperienceCriterion, string>;
+  }
+> = {
+  ca: {
+    title: "Històric sensorial d'esdeveniments",
+    intro: "Consulta edicions anteriors i aporta evidència amb data, hora, zona, foto i valoració sensorial.",
+    searchPlaceholder: "Cerca per ciutat o esdeveniment",
+    refresh: "Actualitzar",
+    noEventsTitle: "Encara no hi ha esdeveniments publicats",
+    noEventsBody: "Quan s'aprovin experiències reals, apareixeran aquí amb foto, zona i hora.",
+    experiences: "Experiències",
+    createTitle: "Aportar experiència històrica",
+    catalogTitle: "Catàleg de l'esdeveniment",
+    submit: "Enviar experiència",
+    submitted: "Experiència enviada a moderació.",
+    failed: "No s'ha pogut enviar l'experiència.",
+    photoRequired: "Afegeix una foto del lloc per enviar l'experiència.",
+    locationRequired: "Activa la ubicació per proposar una zona nova amb coordenades reals.",
+    existingSeries: "Esdeveniment existent",
+    existingEdition: "Edició existent",
+    existingZone: "Zona existent",
+    newOption: "Crear-ne un de nou",
+    photo: "Foto del lloc",
+    observedAt: "Data i hora observades",
+    description: "Informació observada",
+    city: "Ciutat",
+    type: "Tipus",
+    edition: "Edició",
+    editions: "edicions",
+    year: "Any",
+    startsAt: "Inici",
+    endsAt: "Final",
+    zone: "Zona",
+    zones: "zones",
+    radiusMeters: "Radi metres",
+    zoneDescription: "Descripció zona",
+    categories: {
+      festa_major: "Festa Major",
+      sant_joan: "Sant Joan",
+      correfoc: "Correfoc",
+      local_festival: "Festa local",
+      performance: "Espectacle",
+      other: "Altres"
+    },
+    criteria: {
+      noise: "Soroll",
+      crowd: "Afluència",
+      lighting: "Llum",
+      waitingTime: "Espera",
+      temperature: "Temperatura",
+      perceivedSafety: "Seguretat",
+      exitEase: "Sortida"
+    }
+  },
+  es: {
+    title: "Histórico sensorial de eventos",
+    intro: "Consulta ediciones anteriores y aporta evidencia con fecha, hora, zona, foto y valoración sensorial.",
+    searchPlaceholder: "Busca por ciudad o evento",
+    refresh: "Actualizar",
+    noEventsTitle: "Todavía no hay eventos publicados",
+    noEventsBody: "Cuando se aprueben experiencias reales, aparecerán aquí con foto, zona y hora.",
+    experiences: "Experiencias",
+    createTitle: "Aportar experiencia histórica",
+    catalogTitle: "Catálogo del evento",
+    submit: "Enviar experiencia",
+    submitted: "Experiencia enviada a moderación.",
+    failed: "No se ha podido enviar la experiencia.",
+    photoRequired: "Añade una foto del lugar para enviar la experiencia.",
+    locationRequired: "Activa la ubicación para proponer una zona nueva con coordenadas reales.",
+    existingSeries: "Evento existente",
+    existingEdition: "Edición existente",
+    existingZone: "Zona existente",
+    newOption: "Crear uno nuevo",
+    photo: "Foto del lugar",
+    observedAt: "Fecha y hora observadas",
+    description: "Información observada",
+    city: "Ciudad",
+    type: "Tipo",
+    edition: "Edición",
+    editions: "ediciones",
+    year: "Año",
+    startsAt: "Inicio",
+    endsAt: "Final",
+    zone: "Zona",
+    zones: "zonas",
+    radiusMeters: "Radio metros",
+    zoneDescription: "Descripción zona",
+    categories: {
+      festa_major: "Fiesta mayor",
+      sant_joan: "San Juan",
+      correfoc: "Correfoc",
+      local_festival: "Fiesta local",
+      performance: "Espectáculo",
+      other: "Otros"
+    },
+    criteria: {
+      noise: "Ruido",
+      crowd: "Afluencia",
+      lighting: "Luz",
+      waitingTime: "Espera",
+      temperature: "Temperatura",
+      perceivedSafety: "Seguridad",
+      exitEase: "Salida"
+    }
+  },
+  en: {
+    title: "Sensory event history",
+    intro: "Browse previous editions and contribute evidence with date, time, zone, photo and sensory ratings.",
+    searchPlaceholder: "Search by city or event",
+    refresh: "Refresh",
+    noEventsTitle: "No published events yet",
+    noEventsBody: "Approved real experiences will appear here with photo, zone and time.",
+    experiences: "Experiences",
+    createTitle: "Contribute a historic experience",
+    catalogTitle: "Event catalog",
+    submit: "Submit experience",
+    submitted: "Experience sent to moderation.",
+    failed: "Could not submit the experience.",
+    photoRequired: "Add a place photo before submitting the experience.",
+    locationRequired: "Enable location to propose a new zone with real coordinates.",
+    existingSeries: "Existing event",
+    existingEdition: "Existing edition",
+    existingZone: "Existing zone",
+    newOption: "Create a new one",
+    photo: "Place photo",
+    observedAt: "Observed date and time",
+    description: "Observed information",
+    city: "City",
+    type: "Type",
+    edition: "Edition",
+    editions: "editions",
+    year: "Year",
+    startsAt: "Start",
+    endsAt: "End",
+    zone: "Zone",
+    zones: "zones",
+    radiusMeters: "Radius meters",
+    zoneDescription: "Zone description",
+    categories: {
+      festa_major: "Main festival",
+      sant_joan: "Saint John",
+      correfoc: "Fire run",
+      local_festival: "Local festival",
+      performance: "Performance",
+      other: "Other"
+    },
+    criteria: {
+      noise: "Noise",
+      crowd: "Crowd",
+      lighting: "Light",
+      waitingTime: "Waiting",
+      temperature: "Temperature",
+      perceivedSafety: "Safety",
+      exitEase: "Exit"
+    }
+  }
+};
 
 export function PlatformApp() {
   const [locale, setLocale] = useState<Locale>("ca");
@@ -102,6 +365,10 @@ export function PlatformApp() {
   const [darkMode, setDarkMode] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [availablePlaces, setAvailablePlaces] = useState<Place[]>(places);
+  const [eventHistory, setEventHistory] = useState<EventHistorySearchResult>(emptyEventHistory);
+  const [eventHistoryLoading, setEventHistoryLoading] = useState(false);
+  const [eventSearch, setEventSearch] = useState("");
+  const [eventPhotoUrls, setEventPhotoUrls] = useState<Record<string, string>>({});
   const [query, setQuery] = useState("");
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<number | null>(null);
@@ -118,7 +385,9 @@ export function PlatformApp() {
   const [privacyPreferencesOpen, setPrivacyPreferencesOpen] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [isSubmittingContribution, setIsSubmittingContribution] = useState(false);
+  const [isSubmittingEventExperience, setIsSubmittingEventExperience] = useState(false);
   const [contributionMessage, setContributionMessage] = useState<string | null>(null);
+  const [eventMessage, setEventMessage] = useState<string | null>(null);
   const [contributionDraft, setContributionDraft] = useState<ContributionDraft>({
     createNewPlace: true,
     placeName: "",
@@ -126,6 +395,9 @@ export function PlatformApp() {
     addressOrArea: "",
     description: ""
   });
+  const [eventDraft, setEventDraft] = useState<EventHistoryDraft>(() => createEventDraft());
+  const [eventRatings, setEventRatings] = useState<Record<EventExperienceCriterion, number>>(defaultEventRatings);
+  const [eventPhoto, setEventPhoto] = useState<File | null>(null);
   const [ratings, setRatings] = useState<Record<SensoryKey, number>>({
     noise: 2,
     density: 2,
@@ -264,6 +536,68 @@ export function PlatformApp() {
       active = false;
     };
   }, [locale, userLocation]);
+
+  useEffect(() => {
+    let active = true;
+    setEventHistoryLoading(true);
+    searchEventHistory({
+      locale,
+      city: eventSearch.trim() || undefined,
+      ...(userLocation
+        ? {
+            latitude: userLocation.lat,
+            longitude: userLocation.lng,
+            radiusMeters: eventSearchRadiusMeters
+          }
+        : {}),
+      maxResultCount: 50
+    })
+      .then((result) => {
+        if (active) {
+          setEventHistory(result.data);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setEventHistory(emptyEventHistory);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setEventHistoryLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [eventSearch, locale, userLocation]);
+
+  useEffect(() => {
+    let active = true;
+    const paths = Array.from(new Set(eventHistory.experiences.map((experience) => experience.photoPath).filter(Boolean)));
+    if (paths.length === 0) {
+      setEventPhotoUrls({});
+      return () => {
+        active = false;
+      };
+    }
+
+    Promise.all(
+      paths.map(async (path) => {
+        const url = await readStorageDownloadUrl(path).catch(() => "");
+        return [path, url] as const;
+      })
+    ).then((entries) => {
+      if (active) {
+        setEventPhotoUrls(Object.fromEntries(entries.filter((entry) => entry[1])));
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [eventHistory.experiences]);
 
   const c = copy[locale];
   const rankedPlaces = useMemo(() => rankPlacesByDistance(availablePlaces, userLocation), [availablePlaces, userLocation]);
@@ -422,6 +756,14 @@ export function PlatformApp() {
     setContributionDraft((current) => ({ ...current, ...patch }));
   };
 
+  const updateEventDraft = (patch: Partial<EventHistoryDraft>) => {
+    setEventDraft((current) => ({ ...current, ...patch }));
+  };
+
+  const updateEventRating = (key: EventExperienceCriterion, value: number) => {
+    setEventRatings((current) => ({ ...current, [key]: value }));
+  };
+
   const submitContribution = async () => {
     if (isSubmittingContribution) {
       return;
@@ -519,6 +861,113 @@ export function PlatformApp() {
       setContributionMessage(authCopy[locale].authFailed);
     } finally {
       setIsSubmittingContribution(false);
+    }
+  };
+
+  const submitEventHistoryExperience = async () => {
+    if (isSubmittingEventExperience) {
+      return;
+    }
+
+    if (!authUser) {
+      setActiveView("events");
+      setEventMessage(authCopy[locale].signInRequiredIntro);
+      return;
+    }
+
+    const labels = eventCopy[locale];
+    if (!eventPhoto) {
+      setEventMessage(labels.photoRequired);
+      return;
+    }
+
+    if (!eventDraft.observedAt || !eventDraft.description.trim()) {
+      setEventMessage(authCopy[locale].requiredFields);
+      return;
+    }
+
+    setIsSubmittingEventExperience(true);
+    setEventMessage(null);
+
+    try {
+      let eventSeriesId = eventDraft.eventSeriesId;
+      if (!eventSeriesId) {
+        if (!eventDraft.seriesTitle.trim() || !eventDraft.seriesCity.trim()) {
+          setEventMessage(authCopy[locale].requiredFields);
+          return;
+        }
+
+        const created = await createEventSeries({
+          title: eventDraft.seriesTitle.trim(),
+          category: eventDraft.seriesCategory,
+          city: eventDraft.seriesCity.trim(),
+          description: eventDraft.seriesDescription.trim() || undefined
+        });
+        eventSeriesId = created.data.eventSeriesId;
+      }
+
+      let eventEditionId = eventDraft.eventEditionId;
+      if (!eventEditionId) {
+        if (!eventDraft.editionTitle.trim() || !eventDraft.editionStartsAt || !eventDraft.editionEndsAt) {
+          setEventMessage(authCopy[locale].requiredFields);
+          return;
+        }
+
+        const created = await createEventEdition({
+          eventSeriesId,
+          title: eventDraft.editionTitle.trim(),
+          year: eventDraft.editionYear,
+          startsAt: new Date(eventDraft.editionStartsAt).toISOString(),
+          endsAt: new Date(eventDraft.editionEndsAt).toISOString()
+        });
+        eventEditionId = created.data.eventEditionId;
+      }
+
+      let eventZoneId = eventDraft.eventZoneId;
+      if (!eventZoneId) {
+        if (!eventDraft.zoneName.trim()) {
+          setEventMessage(authCopy[locale].requiredFields);
+          return;
+        }
+
+        if (!userLocation) {
+          setEventMessage(labels.locationRequired);
+          return;
+        }
+
+        const created = await createEventZone({
+          eventSeriesId,
+          eventEditionId,
+          name: eventDraft.zoneName.trim(),
+          description: eventDraft.zoneDescription.trim() || undefined,
+          latitude: userLocation.lat,
+          longitude: userLocation.lng,
+          radiusMeters: eventDraft.zoneRadiusMeters
+        });
+        eventZoneId = created.data.eventZoneId;
+      }
+
+      const experienceId = crypto.randomUUID();
+      const photoPath = await uploadEventExperiencePhoto(experienceId, eventPhoto);
+      await submitEventExperience({
+        experienceId,
+        eventSeriesId,
+        eventEditionId,
+        eventZoneId,
+        observedAt: new Date(eventDraft.observedAt).toISOString(),
+        ratings: eventRatings,
+        description: eventDraft.description.trim(),
+        photoPath
+      });
+
+      setEventDraft(createEventDraft());
+      setEventRatings(defaultEventRatings);
+      setEventPhoto(null);
+      setEventMessage(labels.submitted);
+    } catch {
+      setEventMessage(labels.failed);
+    } finally {
+      setIsSubmittingEventExperience(false);
     }
   };
 
@@ -803,6 +1252,30 @@ export function PlatformApp() {
               onLocate={requestUserLocation}
               onAcceptMaps={allowGoogleMaps}
               onRequireAuth={() => setAuthPanelOpen(true)}
+            />
+          ) : null}
+
+          {!gatedViewNeedsAuth && activeView === "events" ? (
+            <EventHistoryView
+              locale={locale}
+              history={eventHistory}
+              loading={eventHistoryLoading}
+              query={eventSearch}
+              photoUrls={eventPhotoUrls}
+              draft={eventDraft}
+              ratings={eventRatings}
+              photo={eventPhoto}
+              statusMessage={eventMessage}
+              isSubmitting={isSubmittingEventExperience}
+              isAuthenticated={isAuthenticated}
+              userLocation={userLocation}
+              onQuery={setEventSearch}
+              onDraft={updateEventDraft}
+              onRating={updateEventRating}
+              onPhoto={setEventPhoto}
+              onSubmit={submitEventHistoryExperience}
+              onRequireAuth={() => setAuthPanelOpen(true)}
+              onLocate={requestUserLocation}
             />
           ) : null}
 
@@ -1545,6 +2018,341 @@ function ConsultView({
           ) : (
             <EmptyState icon={MapPin} title={c.noPlacesTitle} body={c.noPlacesBody} />
           )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function formatEventDate(locale: Locale, value: string) {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(timestamp));
+}
+
+function EventHistoryView({
+  locale,
+  history,
+  loading,
+  query,
+  photoUrls,
+  draft,
+  ratings,
+  photo,
+  statusMessage,
+  isSubmitting,
+  isAuthenticated,
+  userLocation,
+  onQuery,
+  onDraft,
+  onRating,
+  onPhoto,
+  onSubmit,
+  onRequireAuth,
+  onLocate
+}: {
+  locale: Locale;
+  history: EventHistorySearchResult;
+  loading: boolean;
+  query: string;
+  photoUrls: Record<string, string>;
+  draft: EventHistoryDraft;
+  ratings: Record<EventExperienceCriterion, number>;
+  photo: File | null;
+  statusMessage: string | null;
+  isSubmitting: boolean;
+  isAuthenticated: boolean;
+  userLocation: UserLocation | null;
+  onQuery: (value: string) => void;
+  onDraft: (patch: Partial<EventHistoryDraft>) => void;
+  onRating: (key: EventExperienceCriterion, value: number) => void;
+  onPhoto: (file: File | null) => void;
+  onSubmit: () => void;
+  onRequireAuth: () => void;
+  onLocate: () => void;
+}) {
+  const labels = eventCopy[locale];
+  const seriesById = useMemo(() => new Map(history.series.map((series) => [series.id, series])), [history.series]);
+  const editionsById = useMemo(() => new Map(history.editions.map((edition) => [edition.id, edition])), [history.editions]);
+  const zonesById = useMemo(() => new Map(history.zones.map((zone) => [zone.id, zone])), [history.zones]);
+  const filteredEditions = draft.eventSeriesId
+    ? history.editions.filter((edition) => edition.eventSeriesId === draft.eventSeriesId)
+    : history.editions;
+  const filteredZones = draft.eventEditionId
+    ? history.zones.filter((zone) => zone.eventEditionId === draft.eventEditionId)
+    : history.zones;
+
+  return (
+    <div className="event-history-grid">
+      <section className="event-history-main">
+        <div className="section-intro">
+          <CalendarDays aria-hidden="true" size={32} />
+          <div>
+            <span>{labels.experiences}</span>
+            <h2>{labels.title}</h2>
+            <p>{labels.intro}</p>
+          </div>
+        </div>
+
+        <div className="event-search-row">
+          <label className="search-control">
+            <Search aria-hidden="true" size={18} />
+            <input value={query} placeholder={labels.searchPlaceholder} onChange={(event) => onQuery(event.target.value)} />
+          </label>
+          <button type="button" className="secondary-action" onClick={onLocate}>
+            <LocateFixed aria-hidden="true" size={16} />
+            {userLocation ? labels.refresh : copy[locale].mapLocationControl}
+          </button>
+        </div>
+
+        {history.series.length === 0 ? (
+          <EmptyState icon={CalendarDays} title={loading ? copy[locale].mapLocating : labels.noEventsTitle} body={labels.noEventsBody} />
+        ) : (
+          <div className="event-card-list">
+            {history.series.map((series) => {
+              const seriesEditions = history.editions.filter((edition) => edition.eventSeriesId === series.id);
+              const seriesZones = history.zones.filter((zone) => zone.eventSeriesId === series.id);
+              const seriesExperiences = history.experiences.filter((experience) => experience.eventSeriesId === series.id);
+              return (
+                <article className="panel event-series-card" key={series.id}>
+                  <div className="event-card-heading">
+                    <div>
+                      <span>{labels.categories[series.category]}</span>
+                      <h3>{series.title}</h3>
+                      <p>{series.city}</p>
+                    </div>
+                    <strong>{seriesExperiences.length}</strong>
+                  </div>
+                  {series.description ? <p>{series.description}</p> : null}
+                  <div className="event-meta-row">
+                    <span>{seriesEditions.length} {labels.editions}</span>
+                    <span>{seriesZones.length} {labels.zones}</span>
+                    <span>{seriesExperiences.length} {labels.experiences.toLowerCase()}</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {history.experiences.length > 0 ? (
+          <div className="event-experience-list">
+            <PanelHeading title={labels.experiences} />
+            {history.experiences.map((experience) => {
+              const series = seriesById.get(experience.eventSeriesId);
+              const edition = editionsById.get(experience.eventEditionId);
+              const zone = zonesById.get(experience.eventZoneId);
+              const photoUrl = photoUrls[experience.photoPath];
+              return (
+                <article className="panel event-experience-card" key={experience.id}>
+                  <div className="event-photo-frame">
+                    {photoUrl ? <img src={photoUrl} alt="" /> : <Camera aria-hidden="true" size={28} />}
+                  </div>
+                  <div className="event-experience-copy">
+                    <span>
+                      <Clock3 aria-hidden="true" size={14} />
+                      {formatEventDate(locale, experience.observedAt)}
+                    </span>
+                    <h3>{series?.title ?? edition?.title ?? labels.title}</h3>
+                    <p>{zone?.name ?? edition?.title ?? ""}</p>
+                    <p>{experience.description}</p>
+                    <div className="event-rating-row">
+                      {(Object.entries(labels.criteria) as Array<[EventExperienceCriterion, string]>).map(([key, label]) => (
+                        <span key={key}>
+                          {label}: {experience.ratings[key]}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="panel event-form-panel">
+        <PanelHeading title={labels.createTitle} />
+        <div className="report-form">
+          <label>
+            <span>{labels.existingSeries}</span>
+            <select
+              value={draft.eventSeriesId}
+              onChange={(event) => onDraft({ eventSeriesId: event.target.value, eventEditionId: "", eventZoneId: "" })}
+            >
+              <option value="">{labels.newOption}</option>
+              {history.series.map((series) => (
+                <option key={series.id} value={series.id}>
+                  {series.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          {!draft.eventSeriesId ? (
+            <div className="compact-form-grid">
+              <label>
+                <span>{labels.catalogTitle}</span>
+                <input value={draft.seriesTitle} onChange={(event) => onDraft({ seriesTitle: event.target.value })} />
+              </label>
+              <label>
+                <span>{labels.city}</span>
+                <input value={draft.seriesCity} onChange={(event) => onDraft({ seriesCity: event.target.value })} />
+              </label>
+              <label>
+                <span>{labels.type}</span>
+                <select
+                  value={draft.seriesCategory}
+                  onChange={(event) => onDraft({ seriesCategory: event.target.value as EventCategory })}
+                >
+                  {eventCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {labels.categories[category]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{labels.description}</span>
+                <input value={draft.seriesDescription} onChange={(event) => onDraft({ seriesDescription: event.target.value })} />
+              </label>
+            </div>
+          ) : null}
+
+          <label>
+            <span>{labels.existingEdition}</span>
+            <select
+              value={draft.eventEditionId}
+              onChange={(event) => onDraft({ eventEditionId: event.target.value, eventZoneId: "" })}
+            >
+              <option value="">{labels.newOption}</option>
+              {filteredEditions.map((edition) => (
+                <option key={edition.id} value={edition.id}>
+                  {edition.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          {!draft.eventEditionId ? (
+            <div className="compact-form-grid">
+              <label>
+                <span>{labels.edition}</span>
+                <input value={draft.editionTitle} onChange={(event) => onDraft({ editionTitle: event.target.value })} />
+              </label>
+              <label>
+                <span>{labels.year}</span>
+                <input
+                  type="number"
+                  min={1900}
+                  max={2200}
+                  value={draft.editionYear}
+                  onChange={(event) => onDraft({ editionYear: Number(event.target.value) })}
+                />
+              </label>
+              <label>
+                <span>{labels.startsAt}</span>
+                <input
+                  type="datetime-local"
+                  value={draft.editionStartsAt}
+                  onChange={(event) => onDraft({ editionStartsAt: event.target.value })}
+                />
+              </label>
+              <label>
+                <span>{labels.endsAt}</span>
+                <input type="datetime-local" value={draft.editionEndsAt} onChange={(event) => onDraft({ editionEndsAt: event.target.value })} />
+              </label>
+            </div>
+          ) : null}
+
+          <label>
+            <span>{labels.existingZone}</span>
+            <select value={draft.eventZoneId} onChange={(event) => onDraft({ eventZoneId: event.target.value })}>
+              <option value="">{labels.newOption}</option>
+              {filteredZones.map((zone) => (
+                <option key={zone.id} value={zone.id}>
+                  {zone.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {!draft.eventZoneId ? (
+            <div className="compact-form-grid">
+              <label>
+                <span>{labels.zone}</span>
+                <input value={draft.zoneName} onChange={(event) => onDraft({ zoneName: event.target.value })} />
+              </label>
+              <label>
+                <span>{labels.radiusMeters}</span>
+                <input
+                  type="number"
+                  min={10}
+                  max={5000}
+                  value={draft.zoneRadiusMeters}
+                  onChange={(event) => onDraft({ zoneRadiusMeters: Number(event.target.value) })}
+                />
+              </label>
+              <label className="span-two">
+                <span>{labels.zoneDescription}</span>
+                <input value={draft.zoneDescription} onChange={(event) => onDraft({ zoneDescription: event.target.value })} />
+              </label>
+            </div>
+          ) : null}
+
+          <label>
+            <span>{labels.observedAt}</span>
+            <input type="datetime-local" value={draft.observedAt} onChange={(event) => onDraft({ observedAt: event.target.value })} />
+          </label>
+          <label>
+            <span>{labels.description}</span>
+            <textarea value={draft.description} onChange={(event) => onDraft({ description: event.target.value })} />
+          </label>
+          <label className="file-input-label">
+            <Camera aria-hidden="true" size={18} />
+            <span>{photo?.name ?? labels.photo}</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => onPhoto(event.target.files?.[0] ?? null)}
+            />
+          </label>
+
+          <div className="rating-stack">
+            {(Object.entries(labels.criteria) as Array<[EventExperienceCriterion, string]>).map(([key, label]) => (
+              <label className="report-slider" key={key}>
+                <span>{label}</span>
+                <strong>{ratings[key]}</strong>
+                <input
+                  type="range"
+                  min={1}
+                  max={5}
+                  value={ratings[key]}
+                  onChange={(event) => onRating(key, Number(event.target.value))}
+                />
+              </label>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className="primary-action"
+            disabled={isSubmitting}
+            onClick={isAuthenticated ? onSubmit : onRequireAuth}
+          >
+            <Send aria-hidden="true" size={17} />
+            {isSubmitting ? "..." : isAuthenticated ? labels.submit : authCopy[locale].signInToContinue}
+          </button>
+          {statusMessage ? <p className="form-status">{statusMessage}</p> : null}
+          {!userLocation ? (
+            <button type="button" className="secondary-action" onClick={onLocate}>
+              <MapPinned aria-hidden="true" size={16} />
+              {copy[locale].mapLocationControl}
+            </button>
+          ) : null}
         </div>
       </section>
     </div>

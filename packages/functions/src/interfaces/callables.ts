@@ -100,6 +100,15 @@ export const searchNearbyPlaces = publicCallable("searchNearbyPlaces", async (re
   });
 });
 
+export const searchEventHistory = publicCallable("searchEventHistory", async (request) => {
+  return useCases.searchEventHistory(request.data, {
+    namespace: "events.searchHistory",
+    key: publicCallerKey(request),
+    limit: publicSearchQuota.limit,
+    windowSeconds: publicSearchQuota.windowSeconds
+  });
+});
+
 export const completeUserOnboarding = authedCallable("completeUserOnboarding", async (request) => {
   const authedRequest = requireAuth(request);
   return useCases.completeUserOnboarding(toRequestContext(authedRequest), request.data);
@@ -108,6 +117,26 @@ export const completeUserOnboarding = authedCallable("completeUserOnboarding", a
 export const createPlace = authedCallable("createPlace", async (request) => {
   const authedRequest = requireAuth(request);
   return useCases.createPlace(toRequestContext(authedRequest), request.data);
+});
+
+export const createEventSeries = authedCallable("createEventSeries", async (request) => {
+  const authedRequest = requireAuth(request);
+  return useCases.createEventSeries(toRequestContext(authedRequest), request.data);
+});
+
+export const createEventEdition = authedCallable("createEventEdition", async (request) => {
+  const authedRequest = requireAuth(request);
+  return useCases.createEventEdition(toRequestContext(authedRequest), request.data);
+});
+
+export const createEventZone = authedCallable("createEventZone", async (request) => {
+  const authedRequest = requireAuth(request);
+  return useCases.createEventZone(toRequestContext(authedRequest), request.data);
+});
+
+export const submitEventExperience = authedCallable("submitEventExperience", async (request) => {
+  const authedRequest = requireAuth(request);
+  return useCases.submitEventExperience(toRequestContext(authedRequest), request.data);
 });
 
 export const resolvePlaceForContribution = authedCallable("resolvePlaceForContribution", async (request) => {

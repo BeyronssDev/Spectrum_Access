@@ -14,18 +14,23 @@ import {
 } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, getFirestore, limit, query, where } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { getStorage, ref, uploadBytes } from "firebase/storage";
-import type { AppUser, AuthProviderId, DiscoveredPlace, Locale, Place } from "@accessibilitat/shared";
+import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
+import type { AppUser, AuthProviderId, DiscoveredPlace, EventHistorySearchResult, Locale, Place } from "@accessibilitat/shared";
 import type {
   AccessibilitatApi,
   CompleteUserOnboardingInput,
   CreateChildProfileInput,
+  CreateEventEditionInput,
+  CreateEventSeriesInput,
+  CreateEventZoneInput,
   CreatePlaceInput,
   CreateReportInput,
   ProfessionalVerificationInput,
   ResolvePlaceForContributionInput,
+  SearchEventHistoryInput,
   SearchNearbyPlacesInput,
   SubmitCommentInput,
+  SubmitEventExperienceInput,
   SubmitReviewInput
 } from "./accessibilitat-api";
 import { requireFirebaseApp } from "./firebase";
@@ -64,6 +69,39 @@ async function createPlace(input: CreatePlaceInput) {
 
 async function searchNearbyPlaces(input: SearchNearbyPlacesInput) {
   const callable = getCallable<SearchNearbyPlacesInput, { places: DiscoveredPlace[] } | DiscoveredPlace[]>("searchNearbyPlaces");
+  return callable(input);
+}
+
+async function searchEventHistory(input: SearchEventHistoryInput) {
+  const callable = getCallable<SearchEventHistoryInput, EventHistorySearchResult>("searchEventHistory");
+  return callable(input);
+}
+
+async function createEventSeries(input: CreateEventSeriesInput) {
+  const callable = getCallable<CreateEventSeriesInput, { eventSeriesId: string; status: "pending" | "active" }>(
+    "createEventSeries"
+  );
+  return callable(input);
+}
+
+async function createEventEdition(input: CreateEventEditionInput) {
+  const callable = getCallable<CreateEventEditionInput, { eventEditionId: string; status: "pending" | "active" }>(
+    "createEventEdition"
+  );
+  return callable(input);
+}
+
+async function createEventZone(input: CreateEventZoneInput) {
+  const callable = getCallable<CreateEventZoneInput, { eventZoneId: string; status: "pending" | "active" }>(
+    "createEventZone"
+  );
+  return callable(input);
+}
+
+async function submitEventExperience(input: SubmitEventExperienceInput) {
+  const callable = getCallable<SubmitEventExperienceInput, { eventExperienceId: string; status: "pending" }>(
+    "submitEventExperience"
+  );
   return callable(input);
 }
 
@@ -240,11 +278,29 @@ async function uploadPlaceImage(placeId: string, file: File, altText?: Record<st
   return callable({ placeId, storagePath, altText });
 }
 
+async function uploadEventExperiencePhoto(experienceId: string, file: File) {
+  const app = requireFirebaseApp();
+  const uid = requireSignedInUid();
+  const storagePath = `event-experience-images/${uid}/${experienceId}/${file.name}`;
+  await uploadBytes(ref(getStorage(app), storagePath), file, { contentType: file.type });
+  return storagePath;
+}
+
+async function readStorageDownloadUrl(path: string) {
+  const app = requireFirebaseApp();
+  return getDownloadURL(ref(getStorage(app), path));
+}
+
 export function createFirebaseAccessibilitatApi(): AccessibilitatApi {
   return {
     listActivePlaces,
     searchNearbyPlaces,
+    searchEventHistory,
     createPlace,
+    createEventSeries,
+    createEventEdition,
+    createEventZone,
+    submitEventExperience,
     resolvePlaceForContribution,
     submitReview,
     submitComment,
@@ -260,7 +316,9 @@ export function createFirebaseAccessibilitatApi(): AccessibilitatApi {
     loginWithGoogle,
     loginWithApple,
     logout,
-    uploadPlaceImage
+    uploadPlaceImage,
+    uploadEventExperiencePhoto,
+    readStorageDownloadUrl
   };
 }
 

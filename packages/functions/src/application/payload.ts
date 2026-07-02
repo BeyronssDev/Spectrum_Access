@@ -1,7 +1,9 @@
 import {
   authProviderIdSet,
   commentTargetTypeSet,
+  eventCategorySet,
   isAuthProviderId,
+  isEventExperienceRating,
   isLocale,
   isRecord,
   isSensoryRating,
@@ -11,6 +13,7 @@ import {
   placeCategorySet,
   reportTargetTypeSet,
   sensoryCriterionSet,
+  type EventExperienceRating,
   verificationRequestTypeSet,
   verificationStatusSet,
   type AuthProviderId,
@@ -100,6 +103,10 @@ export function requirePlaceCategory(data: Record<string, unknown>) {
   return requireSetValue(data, "category", placeCategorySet);
 }
 
+export function requireEventCategory(data: Record<string, unknown>) {
+  return requireSetValue(data, "category", eventCategorySet);
+}
+
 export function requireCommentTargetType(data: Record<string, unknown>) {
   return requireSetValue(data, "targetType", commentTargetTypeSet);
 }
@@ -123,6 +130,34 @@ export function requireSensoryRating(data: Record<string, unknown>): SensoryRati
   }
 
   return ratings;
+}
+
+export function requireEventExperienceRating(data: Record<string, unknown>): EventExperienceRating {
+  const ratings = data.ratings;
+  if (!isEventExperienceRating(ratings)) {
+    fail("invalid-argument", "Invalid ratings.");
+  }
+
+  return ratings;
+}
+
+export function requireInteger(data: Record<string, unknown>, key: string, min: number, max: number): number {
+  const value = data[key];
+  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
+    fail("invalid-argument", `Invalid ${key}.`);
+  }
+
+  return value;
+}
+
+export function requireIsoDateTime(data: Record<string, unknown>, key: string): string {
+  const value = requireText(data, key, 80);
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) {
+    fail("invalid-argument", `Invalid ${key}.`);
+  }
+
+  return new Date(timestamp).toISOString();
 }
 
 export function optionalEmail(data: Record<string, unknown>, key: string): string | undefined {

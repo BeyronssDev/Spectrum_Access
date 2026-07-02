@@ -67,6 +67,68 @@ class FakeProfileService implements SpectrumApplicationService {
   }) async => [testPlace(id: 'nearby')];
 
   @override
+  Future<EventHistorySummary> searchEventHistory({
+    required String locale,
+    double? latitude,
+    double? longitude,
+    double radiusMeters = 10000,
+    int maxResultCount = 50,
+    String? city,
+  }) async => const EventHistorySummary();
+
+  @override
+  Future<String> createEventSeries({
+    required String title,
+    required String category,
+    required String city,
+    String? description,
+  }) async => 'event-series-1';
+
+  @override
+  Future<String> createEventEdition({
+    required String eventSeriesId,
+    required String title,
+    required int year,
+    required DateTime startsAt,
+    required DateTime endsAt,
+  }) async => 'event-edition-1';
+
+  @override
+  Future<String> createEventZone({
+    required String eventSeriesId,
+    required String eventEditionId,
+    required String name,
+    required double latitude,
+    required double longitude,
+    double radiusMeters = 150,
+    String? description,
+  }) async => 'event-zone-1';
+
+  @override
+  Future<String> uploadEventExperiencePhoto({
+    required String experienceId,
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+  }) async => 'event-experience-images/${profile.uid}/$experienceId/$fileName';
+
+  @override
+  Future<String?> eventExperiencePhotoUrl({required String photoPath}) async =>
+      null;
+
+  @override
+  Future<void> submitEventExperience({
+    required String experienceId,
+    required String eventSeriesId,
+    required String eventEditionId,
+    required String eventZoneId,
+    required DateTime observedAt,
+    required Map<EventSensoryKey, double> ratings,
+    required String description,
+    required String photoPath,
+  }) async {}
+
+  @override
   Future<void> updateUserProfile({
     required String publicName,
     String? city,

@@ -1,4 +1,9 @@
 import {
+  type EventEdition,
+  type EventExperience,
+  type EventHistorySearchResult,
+  type EventSeries,
+  type EventZone,
   isAuthProviderId,
   type DiscoveredPlace,
   type Locale,
@@ -32,6 +37,10 @@ import {
   readSensoryPreferences,
   requireCommentTargetType,
   requireCoordinate,
+  requireEventCategory,
+  requireEventExperienceRating,
+  requireInteger,
+  requireIsoDateTime,
   requireLocale,
   requirePayload,
   requirePlaceCategory,
@@ -93,6 +102,132 @@ export function createUseCases({ auth, clock, places, repository }: UseCaseDepen
 
     async reserveRateLimit(rateLimit: RateLimitReservation) {
       await reserveRateLimitOrFail(repository, rateLimit);
+    },
+
+    async searchEventHistory(rawData: unknown, rateLimit?: RateLimitReservation): Promise<EventHistorySearchResult> {
+      if (rateLimit) {
+        await reserveRateLimitOrFail(repository, rateLimit);
+      }
+
+      const data = requirePayload(rawData);
+      const city = optionalText(data, "city", 120)?.toLowerCase();
+      const origin = optionalSearchCoordinate(data);
+      const radiusMeters = clampNumber(data.radiusMeters, 100, 50000, 10000);
+      const maxResultCount = Math.round(clampNumber(data.maxResultCount, 1, 100, 50));
+
+      const [series, editions, zones, experiences] = await Promise.all([
+        repository.listActiveEventSeries(150),
+        repository.listActiveEventEditions(250),
+        repository.listActiveEventZones(400),
+        repository.listActiveEventExperiences(500)
+      ]);
+
+      return filterEventHistory({
+        series,
+        editions,
+        zones,
+        experiences,
+        city,
+        origin,
+        radiusMeters,
+        maxResultCount
+      });
+    },
+
+    async createEventSeries(context: RequestContext, rawData: unknown) {
+      const data = requirePayload(rawData);
+      const now = clock.now();
+      const status = initialCatalogStatus(context);
+      const eventSeriesId = await repository.createEventSeries({
+        title: requireText(data, "title", 140),
+        category: requireEventCategory(data),
+        city: requireText(data, "city", 120),
+        description: optionalText(data, "description", 1200) ?? "",
+        status,
+        createdBy: context.uid,
+        createdAt: now,
+        updatedAt: now
+      });
+
+      return { eventSeriesId, status };
+    },
+
+    async createEventEdition(context: RequestContext, rawData: unknown) {
+      const data = requirePayload(rawData);
+      const startsAt = requireIsoDateTime(data, "startsAt");
+      const endsAt = requireIsoDateTime(data, "endsAt");
+      if (Date.parse(endsAt) < Date.parse(startsAt)) {
+        fail("invalid-argument", "endsAt must be after startsAt.");
+      }
+
+      const now = clock.now();
+      const status = initialCatalogStatus(context);
+      const eventEditionId = await repository.createEventEdition({
+        eventSeriesId: requireText(data, "eventSeriesId", 120),
+        title: requireText(data, "title", 160),
+        year: requireInteger(data, "year", 1900, 2200),
+        startsAt,
+        endsAt,
+        status,
+        createdBy: context.uid,
+        createdAt: now,
+        updatedAt: now
+      });
+
+      return { eventEditionId, status };
+    },
+
+    async createEventZone(context: RequestContext, rawData: unknown) {
+      const data = requirePayload(rawData);
+      const { latitude, longitude } = requireCoordinate(data);
+      const now = clock.now();
+      const status = initialCatalogStatus(context);
+      const eventZoneId = await repository.createEventZone({
+        eventSeriesId: requireText(data, "eventSeriesId", 120),
+        eventEditionId: requireText(data, "eventEditionId", 120),
+        name: requireText(data, "name", 140),
+        description: optionalText(data, "description", 1200) ?? "",
+        position: { latitude, longitude },
+        radiusMeters: Math.round(clampNumber(data.radiusMeters, 10, 5000, 150)),
+        status,
+        createdBy: context.uid,
+        createdAt: now,
+        updatedAt: now
+      });
+
+      return { eventZoneId, status };
+    },
+
+    async submitEventExperience(context: RequestContext, rawData: unknown) {
+      const data = requirePayload(rawData);
+      const experienceId = requireText(data, "experienceId", 120);
+      const eventSeriesId = requireText(data, "eventSeriesId", 120);
+      const eventEditionId = requireText(data, "eventEditionId", 120);
+      const eventZoneId = requireText(data, "eventZoneId", 120);
+      const photoPath = requireText(data, "photoPath", 1024);
+      if (!photoPath.startsWith(`event-experience-images/${context.uid}/${experienceId}/`)) {
+        fail("permission-denied", "photoPath must belong to the authenticated user and experience.");
+      }
+
+      const now = clock.now();
+      const eventExperienceId = await repository.createEventExperience({
+        experienceId,
+        data: {
+          eventSeriesId,
+          eventEditionId,
+          eventZoneId,
+          authorUid: context.uid,
+          observedAt: requireIsoDateTime(data, "observedAt"),
+          ratings: requireEventExperienceRating(data),
+          description: requireText(data, "description", 1600),
+          photoPath,
+          status: "pending",
+          createdAt: now,
+          updatedAt: now
+        }
+      });
+
+      return { eventExperienceId, status: "pending" };
     },
 
     async completeUserOnboarding(context: RequestContext, rawData: unknown) {
@@ -386,6 +521,8 @@ export function createUseCases({ auth, clock, places, repository }: UseCaseDepen
 
       if (reason && collectionId === "placeImages") {
         update.rejectionReason = reason;
+      } else if (reason) {
+        update.moderationReason = reason;
       }
 
       await repository.moderateContent({
@@ -553,6 +690,90 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
   }
 
   return Math.min(max, Math.max(min, value));
+}
+
+function optionalSearchCoordinate(data: Record<string, unknown>) {
+  if (typeof data.latitude !== "number" || typeof data.longitude !== "number") {
+    return undefined;
+  }
+
+  return requireCoordinate(data);
+}
+
+function initialCatalogStatus(context: RequestContext) {
+  return context.token.superAdmin === true || context.token.admin === true || context.token.moderator === true
+    ? "active"
+    : "pending";
+}
+
+function filterEventHistory(input: {
+  series: EventSeries[];
+  editions: EventEdition[];
+  zones: EventZone[];
+  experiences: EventExperience[];
+  city?: string;
+  origin?: { latitude: number; longitude: number };
+  radiusMeters: number;
+  maxResultCount: number;
+}): EventHistorySearchResult {
+  const seriesById = new Map(input.series.map((series) => [series.id, series]));
+  const allowedSeriesIds = new Set(input.series.map((series) => series.id));
+
+  if (input.city) {
+    for (const series of input.series) {
+      const searchable = `${series.title} ${series.city}`.toLowerCase();
+      if (!searchable.includes(input.city)) {
+        allowedSeriesIds.delete(series.id);
+      }
+    }
+  }
+
+  const activeZones = input.zones.filter((zone) => allowedSeriesIds.has(zone.eventSeriesId));
+  const nearbyZoneIds = new Set<string>();
+  if (input.origin) {
+    const radiusKm = input.radiusMeters / 1000;
+    for (const zone of activeZones) {
+      if (distanceBetweenKm(input.origin, zone.position) <= radiusKm) {
+        nearbyZoneIds.add(zone.id);
+      }
+    }
+
+    for (const seriesId of [...allowedSeriesIds]) {
+      const hasNearbyZone = activeZones.some((zone) => zone.eventSeriesId === seriesId && nearbyZoneIds.has(zone.id));
+      if (!hasNearbyZone) {
+        allowedSeriesIds.delete(seriesId);
+      }
+    }
+  }
+
+  const allowedEditions = input.editions
+    .filter((edition) => allowedSeriesIds.has(edition.eventSeriesId))
+    .slice(0, input.maxResultCount * 4);
+  const allowedEditionIds = new Set(allowedEditions.map((edition) => edition.id));
+  const allowedZones = activeZones
+    .filter((zone) => allowedEditionIds.has(zone.eventEditionId))
+    .filter((zone) => !input.origin || nearbyZoneIds.has(zone.id))
+    .slice(0, input.maxResultCount * 6);
+  const allowedZoneIds = new Set(allowedZones.map((zone) => zone.id));
+  const allowedExperiences = input.experiences
+    .filter((experience) => allowedZoneIds.has(experience.eventZoneId))
+    .sort((a, b) => Date.parse(b.observedAt) - Date.parse(a.observedAt))
+    .slice(0, input.maxResultCount * 8);
+  const usedSeriesIds = new Set([
+    ...allowedEditions.map((edition) => edition.eventSeriesId),
+    ...allowedZones.map((zone) => zone.eventSeriesId),
+    ...allowedExperiences.map((experience) => experience.eventSeriesId)
+  ]);
+
+  return {
+    series: [...usedSeriesIds]
+      .map((seriesId) => seriesById.get(seriesId))
+      .filter((series): series is EventSeries => Boolean(series))
+      .slice(0, input.maxResultCount),
+    editions: allowedEditions,
+    zones: allowedZones,
+    experiences: allowedExperiences
+  };
 }
 
 function readIncludedGoogleTypes(value: unknown): string[] {

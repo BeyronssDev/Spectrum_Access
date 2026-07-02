@@ -1,6 +1,9 @@
 export {
   completeUserOnboarding,
   createChildProfile,
+  createEventEdition,
+  createEventSeries,
+  createEventZone,
   createPlace,
   createPlaceImageRecord,
   createReport,
@@ -8,10 +11,12 @@ export {
   requestOrganizationVerification,
   requestProfessionalVerification,
   resolvePlaceForContribution,
+  searchEventHistory,
   searchNearbyPlaces,
   setUserAccessClaims,
   setVerificationStatus,
   submitComment,
+  submitEventExperience,
   submitReview
 } from "./interfaces/callables.js";
 export {

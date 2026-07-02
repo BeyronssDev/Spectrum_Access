@@ -116,6 +116,60 @@ abstract interface class SpectrumApplicationService {
     int maxResultCount = 20,
   });
 
+  Future<EventHistorySummary> searchEventHistory({
+    required String locale,
+    double? latitude,
+    double? longitude,
+    double radiusMeters = 10000,
+    int maxResultCount = 50,
+    String? city,
+  });
+
+  Future<String> createEventSeries({
+    required String title,
+    required String category,
+    required String city,
+    String? description,
+  });
+
+  Future<String> createEventEdition({
+    required String eventSeriesId,
+    required String title,
+    required int year,
+    required DateTime startsAt,
+    required DateTime endsAt,
+  });
+
+  Future<String> createEventZone({
+    required String eventSeriesId,
+    required String eventEditionId,
+    required String name,
+    required double latitude,
+    required double longitude,
+    double radiusMeters = 150,
+    String? description,
+  });
+
+  Future<String> uploadEventExperiencePhoto({
+    required String experienceId,
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+  });
+
+  Future<String?> eventExperiencePhotoUrl({required String photoPath});
+
+  Future<void> submitEventExperience({
+    required String experienceId,
+    required String eventSeriesId,
+    required String eventEditionId,
+    required String eventZoneId,
+    required DateTime observedAt,
+    required Map<EventSensoryKey, double> ratings,
+    required String description,
+    required String photoPath,
+  });
+
   Future<String> createPlace({
     required String name,
     required String category,

@@ -1,5 +1,16 @@
 import type { User } from "firebase/auth";
-import type { AppUser, AuthProviderId, DiscoveredPlace, Locale, Place, PlaceCategory, SensoryRating } from "@accessibilitat/shared";
+import type {
+  AppUser,
+  AuthProviderId,
+  DiscoveredPlace,
+  EventCategory,
+  EventExperienceRating,
+  EventHistorySearchResult,
+  Locale,
+  Place,
+  PlaceCategory,
+  SensoryRating
+} from "@accessibilitat/shared";
 
 export type CreatePlaceInput = {
   name: string;
@@ -18,6 +29,51 @@ export type SearchNearbyPlacesInput = {
   maxResultCount?: number;
   locale: Locale;
   includedTypes?: string[];
+};
+
+export type SearchEventHistoryInput = {
+  latitude?: number;
+  longitude?: number;
+  radiusMeters?: number;
+  maxResultCount?: number;
+  city?: string;
+  locale: Locale;
+};
+
+export type CreateEventSeriesInput = {
+  title: string;
+  category: EventCategory;
+  city: string;
+  description?: string;
+};
+
+export type CreateEventEditionInput = {
+  eventSeriesId: string;
+  title: string;
+  year: number;
+  startsAt: string;
+  endsAt: string;
+};
+
+export type CreateEventZoneInput = {
+  eventSeriesId: string;
+  eventEditionId: string;
+  name: string;
+  description?: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters?: number;
+};
+
+export type SubmitEventExperienceInput = {
+  experienceId: string;
+  eventSeriesId: string;
+  eventEditionId: string;
+  eventZoneId: string;
+  observedAt: string;
+  ratings: EventExperienceRating;
+  description: string;
+  photoPath: string;
 };
 
 export type ResolvePlaceForContributionInput = {
@@ -87,7 +143,12 @@ export type CallableResponse<T> = Promise<{ data: T }>;
 export interface AccessibilitatApi {
   listActivePlaces(): Promise<Place[]>;
   searchNearbyPlaces(input: SearchNearbyPlacesInput): CallableResponse<{ places: DiscoveredPlace[] } | DiscoveredPlace[]>;
+  searchEventHistory(input: SearchEventHistoryInput): CallableResponse<EventHistorySearchResult>;
   createPlace(input: CreatePlaceInput): CallableResponse<{ placeId: string; status: "pending" }>;
+  createEventSeries(input: CreateEventSeriesInput): CallableResponse<{ eventSeriesId: string; status: "pending" | "active" }>;
+  createEventEdition(input: CreateEventEditionInput): CallableResponse<{ eventEditionId: string; status: "pending" | "active" }>;
+  createEventZone(input: CreateEventZoneInput): CallableResponse<{ eventZoneId: string; status: "pending" | "active" }>;
+  submitEventExperience(input: SubmitEventExperienceInput): CallableResponse<{ eventExperienceId: string; status: "pending" }>;
   resolvePlaceForContribution(
     input: ResolvePlaceForContributionInput
   ): CallableResponse<{ placeId: string; status: "pending" | "active" | "hidden" | "deleted" | "rejected" | "suspended" }>;
@@ -118,4 +179,6 @@ export interface AccessibilitatApi {
     file: File,
     altText?: Record<string, string>
   ): CallableResponse<{ imageId: string; status: "pending" }>;
+  uploadEventExperiencePhoto(experienceId: string, file: File): Promise<string>;
+  readStorageDownloadUrl(path: string): Promise<string>;
 }

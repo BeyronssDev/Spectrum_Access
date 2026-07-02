@@ -1,4 +1,13 @@
-export const moderationTargets = new Set(["places", "reviews", "comments", "placeImages"]);
+export const moderationTargets = new Set([
+  "places",
+  "reviews",
+  "comments",
+  "placeImages",
+  "eventSeries",
+  "eventEditions",
+  "eventZones",
+  "eventExperiences"
+]);
 export const moderationTargetStatuses = new Set(["active", "hidden", "deleted", "rejected", "suspended"]);
 export const rejectedImageStatuses = new Set(["rejected", "deleted", "hidden"]);
 

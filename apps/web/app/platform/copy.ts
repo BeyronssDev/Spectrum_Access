@@ -100,6 +100,7 @@ export const copy: Record<
     nav: {
       home: "Inici",
       consult: "Consulta",
+      events: "Esdeveniments",
       contribute: "Aportacions",
       support: "Ajuda",
       profiles: "Perfils",
@@ -209,6 +210,7 @@ export const copy: Record<
     nav: {
       home: "Inicio",
       consult: "Consulta",
+      events: "Eventos",
       contribute: "Aportaciones",
       support: "Ayuda",
       profiles: "Perfiles",
@@ -318,6 +320,7 @@ export const copy: Record<
     nav: {
       home: "Dashboard",
       consult: "Discover",
+      events: "Events",
       contribute: "Report",
       support: "Help",
       profiles: "Profiles",

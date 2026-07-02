@@ -273,6 +273,124 @@ describe("Firestore security rules", () => {
     );
   });
 
+  it("keeps event history pending content private until moderation", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await db.collection("eventSeries").doc("active-series").set({
+        title: "Festa Major",
+        category: "festa_major",
+        city: "Manresa",
+        description: "",
+        status: "active",
+        createdBy: "admin-a",
+        createdAt: "2027-08-01T00:00:00.000Z",
+        updatedAt: "2027-08-01T00:00:00.000Z"
+      });
+      await db.collection("eventSeries").doc("pending-series").set({
+        title: "Proposta Festa",
+        category: "local_festival",
+        city: "Manresa",
+        description: "",
+        status: "pending",
+        createdBy: "user-a",
+        createdAt: "2027-08-01T00:00:00.000Z",
+        updatedAt: "2027-08-01T00:00:00.000Z"
+      });
+      await db.collection("eventExperiences").doc("pending-experience").set({
+        eventSeriesId: "pending-series",
+        eventEditionId: "edition-1",
+        eventZoneId: "zone-1",
+        authorUid: "user-a",
+        observedAt: "2027-08-28T20:30:00.000Z",
+        ratings: {
+          noise: 4,
+          crowd: 5,
+          lighting: 3,
+          waitingTime: 2,
+          temperature: 4,
+          perceivedSafety: 3,
+          exitEase: 2
+        },
+        description: "Pendent.",
+        photoPath: "event-experience-images/user-a/pending-experience/photo.png",
+        status: "pending",
+        createdAt: "2027-08-28T21:00:00.000Z",
+        updatedAt: "2027-08-28T21:00:00.000Z"
+      });
+    });
+
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+    const ownerDb = testEnv.authenticatedContext("user-a").firestore();
+    const moderatorDb = testEnv.authenticatedContext("mod-a", { moderator: true }).firestore();
+
+    await assertSucceeds(anonDb.collection("eventSeries").doc("active-series").get());
+    await assertFails(anonDb.collection("eventSeries").doc("pending-series").get());
+    await assertSucceeds(ownerDb.collection("eventSeries").doc("pending-series").get());
+    await assertFails(anonDb.collection("eventExperiences").doc("pending-experience").get());
+    await assertSucceeds(ownerDb.collection("eventExperiences").doc("pending-experience").get());
+    await assertSucceeds(moderatorDb.collection("eventExperiences").doc("pending-experience").get());
+  });
+
+  it("forces user-created event experiences to start pending with their own photo path", async () => {
+    const userDb = testEnv.authenticatedContext("user-a").firestore();
+
+    await assertSucceeds(
+      userDb.collection("eventExperiences").doc("experience-1").set({
+        eventSeriesId: "series-1",
+        eventEditionId: "edition-1",
+        eventZoneId: "zone-1",
+        authorUid: "user-a",
+        observedAt: "2027-08-28T20:30:00.000Z",
+        ratings: {
+          noise: 4,
+          crowd: 5,
+          lighting: 3,
+          waitingTime: 2,
+          temperature: 4,
+          perceivedSafety: 3,
+          exitEase: 2
+        },
+        description: "La plaça estava plena.",
+        photoPath: "event-experience-images/user-a/experience-1/photo.png",
+        status: "pending",
+        createdAt: "2027-08-28T21:00:00.000Z",
+        updatedAt: "2027-08-28T21:00:00.000Z"
+      })
+    );
+
+    await assertFails(
+      userDb.collection("eventExperiences").doc("experience-2").set({
+        eventSeriesId: "series-1",
+        eventEditionId: "edition-1",
+        eventZoneId: "zone-1",
+        authorUid: "user-a",
+        observedAt: "2027-08-28T20:30:00.000Z",
+        ratings: {},
+        description: "No ha de sortir activa directament.",
+        photoPath: "event-experience-images/user-a/experience-2/photo.png",
+        status: "active",
+        createdAt: "2027-08-28T21:00:00.000Z",
+        updatedAt: "2027-08-28T21:00:00.000Z"
+      })
+    );
+
+    await assertFails(
+      userDb.collection("eventExperiences").doc("experience-3").set({
+        eventSeriesId: "series-1",
+        eventEditionId: "edition-1",
+        eventZoneId: "zone-1",
+        authorUid: "user-a",
+        observedAt: "2027-08-28T20:30:00.000Z",
+        ratings: {},
+        description: "Foto aliena.",
+        photoPath: "event-experience-images/user-b/experience-3/photo.png",
+        status: "pending",
+        createdAt: "2027-08-28T21:00:00.000Z",
+        updatedAt: "2027-08-28T21:00:00.000Z"
+      })
+    );
+  });
+
   it("forces professional verification profiles to start pending", async () => {
     const userDb = testEnv.authenticatedContext("professional-a").firestore();
 
@@ -405,6 +523,46 @@ describe("Firestore security rules", () => {
     await assertSucceeds(ownerStorage.ref("professional-photos/professional-a/pending-professional/headshot.png").getDownloadURL());
     await assertSucceeds(
       anonStorage.ref("organization-logos/organization-a/verified-organization/logo.png").getDownloadURL()
+    );
+  });
+
+  it("publishes event experience photos only after the experience is active", async () => {
+    const imageDataUrl =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await db.collection("eventExperiences").doc("active-experience").set({
+        authorUid: "user-a",
+        status: "active",
+        photoPath: "event-experience-images/user-a/active-experience/photo.png"
+      });
+      await db.collection("eventExperiences").doc("pending-experience").set({
+        authorUid: "user-a",
+        status: "pending",
+        photoPath: "event-experience-images/user-a/pending-experience/photo.png"
+      });
+
+      const storage = context.storage();
+      await storage.ref("event-experience-images/user-a/active-experience/photo.png").putString(imageDataUrl, "data_url");
+      await storage.ref("event-experience-images/user-a/pending-experience/photo.png").putString(imageDataUrl, "data_url");
+    });
+
+    const anonStorage = testEnv.unauthenticatedContext().storage();
+    const ownerStorage = testEnv.authenticatedContext("user-a").storage();
+    const moderatorStorage = testEnv.authenticatedContext("mod-a", { moderator: true }).storage();
+
+    await assertSucceeds(
+      anonStorage.ref("event-experience-images/user-a/active-experience/photo.png").getDownloadURL()
+    );
+    await assertFails(
+      anonStorage.ref("event-experience-images/user-a/pending-experience/photo.png").getDownloadURL()
+    );
+    await assertFails(
+      ownerStorage.ref("event-experience-images/user-a/pending-experience/photo.png").getDownloadURL()
+    );
+    await assertSucceeds(
+      moderatorStorage.ref("event-experience-images/user-a/pending-experience/photo.png").getDownloadURL()
     );
   });
 

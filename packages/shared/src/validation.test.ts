@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   isAuthProviderId,
+  isEventExperienceRating,
   isLocale,
   isPlaceSource,
   isScore,
@@ -60,5 +61,22 @@ describe("shared validation", () => {
     assert.equal(isSensoryRating({ ...ratings, noise: 0 }), false);
     assert.equal(isSensoryRating({ ...ratings, noise: 2.5 }), false);
     assert.equal(isSensoryRating({ noise: 1 }), false);
+  });
+
+  it("requires complete event experience ratings", () => {
+    const ratings = {
+      noise: 4,
+      crowd: 5,
+      lighting: 3,
+      waitingTime: 2,
+      temperature: 4,
+      perceivedSafety: 3,
+      exitEase: 2
+    };
+
+    assert.equal(isEventExperienceRating(ratings), true);
+    assert.equal(isEventExperienceRating({ ...ratings, crowd: 6 }), false);
+    assert.equal(isEventExperienceRating({ ...ratings, exitEase: 2.5 }), false);
+    assert.equal(isEventExperienceRating({ noise: 4 }), false);
   });
 });

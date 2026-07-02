@@ -9,9 +9,19 @@ enum LocaleOption {
   final String label;
 }
 
-enum MobileTab { consult, contribute, support, profiles }
+enum MobileTab { consult, events, contribute, support, profiles }
 
 enum SensoryKey { noise, density, light, wait }
+
+enum EventSensoryKey {
+  noise,
+  crowd,
+  lighting,
+  waitingTime,
+  temperature,
+  perceivedSafety,
+  exitEase,
+}
 
 class PlaceSummary {
   const PlaceSummary({
@@ -114,6 +124,98 @@ class VerifiedProfile {
   }
 }
 
+class EventSeriesSummary {
+  const EventSeriesSummary({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.city,
+    required this.description,
+  });
+
+  final String id;
+  final String title;
+  final String category;
+  final String city;
+  final String description;
+}
+
+class EventEditionSummary {
+  const EventEditionSummary({
+    required this.id,
+    required this.eventSeriesId,
+    required this.title,
+    required this.year,
+    required this.startsAt,
+    required this.endsAt,
+  });
+
+  final String id;
+  final String eventSeriesId;
+  final String title;
+  final int year;
+  final String startsAt;
+  final String endsAt;
+}
+
+class EventZoneSummary {
+  const EventZoneSummary({
+    required this.id,
+    required this.eventSeriesId,
+    required this.eventEditionId,
+    required this.name,
+    required this.description,
+    required this.latitude,
+    required this.longitude,
+    required this.radiusMeters,
+  });
+
+  final String id;
+  final String eventSeriesId;
+  final String eventEditionId;
+  final String name;
+  final String description;
+  final double latitude;
+  final double longitude;
+  final double radiusMeters;
+}
+
+class EventExperienceSummary {
+  const EventExperienceSummary({
+    required this.id,
+    required this.eventSeriesId,
+    required this.eventEditionId,
+    required this.eventZoneId,
+    required this.observedAt,
+    required this.ratings,
+    required this.description,
+    required this.photoPath,
+  });
+
+  final String id;
+  final String eventSeriesId;
+  final String eventEditionId;
+  final String eventZoneId;
+  final String observedAt;
+  final Map<EventSensoryKey, double> ratings;
+  final String description;
+  final String photoPath;
+}
+
+class EventHistorySummary {
+  const EventHistorySummary({
+    this.series = const [],
+    this.editions = const [],
+    this.zones = const [],
+    this.experiences = const [],
+  });
+
+  final List<EventSeriesSummary> series;
+  final List<EventEditionSummary> editions;
+  final List<EventZoneSummary> zones;
+  final List<EventExperienceSummary> experiences;
+}
+
 class ChildProfile {
   const ChildProfile({
     required this.alias,
@@ -133,6 +235,7 @@ class AppCopy {
     required this.betaLabel,
     required this.home,
     required this.consult,
+    required this.events,
     required this.contribute,
     required this.support,
     required this.profiles,
@@ -215,6 +318,21 @@ class AppCopy {
     required this.placeAddress,
     required this.placeDescription,
     required this.locationRequiredForPlace,
+    required this.eventHistoryTitle,
+    required this.eventHistoryIntro,
+    required this.noEventsTitle,
+    required this.noEventsBody,
+    required this.eventExperienceTitle,
+    required this.eventSeriesName,
+    required this.eventEditionName,
+    required this.eventZoneName,
+    required this.eventObservedAt,
+    required this.eventPhoto,
+    required this.eventDescription,
+    required this.eventPhotoRequired,
+    required this.eventLocationRequired,
+    required this.eventSubmitSuccess,
+    required this.eventSubmitFailed,
   });
 
   final String appName;
@@ -222,6 +340,7 @@ class AppCopy {
   final String betaLabel;
   final String home;
   final String consult;
+  final String events;
   final String contribute;
   final String support;
   final String profiles;
@@ -304,6 +423,21 @@ class AppCopy {
   final String placeAddress;
   final String placeDescription;
   final String locationRequiredForPlace;
+  final String eventHistoryTitle;
+  final String eventHistoryIntro;
+  final String noEventsTitle;
+  final String noEventsBody;
+  final String eventExperienceTitle;
+  final String eventSeriesName;
+  final String eventEditionName;
+  final String eventZoneName;
+  final String eventObservedAt;
+  final String eventPhoto;
+  final String eventDescription;
+  final String eventPhotoRequired;
+  final String eventLocationRequired;
+  final String eventSubmitSuccess;
+  final String eventSubmitFailed;
 }
 
 class AuthCopy {
@@ -413,6 +547,7 @@ const appCopies = {
     betaLabel: 'Beta',
     home: 'Inici',
     consult: 'Consulta',
+    events: 'Esdeveniments',
     contribute: 'Aportacions',
     support: 'Ajuda',
     profiles: 'Perfils',
@@ -504,6 +639,24 @@ const appCopies = {
     placeDescription: 'Descripció opcional',
     locationRequiredForPlace:
         'Activa la ubicació per crear un lloc nou des del mòbil.',
+    eventHistoryTitle: 'Històric d’esdeveniments',
+    eventHistoryIntro:
+        'Consulta edicions anteriors i aporta data, hora, foto i estat sensorial.',
+    noEventsTitle: 'Encara no hi ha esdeveniments publicats',
+    noEventsBody:
+        'Quan s’aprovin experiències reals, apareixeran aquí amb zona, foto i hora.',
+    eventExperienceTitle: 'Aportar experiència',
+    eventSeriesName: 'Nom de l’esdeveniment',
+    eventEditionName: 'Edició',
+    eventZoneName: 'Zona o plaça',
+    eventObservedAt: 'Data i hora',
+    eventPhoto: 'Foto del lloc',
+    eventDescription: 'Informació observada',
+    eventPhotoRequired: 'Afegeix una foto del lloc.',
+    eventLocationRequired:
+        'Activa la ubicació per proposar la zona amb coordenades reals.',
+    eventSubmitSuccess: 'Experiència enviada a moderació.',
+    eventSubmitFailed: 'No s’ha pogut enviar l’experiència.',
   ),
   LocaleOption.es: AppCopy(
     appName: 'Spectrum Access',
@@ -511,6 +664,7 @@ const appCopies = {
     betaLabel: 'Beta',
     home: 'Inicio',
     consult: 'Consulta',
+    events: 'Eventos',
     contribute: 'Aportaciones',
     support: 'Ayuda',
     profiles: 'Perfiles',
@@ -602,6 +756,24 @@ const appCopies = {
     placeDescription: 'Descripción opcional',
     locationRequiredForPlace:
         'Activa la ubicación para crear un lugar nuevo desde el móvil.',
+    eventHistoryTitle: 'Histórico de eventos',
+    eventHistoryIntro:
+        'Consulta ediciones anteriores y aporta fecha, hora, foto y estado sensorial.',
+    noEventsTitle: 'Todavía no hay eventos publicados',
+    noEventsBody:
+        'Cuando se aprueben experiencias reales, aparecerán aquí con zona, foto y hora.',
+    eventExperienceTitle: 'Aportar experiencia',
+    eventSeriesName: 'Nombre del evento',
+    eventEditionName: 'Edición',
+    eventZoneName: 'Zona o plaza',
+    eventObservedAt: 'Fecha y hora',
+    eventPhoto: 'Foto del lugar',
+    eventDescription: 'Información observada',
+    eventPhotoRequired: 'Añade una foto del lugar.',
+    eventLocationRequired:
+        'Activa la ubicación para proponer la zona con coordenadas reales.',
+    eventSubmitSuccess: 'Experiencia enviada a moderación.',
+    eventSubmitFailed: 'No se ha podido enviar la experiencia.',
   ),
   LocaleOption.en: AppCopy(
     appName: 'Spectrum Access',
@@ -609,6 +781,7 @@ const appCopies = {
     betaLabel: 'Beta',
     home: 'Dashboard',
     consult: 'Discover',
+    events: 'Events',
     contribute: 'Report',
     support: 'Help',
     profiles: 'Profiles',
@@ -698,6 +871,24 @@ const appCopies = {
     placeDescription: 'Optional description',
     locationRequiredForPlace:
         'Enable location to create a new place from the phone.',
+    eventHistoryTitle: 'Event history',
+    eventHistoryIntro:
+        'Browse previous editions and add date, time, photo and sensory state.',
+    noEventsTitle: 'No published events yet',
+    noEventsBody:
+        'Approved real experiences will appear here with zone, photo and time.',
+    eventExperienceTitle: 'Contribute experience',
+    eventSeriesName: 'Event name',
+    eventEditionName: 'Edition',
+    eventZoneName: 'Zone or square',
+    eventObservedAt: 'Date and time',
+    eventPhoto: 'Place photo',
+    eventDescription: 'Observed information',
+    eventPhotoRequired: 'Add a place photo.',
+    eventLocationRequired:
+        'Enable location to propose the zone with real coordinates.',
+    eventSubmitSuccess: 'Experience sent to moderation.',
+    eventSubmitFailed: 'Could not submit the experience.',
   ),
 };
 
@@ -974,6 +1165,195 @@ String sensoryWord(LocaleOption locale, SensoryKey key, int value) {
         'Moderate',
         'Long',
         'Very long',
+      ],
+    },
+  };
+  return words[index];
+}
+
+String eventSensoryLabel(LocaleOption locale, EventSensoryKey key) {
+  switch (locale) {
+    case LocaleOption.ca:
+      return switch (key) {
+        EventSensoryKey.noise => 'Soroll',
+        EventSensoryKey.crowd => 'Gent',
+        EventSensoryKey.lighting => 'Llum',
+        EventSensoryKey.waitingTime => 'Espera',
+        EventSensoryKey.temperature => 'Calor',
+        EventSensoryKey.perceivedSafety => 'Seguretat percebuda',
+        EventSensoryKey.exitEase => 'Sortida fàcil',
+      };
+    case LocaleOption.es:
+      return switch (key) {
+        EventSensoryKey.noise => 'Ruido',
+        EventSensoryKey.crowd => 'Gente',
+        EventSensoryKey.lighting => 'Luz',
+        EventSensoryKey.waitingTime => 'Espera',
+        EventSensoryKey.temperature => 'Calor',
+        EventSensoryKey.perceivedSafety => 'Seguridad percibida',
+        EventSensoryKey.exitEase => 'Salida fácil',
+      };
+    case LocaleOption.en:
+      return switch (key) {
+        EventSensoryKey.noise => 'Noise',
+        EventSensoryKey.crowd => 'Crowd',
+        EventSensoryKey.lighting => 'Light',
+        EventSensoryKey.waitingTime => 'Waiting',
+        EventSensoryKey.temperature => 'Heat',
+        EventSensoryKey.perceivedSafety => 'Perceived safety',
+        EventSensoryKey.exitEase => 'Easy exit',
+      };
+  }
+}
+
+String eventSensoryWord(LocaleOption locale, EventSensoryKey key, int value) {
+  final index = value.clamp(1, 5).toInt() - 1;
+  final words = switch (locale) {
+    LocaleOption.ca => switch (key) {
+      EventSensoryKey.noise => [
+        'Molt baix',
+        'Baix',
+        'Mitjà',
+        'Alt',
+        'Molt alt',
+      ],
+      EventSensoryKey.crowd => [
+        'Buida',
+        'Tranquil·la',
+        'Mitjana',
+        'Plena',
+        'Molt plena',
+      ],
+      EventSensoryKey.lighting => [
+        'Suau',
+        'Baixa',
+        'Mitjana',
+        'Forta',
+        'Intensa',
+      ],
+      EventSensoryKey.waitingTime => [
+        'Sense espera',
+        'Curta',
+        'Mitjana',
+        'Llarga',
+        'Molt llarga',
+      ],
+      EventSensoryKey.temperature => [
+        'Fresca',
+        'Suau',
+        'Normal',
+        'Calor',
+        'Molta calor',
+      ],
+      EventSensoryKey.perceivedSafety => [
+        'Molt baixa',
+        'Baixa',
+        'Mitjana',
+        'Alta',
+        'Molt alta',
+      ],
+      EventSensoryKey.exitEase => [
+        'Molt difícil',
+        'Difícil',
+        'Mitjana',
+        'Fàcil',
+        'Molt fàcil',
+      ],
+    },
+    LocaleOption.es => switch (key) {
+      EventSensoryKey.noise => [
+        'Muy bajo',
+        'Bajo',
+        'Medio',
+        'Alto',
+        'Muy alto',
+      ],
+      EventSensoryKey.crowd => [
+        'Vacía',
+        'Tranquila',
+        'Media',
+        'Llena',
+        'Muy llena',
+      ],
+      EventSensoryKey.lighting => [
+        'Suave',
+        'Baja',
+        'Media',
+        'Fuerte',
+        'Intensa',
+      ],
+      EventSensoryKey.waitingTime => [
+        'Sin espera',
+        'Corta',
+        'Media',
+        'Larga',
+        'Muy larga',
+      ],
+      EventSensoryKey.temperature => [
+        'Fresca',
+        'Suave',
+        'Normal',
+        'Calor',
+        'Mucho calor',
+      ],
+      EventSensoryKey.perceivedSafety => [
+        'Muy baja',
+        'Baja',
+        'Media',
+        'Alta',
+        'Muy alta',
+      ],
+      EventSensoryKey.exitEase => [
+        'Muy difícil',
+        'Difícil',
+        'Media',
+        'Fácil',
+        'Muy fácil',
+      ],
+    },
+    LocaleOption.en => switch (key) {
+      EventSensoryKey.noise => [
+        'Very low',
+        'Low',
+        'Medium',
+        'High',
+        'Very high',
+      ],
+      EventSensoryKey.crowd => ['Empty', 'Calm', 'Medium', 'Full', 'Very full'],
+      EventSensoryKey.lighting => [
+        'Soft',
+        'Low',
+        'Medium',
+        'Bright',
+        'Intense',
+      ],
+      EventSensoryKey.waitingTime => [
+        'No wait',
+        'Short',
+        'Medium',
+        'Long',
+        'Very long',
+      ],
+      EventSensoryKey.temperature => [
+        'Cool',
+        'Mild',
+        'Normal',
+        'Hot',
+        'Very hot',
+      ],
+      EventSensoryKey.perceivedSafety => [
+        'Very low',
+        'Low',
+        'Medium',
+        'High',
+        'Very high',
+      ],
+      EventSensoryKey.exitEase => [
+        'Very hard',
+        'Hard',
+        'Medium',
+        'Easy',
+        'Very easy',
       ],
     },
   };

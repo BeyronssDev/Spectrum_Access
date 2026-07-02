@@ -1,4 +1,8 @@
 import type {
+  EventEdition,
+  EventExperience,
+  EventSeries,
+  EventZone,
   Locale,
   ModerationStatus,
   Place,
@@ -34,6 +38,17 @@ export interface SpectrumRepository {
   getChildProfileTutorUid(childProfileId: string): Promise<string | undefined>;
   createPlace(data: Record<string, unknown>): Promise<string>;
   listActivePlacesForDiscovery(limit: number): Promise<Place[]>;
+  listActiveEventSeries(limit: number): Promise<EventSeries[]>;
+  listActiveEventEditions(limit: number): Promise<EventEdition[]>;
+  listActiveEventZones(limit: number): Promise<EventZone[]>;
+  listActiveEventExperiences(limit: number): Promise<EventExperience[]>;
+  createEventSeries(data: Record<string, unknown>): Promise<string>;
+  createEventEdition(data: Record<string, unknown>): Promise<string>;
+  createEventZone(data: Record<string, unknown>): Promise<string>;
+  createEventExperience(input: {
+    experienceId: string;
+    data: Record<string, unknown>;
+  }): Promise<string>;
   getPlaceByGooglePlaceId(googlePlaceId: string): Promise<Place | undefined>;
   createGoogleLinkedPlace(input: {
     googlePlaceId: string;

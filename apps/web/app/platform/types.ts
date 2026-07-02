@@ -1,7 +1,7 @@
 import type { Place as FirebasePlace } from "@accessibilitat/shared";
 
 export type Locale = "ca" | "es" | "en";
-export type ViewId = "home" | "consult" | "contribute" | "support" | "profiles" | "verified";
+export type ViewId = "home" | "consult" | "events" | "contribute" | "support" | "profiles" | "verified";
 export type SensoryKey = "noise" | "density" | "light" | "wait";
 export type MapLayerId = "roadmap" | "satellite" | "terrain";
 export type LocationState = "idle" | "locating" | "located" | "denied" | "unsupported" | "error";
