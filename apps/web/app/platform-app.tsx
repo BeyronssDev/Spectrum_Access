@@ -1275,143 +1275,149 @@ function HomeView({
         <p>{c.homeIntro}</p>
       </section>
 
-      <MapPanel
-        title={c.sensoryMap}
-        subtitle={c.mapArea}
-        locale={locale}
-        copyText={c}
-        places={availablePlaces}
-        filters={c.filters}
-        selectedFilter={selectedFilter}
-        selectedPlace={selectedPlace}
-        locationState={locationState}
-        userLocation={userLocation}
-        mapsConsentGranted={mapsConsentGranted}
-        onSelectPlace={onSelectPlace}
-        onCycleFilter={onCycleFilter}
-        onLocate={onLocate}
-        onAcceptMaps={onAcceptMaps}
-        onOpen={() => onNavigate("consult")}
-      />
+      <div className="home-layout">
+        <div className="home-map-column">
+          <MapPanel
+            title={c.sensoryMap}
+            subtitle={c.mapArea}
+            locale={locale}
+            copyText={c}
+            places={availablePlaces}
+            filters={c.filters}
+            selectedFilter={selectedFilter}
+            selectedPlace={selectedPlace}
+            locationState={locationState}
+            userLocation={userLocation}
+            mapsConsentGranted={mapsConsentGranted}
+            onSelectPlace={onSelectPlace}
+            onCycleFilter={onCycleFilter}
+            onLocate={onLocate}
+            onAcceptMaps={onAcceptMaps}
+            onOpen={() => onNavigate("consult")}
+          />
 
-      <section className="panel saved-panel">
-        <PanelHeading title={c.availablePlaces} action={c.viewAll} onAction={() => onNavigate("consult")} />
-        <div className="saved-list">
-          {availablePlaces.length > 0 ? (
-            availablePlaces.map((place) => (
-              <button key={place.id} type="button" className="saved-row" onClick={() => onNavigate("consult")}>
-                <PlaceSymbol />
-                <span>
-                  <strong>{place.name}</strong>
-                  <small>
-                    <span className="saved-place-area">{place.area}</span>
-                    <span className="saved-place-separator"> · </span>
-                    <span className="saved-place-distance">{place.distance}</span>
-                  </small>
-                </span>
-                <em>{place.hasSpectrumData ? place.score.toFixed(1) : "Spectrum"}</em>
-                <ChevronRight aria-hidden="true" size={16} />
-              </button>
-            ))
-          ) : (
-            <EmptyState icon={MapPin} title={c.noPlacesTitle} body={c.noPlacesBody} />
-          )}
-        </div>
-      </section>
-
-      {isAuthenticated ? (
-        <section className="panel draft-panel">
-          <PanelHeading title={c.contributionTitle} action={c.nav.contribute} onAction={() => onNavigate("contribute")} />
-          <div className="draft-layout">
-            <PlaceSymbol large />
-            <div>
-              <h3>{c.noPlacesTitle}</h3>
-              <p>{c.noPlacesBody}</p>
-              <span>
-                <ShieldCheck aria-hidden="true" size={15} />
-                {c.tutorReview}
-              </span>
-            </div>
-          </div>
-          <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
-            {c.nav.contribute}
-          </button>
-        </section>
-      ) : (
-        <section className="panel public-access-panel">
-          <Lock aria-hidden="true" size={24} />
-          <h3>{authLabels.publicMode}</h3>
-          <p>{authLabels.signInRequiredIntro}</p>
-          <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
-            <UserPlus aria-hidden="true" size={17} />
-            {authLabels.signInToContinue}
-          </button>
-        </section>
-      )}
-
-      <section className="panel trust-panel">
-        <PanelHeading title={`${c.trust} · ${c.professionalsAndEntities}`} action={c.viewAll} onAction={() => onNavigate("verified")} />
-        <div className="trust-strip">
-          {verifiedProfessionals.length > 0 || verifiedOrganizations.length > 0 ? (
-            <>
-              {verifiedProfessionals.slice(0, 1).map((professional) => (
-                <VerifiedMiniCard
-                  key={professional.id}
-                  title={professional.name}
-                  meta={`${professional.license} · ${professional.distance}`}
-                  initials={professional.initials}
-                  label={c.verified}
-                />
-              ))}
-              {verifiedOrganizations.map((organization) => (
-                <VerifiedMiniCard
-                  key={organization.id}
-                  title={organization.name}
-                  meta={`${organization.registry} · ${organization.distance}`}
-                  initials={organization.initials}
-                  label={c.verified}
-                />
-              ))}
-            </>
-          ) : (
-            <EmptyState icon={ShieldCheck} title={c.verifiedTitle} body={c.noVerifiedProfiles} />
-          )}
-        </div>
-      </section>
-
-      <section className="panel support-panel">
-        <div>
-          <h3>{c.supportCard}</h3>
-          <p>{c.supportIntro}</p>
-        </div>
-        <button type="button" className="primary-action" onClick={() => onNavigate("support")}>
-          {c.openSupport}
-        </button>
-      </section>
-
-      {isAuthenticated ? (
-        <section className="panel profile-panel">
-          <PanelHeading title={c.profilesTitle} action={c.nav.profiles} onAction={() => onNavigate("profiles")} />
-          <div className="child-list">
-            {childProfiles.length > 0 ? (
-              childProfiles.map((profile) => (
-                <div key={profile.alias} className="child-chip">
-                  <span className="avatar">{profile.alias.slice(0, 1)}</span>
-                  <div>
-                    <strong>{profile.alias}</strong>
-                    <small>
-                      {profile.age} · {profile.state}
-                    </small>
-                  </div>
+          {isAuthenticated ? (
+            <section className="panel draft-panel">
+              <PanelHeading title={c.contributionTitle} action={c.nav.contribute} onAction={() => onNavigate("contribute")} />
+              <div className="draft-layout">
+                <PlaceSymbol large />
+                <div>
+                  <h3>{c.noPlacesTitle}</h3>
+                  <p>{c.noPlacesBody}</p>
+                  <span>
+                    <ShieldCheck aria-hidden="true" size={15} />
+                    {c.tutorReview}
+                  </span>
                 </div>
-              ))
-            ) : (
-              <EmptyState icon={UsersRound} title={c.childProfile} body={c.noChildProfiles} />
-            )}
-          </div>
-          <p className="fineprint">{locale === "en" ? c.childApproval : c.childApproval}</p>
-        </section>
-      ) : null}
+              </div>
+              <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
+                {c.nav.contribute}
+              </button>
+            </section>
+          ) : (
+            <section className="panel public-access-panel">
+              <Lock aria-hidden="true" size={24} />
+              <h3>{authLabels.publicMode}</h3>
+              <p>{authLabels.signInRequiredIntro}</p>
+              <button type="button" className="primary-action" onClick={() => onNavigate("contribute")}>
+                <UserPlus aria-hidden="true" size={17} />
+                {authLabels.signInToContinue}
+              </button>
+            </section>
+          )}
+
+          <section className="panel trust-panel">
+            <PanelHeading title={`${c.trust} · ${c.professionalsAndEntities}`} action={c.viewAll} onAction={() => onNavigate("verified")} />
+            <div className="trust-strip">
+              {verifiedProfessionals.length > 0 || verifiedOrganizations.length > 0 ? (
+                <>
+                  {verifiedProfessionals.slice(0, 1).map((professional) => (
+                    <VerifiedMiniCard
+                      key={professional.id}
+                      title={professional.name}
+                      meta={`${professional.license} · ${professional.distance}`}
+                      initials={professional.initials}
+                      label={c.verified}
+                    />
+                  ))}
+                  {verifiedOrganizations.map((organization) => (
+                    <VerifiedMiniCard
+                      key={organization.id}
+                      title={organization.name}
+                      meta={`${organization.registry} · ${organization.distance}`}
+                      initials={organization.initials}
+                      label={c.verified}
+                    />
+                  ))}
+                </>
+              ) : (
+                <EmptyState icon={ShieldCheck} title={c.verifiedTitle} body={c.noVerifiedProfiles} />
+              )}
+            </div>
+          </section>
+
+          <section className="panel support-panel">
+            <div>
+              <h3>{c.supportCard}</h3>
+              <p>{c.supportIntro}</p>
+            </div>
+            <button type="button" className="primary-action" onClick={() => onNavigate("support")}>
+              {c.openSupport}
+            </button>
+          </section>
+        </div>
+
+        <div className="home-side-column">
+          <section className="panel saved-panel">
+            <PanelHeading title={c.availablePlaces} action={c.viewAll} onAction={() => onNavigate("consult")} />
+            <div className="saved-list">
+              {availablePlaces.length > 0 ? (
+                availablePlaces.map((place) => (
+                  <button key={place.id} type="button" className="saved-row" onClick={() => onNavigate("consult")}>
+                    <PlaceSymbol />
+                    <span>
+                      <strong>{place.name}</strong>
+                      <small>
+                        <span className="saved-place-area">{place.area}</span>
+                        <span className="saved-place-separator"> · </span>
+                        <span className="saved-place-distance">{place.distance}</span>
+                      </small>
+                    </span>
+                    <em>{place.hasSpectrumData ? place.score.toFixed(1) : "Spectrum"}</em>
+                    <ChevronRight aria-hidden="true" size={16} />
+                  </button>
+                ))
+              ) : (
+                <EmptyState icon={MapPin} title={c.noPlacesTitle} body={c.noPlacesBody} />
+              )}
+            </div>
+          </section>
+
+          {isAuthenticated ? (
+            <section className="panel profile-panel">
+              <PanelHeading title={c.profilesTitle} action={c.nav.profiles} onAction={() => onNavigate("profiles")} />
+              <div className="child-list">
+                {childProfiles.length > 0 ? (
+                  childProfiles.map((profile) => (
+                    <div key={profile.alias} className="child-chip">
+                      <span className="avatar">{profile.alias.slice(0, 1)}</span>
+                      <div>
+                        <strong>{profile.alias}</strong>
+                        <small>
+                          {profile.age} · {profile.state}
+                        </small>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState icon={UsersRound} title={c.childProfile} body={c.noChildProfiles} />
+                )}
+              </div>
+              <p className="fineprint">{locale === "en" ? c.childApproval : c.childApproval}</p>
+            </section>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
