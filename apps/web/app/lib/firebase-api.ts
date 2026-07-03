@@ -3,10 +3,11 @@ import {
   getAuth,
   GoogleAuthProvider,
   OAuthProvider,
+  getRedirectResult,
   onAuthStateChanged,
   sendEmailVerification,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
   signOut,
   updateProfile,
   type User
@@ -37,6 +38,14 @@ import { requireFirebaseApp } from "./firebase";
 import { mapPlaceDocument } from "./firebase-place-mappers";
 
 const functionsRegion = "europe-west1";
+const federatedRedirectStorageKey = "spectrum-access:federated-redirect:v1";
+
+type PendingFederatedRedirect = {
+  providerId: AuthProviderId;
+  locale: Locale;
+  birthDate?: string;
+  createdAt: number;
+};
 
 function getCallable<TInput, TOutput>(name: string) {
   const app = requireFirebaseApp();
@@ -60,6 +69,95 @@ function isFirebasePermissionDenied(error: unknown): boolean {
     "code" in error &&
     (error as { code?: unknown }).code === "permission-denied"
   );
+}
+
+function makeFederatedProvider(providerId: AuthProviderId): GoogleAuthProvider | OAuthProvider {
+  if (providerId === "google.com") {
+    return new GoogleAuthProvider();
+  }
+
+  if (providerId === "apple.com") {
+    const provider = new OAuthProvider("apple.com");
+    provider.addScope("email");
+    provider.addScope("name");
+    return provider;
+  }
+
+  throw new Error("unsupported-federated-provider");
+}
+
+function readPendingFederatedRedirect(): PendingFederatedRedirect | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(federatedRedirectStorageKey);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<PendingFederatedRedirect>;
+    if (
+      (parsed.providerId !== "google.com" && parsed.providerId !== "apple.com") ||
+      (parsed.locale !== "ca" && parsed.locale !== "es" && parsed.locale !== "en") ||
+      typeof parsed.createdAt !== "number"
+    ) {
+      window.sessionStorage.removeItem(federatedRedirectStorageKey);
+      return null;
+    }
+
+    return {
+      providerId: parsed.providerId,
+      locale: parsed.locale,
+      ...(typeof parsed.birthDate === "string" ? { birthDate: parsed.birthDate } : {}),
+      createdAt: parsed.createdAt
+    };
+  } catch {
+    window.sessionStorage.removeItem(federatedRedirectStorageKey);
+    return null;
+  }
+}
+
+function savePendingFederatedRedirect(input: { providerId: AuthProviderId; locale: Locale; birthDate?: string }) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const pending: PendingFederatedRedirect = {
+    providerId: input.providerId,
+    locale: input.locale,
+    ...(input.birthDate ? { birthDate: input.birthDate } : {}),
+    createdAt: Date.now()
+  };
+  window.sessionStorage.setItem(federatedRedirectStorageKey, JSON.stringify(pending));
+}
+
+function clearPendingFederatedRedirect() {
+  if (typeof window !== "undefined") {
+    window.sessionStorage.removeItem(federatedRedirectStorageKey);
+  }
+}
+
+async function finishPendingFederatedRedirect(user: User): Promise<boolean> {
+  const pending = readPendingFederatedRedirect();
+  if (!pending || Date.now() - pending.createdAt > 30 * 60 * 1000) {
+    clearPendingFederatedRedirect();
+    return false;
+  }
+
+  if (!pending.birthDate) {
+    return false;
+  }
+
+  await finishAuthOnboarding({
+    user,
+    locale: pending.locale,
+    fallbackProvider: pending.providerId,
+    birthDate: pending.birthDate
+  });
+  clearPendingFederatedRedirect();
+  return true;
 }
 
 async function listActivePlaces(): Promise<Place[]> {
@@ -172,12 +270,22 @@ async function readCurrentAppUser(): Promise<AppUser | null> {
     return null;
   }
 
-  try {
-    const snapshot = await getDoc(doc(getFirestore(app), "users", authUser.uid));
+  const userRef = doc(getFirestore(app), "users", authUser.uid);
+  const readProfile = async () => {
+    const snapshot = await getDoc(userRef);
     return snapshot.exists() ? (snapshot.data() as AppUser) : null;
+  };
+
+  try {
+    const profile = await readProfile();
+    if (profile) {
+      return profile;
+    }
+
+    return (await finishPendingFederatedRedirect(authUser)) ? readProfile() : null;
   } catch (error) {
     if (isFirebasePermissionDenied(error)) {
-      return null;
+      return (await finishPendingFederatedRedirect(authUser)) ? readProfile() : null;
     }
 
     throw error;
@@ -186,7 +294,30 @@ async function readCurrentAppUser(): Promise<AppUser | null> {
 
 function subscribeToAuthState(callback: (user: User | null) => void) {
   const app = requireFirebaseApp();
-  return onAuthStateChanged(getAuth(app), callback);
+  const auth = getAuth(app);
+  let active = true;
+  void getRedirectResult(auth)
+    .then(async (credential) => {
+      if (!active || !credential?.user) {
+        return;
+      }
+
+      try {
+        await finishPendingFederatedRedirect(credential.user);
+      } catch {
+        // Leave the pending redirect in storage so the profile read path can retry once auth state settles.
+      }
+
+      if (active) {
+        callback(credential.user);
+      }
+    })
+    .catch(() => undefined);
+  const unsubscribe = onAuthStateChanged(auth, callback);
+  return () => {
+    active = false;
+    unsubscribe();
+  };
 }
 
 function fallbackPublicName(user: User): string {
@@ -281,19 +412,19 @@ async function requestPasswordReset(input: { email: string; locale: Locale }) {
   await callable({ email: input.email.trim(), locale: input.locale });
 }
 
-async function loginWithGoogle(input: { locale: Locale; birthDate?: string }) {
+async function startFederatedRedirect(input: { providerId: AuthProviderId; locale: Locale; birthDate?: string }) {
   const app = requireFirebaseApp();
-  const credential = await signInWithPopup(getAuth(app), new GoogleAuthProvider());
-  return finishFederatedAuth(credential.user, input.locale, "google.com", input.birthDate);
+  savePendingFederatedRedirect(input);
+  await signInWithRedirect(getAuth(app), makeFederatedProvider(input.providerId));
+  return { status: "redirect_started" as const, providerId: input.providerId };
+}
+
+async function loginWithGoogle(input: { locale: Locale; birthDate?: string }) {
+  return startFederatedRedirect({ providerId: "google.com", locale: input.locale, birthDate: input.birthDate });
 }
 
 async function loginWithApple(input: { locale: Locale; birthDate?: string }) {
-  const app = requireFirebaseApp();
-  const provider = new OAuthProvider("apple.com");
-  provider.addScope("email");
-  provider.addScope("name");
-  const credential = await signInWithPopup(getAuth(app), provider);
-  return finishFederatedAuth(credential.user, input.locale, "apple.com", input.birthDate);
+  return startFederatedRedirect({ providerId: "apple.com", locale: input.locale, birthDate: input.birthDate });
 }
 
 async function completeFederatedAgeGate(input: { locale: Locale; providerId: AuthProviderId; birthDate: string }) {

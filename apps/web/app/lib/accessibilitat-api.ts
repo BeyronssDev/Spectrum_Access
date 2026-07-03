@@ -135,7 +135,8 @@ export type AgeGateInput = {
 
 export type FederatedAuthResult =
   | { status: "complete"; user: User }
-  | { status: "age_gate_required"; user: User; providerId: AuthProviderId };
+  | { status: "age_gate_required"; user: User; providerId: AuthProviderId }
+  | { status: "redirect_started"; providerId: AuthProviderId };
 
 export type ProfessionalVerificationInput = {
   professionalName: string;

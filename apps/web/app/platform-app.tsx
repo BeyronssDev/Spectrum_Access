@@ -76,6 +76,7 @@ import {
   subscribeToAuthState,
   uploadPlaceImage,
   uploadEventExperiencePhoto,
+  type FederatedAuthResult,
   type OrganizationVerificationInput,
   type ProfessionalVerificationInput
 } from "./lib/firebase-actions";
@@ -1538,8 +1539,8 @@ function AuthGate({
   onVerificationFailure: (request: QualifiedVerificationRequest) => void;
   onRegistrationComplete: (accountType: RegisterAccountType) => void;
   onPasswordReset: (input: { email: string }) => Promise<void>;
-  onGoogle: (input?: { birthDate?: string }) => Promise<{ status: "complete" } | { status: "age_gate_required"; providerId: AuthProviderId }>;
-  onApple: (input?: { birthDate?: string }) => Promise<{ status: "complete" } | { status: "age_gate_required"; providerId: AuthProviderId }>;
+  onGoogle: (input?: { birthDate?: string }) => Promise<FederatedAuthResult>;
+  onApple: (input?: { birthDate?: string }) => Promise<FederatedAuthResult>;
   onFederatedAgeGateComplete: (input: { providerId: FederatedAgeGateProvider; birthDate: string }) => Promise<void>;
   onFederatedAgeGateCancel: () => Promise<void>;
 }) {
@@ -1582,7 +1583,6 @@ function AuthGate({
 
     return isAdultBirthDate(value.trim()) ? null : c.adultGateUnderage;
   };
-
   const selectAccountType = (nextAccountType: RegisterAccountType) => {
     setAccountType(nextAccountType);
     setQualifiedAccountCreated(false);
@@ -1803,6 +1803,7 @@ function AuthGate({
                 type="date"
                 value={federatedBirthDate}
                 placeholder={c.birthDateHint}
+                onInput={(event) => setFederatedBirthDate(event.currentTarget.value)}
                 onChange={(event) => setFederatedBirthDate(event.target.value)}
               />
             </label>
@@ -1950,6 +1951,7 @@ function AuthGate({
                   type="date"
                   value={birthDate}
                   placeholder={c.birthDateHint}
+                  onInput={(event) => setBirthDate(event.currentTarget.value)}
                   onChange={(event) => setBirthDate(event.target.value)}
                 />
               </label>
@@ -2071,8 +2073,8 @@ function AuthRequiredView({
   onVerificationFailure: (request: QualifiedVerificationRequest) => void;
   onRegistrationComplete: (accountType: RegisterAccountType) => void;
   onPasswordReset: (input: { email: string }) => Promise<void>;
-  onGoogle: (input?: { birthDate?: string }) => Promise<{ status: "complete" } | { status: "age_gate_required"; providerId: AuthProviderId }>;
-  onApple: (input?: { birthDate?: string }) => Promise<{ status: "complete" } | { status: "age_gate_required"; providerId: AuthProviderId }>;
+  onGoogle: (input?: { birthDate?: string }) => Promise<FederatedAuthResult>;
+  onApple: (input?: { birthDate?: string }) => Promise<FederatedAuthResult>;
   onFederatedAgeGateComplete: (input: { providerId: FederatedAgeGateProvider; birthDate: string }) => Promise<void>;
   onFederatedAgeGateCancel: () => Promise<void>;
 }) {
