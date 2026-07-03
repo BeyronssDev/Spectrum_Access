@@ -53,6 +53,15 @@ function requireSignedInUid(): string {
   return user.uid;
 }
 
+function isFirebasePermissionDenied(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "permission-denied"
+  );
+}
+
 async function listActivePlaces(): Promise<Place[]> {
   const app = requireFirebaseApp();
   const snapshot = await getDocs(
@@ -163,8 +172,16 @@ async function readCurrentAppUser(): Promise<AppUser | null> {
     return null;
   }
 
-  const snapshot = await getDoc(doc(getFirestore(app), "users", authUser.uid));
-  return snapshot.exists() ? (snapshot.data() as AppUser) : null;
+  try {
+    const snapshot = await getDoc(doc(getFirestore(app), "users", authUser.uid));
+    return snapshot.exists() ? (snapshot.data() as AppUser) : null;
+  } catch (error) {
+    if (isFirebasePermissionDenied(error)) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 function subscribeToAuthState(callback: (user: User | null) => void) {
