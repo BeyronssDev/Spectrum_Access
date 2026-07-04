@@ -149,6 +149,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
   final TextEditingController _eventDescriptionController =
       TextEditingController();
   bool _showRegister = true;
+  bool _passwordVisible = false;
+  bool _passwordRepeatVisible = false;
   RegistrationKind _registrationKind = RegistrationKind.user;
   String? _authMessage;
   String? _userProfileMessage;
@@ -449,6 +451,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
       _selectedTab = MobileTab.contribute;
       _showHome = false;
       _showRegister = showRegister;
+      _passwordVisible = false;
+      _passwordRepeatVisible = false;
       _authMessage = null;
       _qualifiedAccountCreated = false;
     });
@@ -1389,6 +1393,9 @@ class _SpectrumShellState extends State<SpectrumShell> {
         ),
         actions: [
           IconButton(
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
             tooltip: _focusMode ? labels.focusActive : labels.focusMode,
             onPressed: () => setState(() => _focusMode = !_focusMode),
             icon: Icon(
@@ -1398,6 +1405,9 @@ class _SpectrumShellState extends State<SpectrumShell> {
             ),
           ),
           IconButton(
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
             tooltip: isDark ? labels.lightMode : labels.darkMode,
             onPressed: () => widget.onThemeModeChanged(
               isDark ? ThemeMode.light : ThemeMode.dark,
@@ -1409,6 +1419,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
           PopupMenuButton<LocaleOption>(
             tooltip: 'Idioma',
             initialValue: _locale,
+            padding: EdgeInsets.zero,
             icon: Text(
               _locale.label,
               style: const TextStyle(fontWeight: FontWeight.w800),
@@ -1425,15 +1436,24 @@ class _SpectrumShellState extends State<SpectrumShell> {
                 )
                 .toList(),
           ),
-          IconButton(
-            tooltip: _authUser == null
-                ? authLabels.signInToContinue
-                : authLabels.signOut,
-            onPressed: _authUser == null ? () => _openAuthScreen() : _signOut,
-            icon: Icon(
-              _authUser == null ? Icons.login_outlined : Icons.logout_outlined,
+          if (_authUser == null)
+            IconButton(
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+              tooltip: authLabels.signInToContinue,
+              onPressed: _openAuthScreen,
+              icon: const Icon(Icons.person_outline),
+            )
+          else
+            IconButton(
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+              tooltip: authLabels.signOut,
+              onPressed: _signOut,
+              icon: const Icon(Icons.logout_outlined),
             ),
-          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -1609,6 +1629,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
       publicNameController: _authPublicNameController,
       cityController: _authCityController,
       birthDateController: _authBirthDateController,
+      passwordVisible: _passwordVisible,
+      passwordRepeatVisible: _passwordRepeatVisible,
       licenseNumberController: _licenseNumberController,
       professionalCollegeController: _professionalCollegeController,
       specialtyController: _specialtyController,
@@ -1619,8 +1641,14 @@ class _SpectrumShellState extends State<SpectrumShell> {
       standalone: false,
       onToggleMode: () => setState(() {
         _showRegister = !_showRegister;
+        _passwordVisible = false;
+        _passwordRepeatVisible = false;
         _qualifiedAccountCreated = false;
       }),
+      onTogglePasswordVisibility: () =>
+          setState(() => _passwordVisible = !_passwordVisible),
+      onTogglePasswordRepeatVisibility: () =>
+          setState(() => _passwordRepeatVisible = !_passwordRepeatVisible),
       onRegistrationKindChanged: (kind) => setState(() {
         _registrationKind = kind;
         _qualifiedAccountCreated = false;
@@ -1648,6 +1676,8 @@ class AuthScreen extends StatelessWidget {
     required this.publicNameController,
     required this.cityController,
     required this.birthDateController,
+    required this.passwordVisible,
+    required this.passwordRepeatVisible,
     required this.licenseNumberController,
     required this.professionalCollegeController,
     required this.specialtyController,
@@ -1656,6 +1686,8 @@ class AuthScreen extends StatelessWidget {
     required this.organizationRegistryController,
     required this.registrationKind,
     required this.onToggleMode,
+    required this.onTogglePasswordVisibility,
+    required this.onTogglePasswordRepeatVisibility,
     required this.onRegistrationKindChanged,
     required this.onEmailSubmit,
     required this.onPasswordReset,
@@ -1677,6 +1709,8 @@ class AuthScreen extends StatelessWidget {
   final TextEditingController publicNameController;
   final TextEditingController cityController;
   final TextEditingController birthDateController;
+  final bool passwordVisible;
+  final bool passwordRepeatVisible;
   final TextEditingController licenseNumberController;
   final TextEditingController professionalCollegeController;
   final TextEditingController specialtyController;
@@ -1685,6 +1719,8 @@ class AuthScreen extends StatelessWidget {
   final TextEditingController organizationRegistryController;
   final RegistrationKind registrationKind;
   final VoidCallback onToggleMode;
+  final VoidCallback onTogglePasswordVisibility;
+  final VoidCallback onTogglePasswordRepeatVisibility;
   final ValueChanged<RegistrationKind> onRegistrationKindChanged;
   final VoidCallback onEmailSubmit;
   final VoidCallback onPasswordReset;
@@ -1730,6 +1766,11 @@ class AuthScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SegmentedButton<bool>(
+                  selectedIcon: Icon(
+                    showRegister
+                        ? Icons.person_add_alt_1_outlined
+                        : Icons.person_outline,
+                  ),
                   segments: [
                     ButtonSegment(
                       value: true,
@@ -1739,7 +1780,7 @@ class AuthScreen extends StatelessWidget {
                     ButtonSegment(
                       value: false,
                       label: Text(authLabels.login),
-                      icon: const Icon(Icons.login_outlined),
+                      icon: const Icon(Icons.person_outline),
                     ),
                   ],
                   selected: {showRegister},
@@ -1818,8 +1859,27 @@ class AuthScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(labelText: authLabels.password),
+                  obscureText: !passwordVisible,
+                  decoration: InputDecoration(
+                    labelText: authLabels.password,
+                    suffixIconConstraints: const BoxConstraints.tightFor(
+                      width: 48,
+                      height: 48,
+                    ),
+                    suffixIcon: IconButton(
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      tooltip: passwordVisible
+                          ? authLabels.hidePassword
+                          : authLabels.showPassword,
+                      onPressed: onTogglePasswordVisibility,
+                      icon: Icon(
+                        passwordVisible
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
+                    ),
+                  ),
                 ),
                 if (!showRegister) ...[
                   const SizedBox(height: 6),
@@ -1838,9 +1898,26 @@ class AuthScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   TextField(
                     controller: passwordRepeatController,
-                    obscureText: true,
+                    obscureText: !passwordRepeatVisible,
                     decoration: InputDecoration(
                       labelText: authLabels.confirmPassword,
+                      suffixIconConstraints: const BoxConstraints.tightFor(
+                        width: 48,
+                        height: 48,
+                      ),
+                      suffixIcon: IconButton(
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        tooltip: passwordRepeatVisible
+                            ? authLabels.hidePassword
+                            : authLabels.showPassword,
+                        onPressed: onTogglePasswordRepeatVisibility,
+                        icon: Icon(
+                          passwordRepeatVisible
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2046,7 +2123,7 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 14),
                 FilledButton.icon(
                   onPressed: () => onOpenTab(MobileTab.contribute),
-                  icon: const Icon(Icons.login_outlined),
+                  icon: const Icon(Icons.person_outline),
                   label: Text(authLabels.signInToContinue),
                 ),
               ],
@@ -2189,7 +2266,7 @@ class ConsultScreen extends StatelessWidget {
                   icon: Icon(
                     isAuthenticated
                         ? Icons.add_location_alt_outlined
-                        : Icons.login_outlined,
+                        : Icons.person_outline,
                   ),
                   label: Text(
                     isAuthenticated
@@ -2378,7 +2455,7 @@ class EventsScreen extends StatelessWidget {
                   const SizedBox(height: 14),
                   FilledButton.icon(
                     onPressed: onSignIn,
-                    icon: const Icon(Icons.login_outlined),
+                    icon: const Icon(Icons.person_outline),
                     label: Text(authLabels.signInToContinue),
                   ),
                 ],
@@ -3699,7 +3776,7 @@ class PlaceDetailsCard extends StatelessWidget {
             const SizedBox(height: 10),
             FilledButton.icon(
               onPressed: onContribute,
-              icon: const Icon(Icons.login_outlined),
+              icon: const Icon(Icons.person_outline),
               label: Text(authLabels.signInToContinue),
             ),
           ],

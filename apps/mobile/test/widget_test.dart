@@ -327,6 +327,10 @@ void main() {
     expect(find.text('Mapa Sensorial'), findsOneWidget);
     expect(find.text('Entra a Spectrum Access'), findsNothing);
     expect(find.text('Professionals verificats'), findsNothing);
+    expect(find.text('Iniciar sessió'), findsNothing);
+    expect(find.byTooltip('Iniciar sessió'), findsOneWidget);
+    expect(find.byIcon(Icons.person_outline), findsOneWidget);
+    expect(find.byIcon(Icons.login_outlined), findsNothing);
 
     await tester.tap(find.text('Perfils'));
     await tester.pumpAndSettle();
@@ -353,14 +357,37 @@ void main() {
     expect(find.text('Continuar amb Google'), findsOneWidget);
     expect(find.text('Continuar amb Apple'), findsOneWidget);
     expect(find.text('Data de naixement'), findsOneWidget);
+    expect(find.byTooltip('Mostra contrasenya'), findsNWidgets(2));
+    expect(
+      tester
+          .widget<TextField>(find.widgetWithText(TextField, 'Contrasenya'))
+          .obscureText,
+      isTrue,
+    );
+    await tester.ensureVisible(find.byTooltip('Mostra contrasenya').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Mostra contrasenya').first);
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextField>(find.widgetWithText(TextField, 'Contrasenya'))
+          .obscureText,
+      isFalse,
+    );
+    expect(find.byTooltip('Amaga contrasenya'), findsOneWidget);
     expect(find.text('Registrar amb email'), findsOneWidget);
     expect(find.text('Has oblidat la teva contrasenya?'), findsNothing);
     expect(find.byTooltip('Idioma'), findsOneWidget);
     expect(find.byTooltip('Mode fosc'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Entrar'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Entrar'));
     await tester.pumpAndSettle();
 
+    expect(find.byIcon(Icons.login_outlined), findsNothing);
+    expect(find.byIcon(Icons.person_outline), findsWidgets);
+    expect(find.byTooltip('Mostra contrasenya'), findsOneWidget);
     expect(find.text('Entrar amb email'), findsOneWidget);
     expect(find.text('Has oblidat la teva contrasenya?'), findsOneWidget);
     expect(find.text('Nom públic'), findsNothing);
@@ -494,6 +521,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+
+    expect(find.text('Iniciar sessió'), findsNothing);
+    expect(find.byTooltip('Tancar sessió'), findsOneWidget);
+    expect(find.byIcon(Icons.logout_outlined), findsOneWidget);
 
     await tester.tap(find.text('Perfils'));
     await tester.pumpAndSettle();

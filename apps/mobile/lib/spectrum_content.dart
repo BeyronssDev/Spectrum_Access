@@ -454,6 +454,8 @@ class AuthCopy {
     required this.email,
     required this.password,
     required this.confirmPassword,
+    required this.showPassword,
+    required this.hidePassword,
     required this.birthDate,
     required this.birthDateHint,
     required this.adultGateRequired,
@@ -519,6 +521,8 @@ class AuthCopy {
   final String email;
   final String password;
   final String confirmPassword;
+  final String showPassword;
+  final String hidePassword;
   final String birthDate;
   final String birthDateHint;
   final String adultGateRequired;
@@ -943,6 +947,8 @@ const authCopies = {
     email: 'Email',
     password: 'Contrasenya',
     confirmPassword: 'Repeteix la contrasenya',
+    showPassword: 'Mostra contrasenya',
+    hidePassword: 'Amaga contrasenya',
     birthDate: 'Data de naixement',
     birthDateHint: 'AAAA-MM-DD',
     adultGateRequired: 'Introdueix una data de naixement vàlida.',
@@ -1020,6 +1026,8 @@ const authCopies = {
     email: 'Email',
     password: 'Contraseña',
     confirmPassword: 'Repite la contraseña',
+    showPassword: 'Mostrar contraseña',
+    hidePassword: 'Ocultar contraseña',
     birthDate: 'Fecha de nacimiento',
     birthDateHint: 'AAAA-MM-DD',
     adultGateRequired: 'Introduce una fecha de nacimiento válida.',
@@ -1097,6 +1105,8 @@ const authCopies = {
     email: 'Email',
     password: 'Password',
     confirmPassword: 'Repeat password',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
     birthDate: 'Date of birth',
     birthDateHint: 'YYYY-MM-DD',
     adultGateRequired: 'Enter a valid date of birth.',

@@ -2231,6 +2231,37 @@ svg {
   padding: 0 14px;
 }
 
+.password-field {
+  position: relative;
+  width: 100%;
+}
+
+.password-field input {
+  padding-right: 48px;
+}
+
+.password-visibility-action {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+}
+
+.password-visibility-action:hover,
+.password-visibility-action:focus-visible {
+  background: var(--surface-container);
+  color: var(--primary);
+}
+
 .compact-form-grid textarea {
   min-height: 116px;
   padding-block: 12px;

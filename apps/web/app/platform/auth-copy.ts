@@ -10,6 +10,8 @@ export const authCopy: Record<
     email: string;
     password: string;
     confirmPassword: string;
+    showPassword: string;
+    hidePassword: string;
     birthDate: string;
     birthDateHint: string;
     adultGateTitle: string;
@@ -89,6 +91,8 @@ export const authCopy: Record<
     email: "Email",
     password: "Contrasenya",
     confirmPassword: "Repeteix la contrasenya",
+    showPassword: "Mostra contrasenya",
+    hidePassword: "Amaga contrasenya",
     birthDate: "Data de naixement",
     birthDateHint: "AAAA-MM-DD",
     adultGateTitle: "Confirmació d'edat",
@@ -169,6 +173,8 @@ export const authCopy: Record<
     email: "Email",
     password: "Contraseña",
     confirmPassword: "Repite la contraseña",
+    showPassword: "Mostrar contraseña",
+    hidePassword: "Ocultar contraseña",
     birthDate: "Fecha de nacimiento",
     birthDateHint: "AAAA-MM-DD",
     adultGateTitle: "Confirmación de edad",
@@ -249,6 +255,8 @@ export const authCopy: Record<
     email: "Email",
     password: "Password",
     confirmPassword: "Repeat password",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     birthDate: "Date of birth",
     birthDateHint: "YYYY-MM-DD",
     adultGateTitle: "Age confirmation",

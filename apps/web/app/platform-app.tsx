@@ -8,6 +8,8 @@ import {
   Check,
   ChevronRight,
   Clock3,
+  Eye,
+  EyeOff,
   FileText,
   Flag,
   Globe2,
@@ -1249,7 +1251,7 @@ export function PlatformApp() {
                           <span>{c.notificationsFutureNote}</span>
                         ) : (
                           <button type="button" className="secondary-action" onClick={openAuthPanel}>
-                            <KeyRound aria-hidden="true" size={16} />
+                            <UserRound aria-hidden="true" size={16} />
                             {authCopy[locale].signInToContinue}
                           </button>
                         )}
@@ -1549,6 +1551,8 @@ function AuthGate({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [passwordRepeatVisible, setPasswordRepeatVisible] = useState(false);
   const [birthDate, setBirthDate] = useState("");
   const [publicName, setPublicName] = useState("");
   const [city, setCity] = useState("");
@@ -1856,6 +1860,8 @@ function AuthGate({
             data-active={mode === "register"}
             onClick={() => {
               setMode("register");
+              setPasswordVisible(false);
+              setPasswordRepeatVisible(false);
               setQualifiedAccountCreated(false);
             }}
           >
@@ -1867,10 +1873,12 @@ function AuthGate({
             data-active={mode === "login"}
             onClick={() => {
               setMode("login");
+              setPasswordVisible(false);
+              setPasswordRepeatVisible(false);
               setQualifiedAccountCreated(false);
             }}
           >
-            <KeyRound aria-hidden="true" size={17} />
+            <UserRound aria-hidden="true" size={17} />
             {c.login}
           </button>
         </div>
@@ -1926,7 +1934,22 @@ function AuthGate({
           </label>
           <label>
             <span>{c.password}</span>
-            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+            <div className="password-field">
+              <input
+                type={passwordVisible ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+              <button
+                type="button"
+                className="password-visibility-action"
+                aria-label={passwordVisible ? c.hidePassword : c.showPassword}
+                title={passwordVisible ? c.hidePassword : c.showPassword}
+                onClick={() => setPasswordVisible((value) => !value)}
+              >
+                {passwordVisible ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
+              </button>
+            </div>
           </label>
           {mode === "login" ? (
             <button
@@ -1943,7 +1966,22 @@ function AuthGate({
             <>
               <label>
                 <span>{c.confirmPassword}</span>
-                <input type="password" value={passwordRepeat} onChange={(event) => setPasswordRepeat(event.target.value)} />
+                <div className="password-field">
+                  <input
+                    type={passwordRepeatVisible ? "text" : "password"}
+                    value={passwordRepeat}
+                    onChange={(event) => setPasswordRepeat(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="password-visibility-action"
+                    aria-label={passwordRepeatVisible ? c.hidePassword : c.showPassword}
+                    title={passwordRepeatVisible ? c.hidePassword : c.showPassword}
+                    onClick={() => setPasswordRepeatVisible((value) => !value)}
+                  >
+                    {passwordRepeatVisible ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
+                  </button>
+                </div>
               </label>
               <label>
                 <span>{c.birthDate}</span>
@@ -3079,7 +3117,7 @@ function ProfilesView({
           <h3>{ac.signInRequiredTitle}</h3>
           <p>{ac.signInRequiredIntro}</p>
           <button type="button" className="primary-action" onClick={onRequireAuth}>
-            <KeyRound aria-hidden="true" size={17} />
+            <UserRound aria-hidden="true" size={17} />
             {ac.signInToContinue}
           </button>
         </section>
@@ -3669,7 +3707,7 @@ function PlaceDetailCard({
             <Lock aria-hidden="true" size={18} />
             <p>{authLabels.signInRequiredIntro}</p>
             <button type="button" className="secondary-action" onClick={onRequireAuth}>
-              <KeyRound aria-hidden="true" size={17} />
+              <UserRound aria-hidden="true" size={17} />
               {authLabels.signInToContinue}
             </button>
           </div>
@@ -3731,7 +3769,7 @@ function PlaceDetailCard({
           <Lock aria-hidden="true" size={18} />
           <p>{authLabels.signInRequiredIntro}</p>
           <button type="button" className="secondary-action" onClick={onRequireAuth}>
-            <KeyRound aria-hidden="true" size={17} />
+            <UserRound aria-hidden="true" size={17} />
             {authLabels.signInToContinue}
           </button>
         </div>
