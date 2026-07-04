@@ -1789,21 +1789,19 @@ class AuthScreen extends StatelessWidget {
                 const SizedBox(height: 18),
                 if (showRegister) ...[
                   SegmentedButton<RegistrationKind>(
+                    selectedIcon: const Icon(Icons.check, size: 18),
                     segments: [
                       ButtonSegment(
                         value: RegistrationKind.user,
-                        label: Text(authLabels.personalAccount),
-                        icon: const Icon(Icons.person_outline),
+                        label: _SegmentLabel(authLabels.personalAccount),
                       ),
                       ButtonSegment(
                         value: RegistrationKind.professional,
-                        label: Text(authLabels.professionalAccount),
-                        icon: const Icon(Icons.verified_user_outlined),
+                        label: _SegmentLabel(authLabels.professionalAccount),
                       ),
                       ButtonSegment(
                         value: RegistrationKind.organization,
-                        label: Text(authLabels.organizationAccount),
-                        icon: const Icon(Icons.groups_outlined),
+                        label: _SegmentLabel(authLabels.organizationAccount),
                       ),
                     ],
                     selected: {registrationKind},
@@ -2374,7 +2372,7 @@ class EventsScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   labels.eventHistoryTitle,
-                  style: Theme.of(context).textTheme.displayLarge,
+                  style: Theme.of(context).textTheme.headlineLarge,
                 ),
               ),
               IconButton(
@@ -3250,11 +3248,33 @@ class _BottomNavigationButton extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
-            ),
+            ).fitToWidth(),
           ],
         ),
       ),
     );
+  }
+}
+
+class _SegmentLabel extends StatelessWidget {
+  const _SegmentLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+    ).fitToWidth();
+  }
+}
+
+extension _FitTextToWidth on Text {
+  Widget fitToWidth() {
+    return FittedBox(fit: BoxFit.scaleDown, child: this);
   }
 }
 
