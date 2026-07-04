@@ -20,6 +20,9 @@ import 'spectrum_theme.dart';
 const nearbyDiscoveryRadiusMeters = 100.0;
 const nearbyDiscoveryMaxResults = 8;
 const minimumPasswordLength = 12;
+final _birthDateSeparatorPattern = RegExp(
+  r"[\u2010-\u2015\u2212/.\u2018\u2019`´]",
+);
 
 class _BetaBadge extends StatelessWidget {
   const _BetaBadge({required this.label});
@@ -466,8 +469,19 @@ class _SpectrumShellState extends State<SpectrumShell> {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim());
   }
 
+  String _normalizeBirthDateInput(String value) {
+    final normalized = value.trim().replaceAll(_birthDateSeparatorPattern, '-');
+    if (RegExp(r'^\d{8}$').hasMatch(normalized)) {
+      return '${normalized.substring(0, 4)}-${normalized.substring(4, 6)}-${normalized.substring(6, 8)}';
+    }
+    return normalized;
+  }
+
   DateTime? _parseBirthDate(String value) {
-    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(value.trim());
+    final normalizedValue = _normalizeBirthDateInput(value);
+    final match = RegExp(
+      r'^(\d{4})-(\d{2})-(\d{2})$',
+    ).firstMatch(normalizedValue);
     if (match == null) {
       return null;
     }
@@ -570,7 +584,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
     final password = _authPasswordController.text;
     final confirmPassword = _authPasswordRepeatController.text;
     final city = _authCityController.text.trim();
-    final birthDate = _authBirthDateController.text.trim();
+    final birthDate = _normalizeBirthDateInput(_authBirthDateController.text);
     final licenseNumber = _licenseNumberController.text.trim();
     final professionalCollege = _professionalCollegeController.text.trim();
     final specialty = _specialtyController.text.trim();
@@ -1328,7 +1342,11 @@ class _SpectrumShellState extends State<SpectrumShell> {
         _placeDescriptionController.clear();
         _reportMessage = labels.submitSuccess;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Spectrum place contribution submit error: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
       if (!mounted) {
         return;
       }
@@ -1812,6 +1830,15 @@ class AuthScreen extends StatelessWidget {
                   TextField(
                     controller: birthDateController,
                     keyboardType: TextInputType.datetime,
+                    smartDashesType: SmartDashesType.disabled,
+                    smartQuotesType: SmartQuotesType.disabled,
+                    enableSuggestions: false,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r"[0-9\-/.\u2010-\u2015\u2212\u2018\u2019`´]"),
+                      ),
+                      LengthLimitingTextInputFormatter(10),
+                    ],
                     decoration: InputDecoration(
                       labelText: authLabels.birthDate,
                       hintText: authLabels.birthDateHint,
@@ -1852,12 +1879,20 @@ class AuthScreen extends StatelessWidget {
                 TextField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  smartDashesType: SmartDashesType.disabled,
+                  smartQuotesType: SmartQuotesType.disabled,
                   decoration: InputDecoration(labelText: authLabels.email),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: passwordController,
                   obscureText: !passwordVisible,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  smartDashesType: SmartDashesType.disabled,
+                  smartQuotesType: SmartQuotesType.disabled,
                   decoration: InputDecoration(
                     labelText: authLabels.password,
                     suffixIconConstraints: const BoxConstraints.tightFor(
@@ -1897,6 +1932,10 @@ class AuthScreen extends StatelessWidget {
                   TextField(
                     controller: passwordRepeatController,
                     obscureText: !passwordRepeatVisible,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    smartDashesType: SmartDashesType.disabled,
+                    smartQuotesType: SmartQuotesType.disabled,
                     decoration: InputDecoration(
                       labelText: authLabels.confirmPassword,
                       suffixIconConstraints: const BoxConstraints.tightFor(

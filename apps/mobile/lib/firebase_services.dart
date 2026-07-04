@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -29,6 +30,12 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
   final FirebaseFunctions _functions;
   final FirebaseStorage _storage;
   static bool _googleSignInInitialized = false;
+
+  Future<dynamic> _callFunction(String name, Map<String, dynamic> data) async {
+    await FirebaseAppCheck.instance.getToken(true);
+    final result = await _functions.httpsCallable(name).call(data);
+    return result.data;
+  }
 
   @override
   bool get hasAuthenticatedUser => _auth.currentUser != null;
@@ -66,8 +73,8 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     String? city,
     String? birthDate,
     required List<String> authProviders,
-  }) {
-    return _functions.httpsCallable('completeUserOnboarding').call({
+  }) async {
+    await _callFunction('completeUserOnboarding', {
       'publicName': publicName,
       if (displayName != null) 'displayName': displayName,
       if (email != null) 'email': email,
@@ -123,7 +130,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     required String email,
     required String locale,
   }) async {
-    await _functions.httpsCallable('requestPasswordReset').call({
+    await _callFunction('requestPasswordReset', {
       'email': email.trim(),
       'locale': locale,
     });
@@ -336,14 +343,13 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     double radiusMeters = 1500,
     int maxResultCount = 20,
   }) async {
-    final result = await _functions.httpsCallable('searchNearbyPlaces').call({
+    final data = await _callFunction('searchNearbyPlaces', {
       'latitude': latitude,
       'longitude': longitude,
       'radiusMeters': radiusMeters,
       'maxResultCount': maxResultCount,
       'locale': locale,
     });
-    final data = result.data;
     final places = data is Map ? data['places'] : data;
     if (places is! List) {
       return const [];
@@ -366,7 +372,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     int maxResultCount = 50,
     String? city,
   }) async {
-    final result = await _functions.httpsCallable('searchEventHistory').call({
+    final data = await _callFunction('searchEventHistory', {
       'locale': locale,
       'radiusMeters': radiusMeters,
       'maxResultCount': maxResultCount,
@@ -374,7 +380,6 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       if (longitude != null) 'longitude': longitude,
       if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
     });
-    final data = result.data;
     if (data is! Map) {
       return const EventHistorySummary();
     }
@@ -388,14 +393,13 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     required String city,
     String? description,
   }) async {
-    final result = await _functions.httpsCallable('createEventSeries').call({
+    final data = await _callFunction('createEventSeries', {
       'title': title,
       'category': category,
       'city': city,
       if (description != null && description.trim().isNotEmpty)
         'description': description.trim(),
     });
-    final data = result.data;
     if (data is Map && data['eventSeriesId'] is String) {
       return data['eventSeriesId'] as String;
     }
@@ -410,14 +414,13 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     required DateTime startsAt,
     required DateTime endsAt,
   }) async {
-    final result = await _functions.httpsCallable('createEventEdition').call({
+    final data = await _callFunction('createEventEdition', {
       'eventSeriesId': eventSeriesId,
       'title': title,
       'year': year,
       'startsAt': startsAt.toUtc().toIso8601String(),
       'endsAt': endsAt.toUtc().toIso8601String(),
     });
-    final data = result.data;
     if (data is Map && data['eventEditionId'] is String) {
       return data['eventEditionId'] as String;
     }
@@ -434,7 +437,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     double radiusMeters = 150,
     String? description,
   }) async {
-    final result = await _functions.httpsCallable('createEventZone').call({
+    final data = await _callFunction('createEventZone', {
       'eventSeriesId': eventSeriesId,
       'eventEditionId': eventEditionId,
       'name': name,
@@ -444,7 +447,6 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       if (description != null && description.trim().isNotEmpty)
         'description': description.trim(),
     });
-    final data = result.data;
     if (data is Map && data['eventZoneId'] is String) {
       return data['eventZoneId'] as String;
     }
@@ -489,7 +491,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     required String description,
     required String photoPath,
   }) async {
-    await _functions.httpsCallable('submitEventExperience').call({
+    await _callFunction('submitEventExperience', {
       'experienceId': experienceId,
       'eventSeriesId': eventSeriesId,
       'eventEditionId': eventEditionId,
@@ -511,7 +513,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     required double longitude,
     String? description,
   }) async {
-    final result = await _functions.httpsCallable('createPlace').call({
+    final data = await _callFunction('createPlace', {
       'name': name,
       'category': category,
       'city': city,
@@ -520,7 +522,6 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       'longitude': longitude,
       if (description != null) 'description': description,
     });
-    final data = result.data;
     if (data is Map && data['placeId'] is String) {
       return data['placeId'] as String;
     }
@@ -544,27 +545,24 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       throw StateError('google-place-id-missing');
     }
 
-    final result = await _functions
-        .httpsCallable('resolvePlaceForContribution')
-        .call({
-          'googlePlaceId': googlePlaceId,
-          'locale': locale,
-          'name': place.name,
-          'category': place.category,
-          'city': place.city,
-          'addressOrArea': place.area,
-          'latitude': place.latitude,
-          'longitude': place.longitude,
-          'contributorPosition': {
-            'latitude': contributorLatitude,
-            'longitude': contributorLongitude,
-            if (contributorAccuracyMeters != null)
-              'accuracyMeters': contributorAccuracyMeters,
-          },
-          if (place.description.trim().isNotEmpty)
-            'description': place.description.trim(),
-        });
-    final data = result.data;
+    final data = await _callFunction('resolvePlaceForContribution', {
+      'googlePlaceId': googlePlaceId,
+      'locale': locale,
+      'name': place.name,
+      'category': place.category,
+      'city': place.city,
+      'addressOrArea': place.area,
+      'latitude': place.latitude,
+      'longitude': place.longitude,
+      'contributorPosition': {
+        'latitude': contributorLatitude,
+        'longitude': contributorLongitude,
+        if (contributorAccuracyMeters != null)
+          'accuracyMeters': contributorAccuracyMeters,
+      },
+      if (place.description.trim().isNotEmpty)
+        'description': place.description.trim(),
+    });
     if (data is Map && data['placeId'] is String) {
       return data['placeId'] as String;
     }
@@ -578,7 +576,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     String? comment,
     String? childProfileId,
   }) async {
-    await _functions.httpsCallable('submitReview').call({
+    await _callFunction('submitReview', {
       'placeId': placeId,
       'ratings': _ratingsPayload(ratings),
       if (comment != null && comment.trim().isNotEmpty) 'comment': comment,
@@ -593,7 +591,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     required String body,
     String? placeId,
   }) async {
-    await _functions.httpsCallable('submitComment').call({
+    await _callFunction('submitComment', {
       'targetType': targetType,
       'targetId': targetId,
       'body': body,
@@ -607,7 +605,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     required String targetId,
     required String reason,
   }) async {
-    await _functions.httpsCallable('createReport').call({
+    await _callFunction('createReport', {
       'targetType': targetType,
       'targetId': targetId,
       'reason': reason,
@@ -620,7 +618,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     String? ageRange,
     Map<String, String>? sensoryPreferences,
   }) async {
-    await _functions.httpsCallable('createChildProfile').call({
+    await _callFunction('createChildProfile', {
       'alias': alias,
       if (ageRange != null) 'ageRange': ageRange,
       if (sensoryPreferences != null) 'sensoryPreferences': sensoryPreferences,
@@ -637,7 +635,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     String? evidencePath,
     String? note,
   }) async {
-    await _functions.httpsCallable('requestProfessionalVerification').call({
+    await _callFunction('requestProfessionalVerification', {
       'professionalName': professionalName,
       'licenseNumber': licenseNumber,
       'professionalCollege': professionalCollege,
@@ -659,7 +657,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     String? evidencePath,
     String? note,
   }) async {
-    await _functions.httpsCallable('requestOrganizationVerification').call({
+    await _callFunction('requestOrganizationVerification', {
       'name': name,
       'description': description,
       'city': city,
@@ -690,7 +688,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
         .ref(storagePath)
         .putData(bytes, SettableMetadata(contentType: contentType));
 
-    await _functions.httpsCallable('createPlaceImageRecord').call({
+    await _callFunction('createPlaceImageRecord', {
       'placeId': placeId,
       'storagePath': storagePath,
       if (altText != null) 'altText': altText,
