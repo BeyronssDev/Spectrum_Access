@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -32,7 +31,6 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
   static bool _googleSignInInitialized = false;
 
   Future<dynamic> _callFunction(String name, Map<String, dynamic> data) async {
-    await FirebaseAppCheck.instance.getToken(true);
     final result = await _functions.httpsCallable(name).call(data);
     return result.data;
   }
