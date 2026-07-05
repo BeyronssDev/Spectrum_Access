@@ -64,12 +64,147 @@ class SpectrumUserProfile {
   }
 }
 
+class AccessClaims {
+  const AccessClaims({
+    this.superAdmin = false,
+    this.admin = false,
+    this.moderator = false,
+  });
+
+  final bool superAdmin;
+  final bool admin;
+  final bool moderator;
+
+  static const none = AccessClaims();
+
+  bool get canModerate => superAdmin || admin || moderator;
+  bool get canGrantAccess => superAdmin;
+}
+
+class PendingPlaceImage {
+  const PendingPlaceImage({
+    required this.id,
+    required this.placeId,
+    required this.authorUid,
+    required this.storagePath,
+    required this.createdAt,
+    this.imageUrl,
+  });
+
+  final String id;
+  final String placeId;
+  final String authorUid;
+  final String storagePath;
+  final String createdAt;
+  final String? imageUrl;
+}
+
+class PendingEventExperience {
+  const PendingEventExperience({
+    required this.id,
+    required this.eventSeriesId,
+    required this.eventEditionId,
+    required this.eventZoneId,
+    required this.authorUid,
+    required this.observedAt,
+    required this.description,
+    required this.photoPath,
+    this.imageUrl,
+  });
+
+  final String id;
+  final String eventSeriesId;
+  final String eventEditionId;
+  final String eventZoneId;
+  final String authorUid;
+  final String observedAt;
+  final String description;
+  final String photoPath;
+  final String? imageUrl;
+}
+
+class EventSeriesAdminRow {
+  const EventSeriesAdminRow({
+    required this.id,
+    required this.title,
+    required this.city,
+    required this.status,
+  });
+
+  final String id;
+  final String title;
+  final String city;
+  final String status;
+}
+
+class EventEditionAdminRow {
+  const EventEditionAdminRow({
+    required this.id,
+    required this.eventSeriesId,
+    required this.title,
+    required this.status,
+  });
+
+  final String id;
+  final String eventSeriesId;
+  final String title;
+  final String status;
+}
+
+class EventZoneAdminRow {
+  const EventZoneAdminRow({
+    required this.id,
+    required this.eventSeriesId,
+    required this.eventEditionId,
+    required this.name,
+    required this.status,
+  });
+
+  final String id;
+  final String eventSeriesId;
+  final String eventEditionId;
+  final String name;
+  final String status;
+}
+
+class ModerationQueues {
+  const ModerationQueues({
+    this.pendingImages = const [],
+    this.pendingEventExperiences = const [],
+    this.eventSeries = const [],
+    this.eventEditions = const [],
+    this.eventZones = const [],
+  });
+
+  final List<PendingPlaceImage> pendingImages;
+  final List<PendingEventExperience> pendingEventExperiences;
+  final List<EventSeriesAdminRow> eventSeries;
+  final List<EventEditionAdminRow> eventEditions;
+  final List<EventZoneAdminRow> eventZones;
+
+  static const empty = ModerationQueues();
+}
+
+class AccessGrantResult {
+  const AccessGrantResult({
+    required this.email,
+    required this.roles,
+    required this.claims,
+  });
+
+  final String email;
+  final List<String> roles;
+  final AccessClaims claims;
+}
+
 abstract interface class SpectrumApplicationService {
   bool get hasAuthenticatedUser;
   SpectrumAuthUser? get currentUser;
   Stream<SpectrumAuthUser?> get authStateChanges;
 
   Future<SpectrumUserProfile?> loadCurrentUserProfile();
+
+  Future<AccessClaims> loadAccessClaims();
 
   Future<void> registerWithEmail({
     required String email,
@@ -242,5 +377,20 @@ abstract interface class SpectrumApplicationService {
     required String fileName,
     required String contentType,
     Map<String, String>? altText,
+  });
+
+  Future<ModerationQueues> loadModerationQueues();
+
+  Future<void> moderateContent({
+    required String collectionId,
+    required String targetId,
+    required String status,
+    String? reason,
+  });
+
+  Future<AccessGrantResult> setUserAccessClaims({
+    required String email,
+    required bool admin,
+    required bool moderator,
   });
 }

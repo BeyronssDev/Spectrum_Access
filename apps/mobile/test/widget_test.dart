@@ -4,10 +4,13 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:sensory_access/spectrum_app.dart';
 import 'package:sensory_access/spectrum_content.dart';
+import 'package:sensory_access/spectrum_shell.dart'
+    show nearbyDiscoveryMaxResults, nearbyDiscoveryRadiusMeters;
 
 PlaceSummary testPlace({
   required String id,
@@ -33,9 +36,17 @@ PlaceSummary testPlace({
 }
 
 class FakeProfileService implements SpectrumApplicationService {
-  FakeProfileService({required this.profile});
+  FakeProfileService({
+    required this.profile,
+    this.claims = AccessClaims.none,
+    this.queues = ModerationQueues.empty,
+  });
 
   final SpectrumUserProfile profile;
+  final AccessClaims claims;
+  final ModerationQueues queues;
+  double? lastNearbyRadiusMeters;
+  int? lastNearbyMaxResultCount;
 
   @override
   bool get hasAuthenticatedUser => true;
@@ -55,6 +66,9 @@ class FakeProfileService implements SpectrumApplicationService {
   Future<SpectrumUserProfile?> loadCurrentUserProfile() async => profile;
 
   @override
+  Future<AccessClaims> loadAccessClaims() async => claims;
+
+  @override
   Future<List<PlaceSummary>> loadActivePlaces() async => [testPlace(id: 'one')];
 
   @override
@@ -64,7 +78,11 @@ class FakeProfileService implements SpectrumApplicationService {
     required String locale,
     double radiusMeters = 1500,
     int maxResultCount = 20,
-  }) async => [testPlace(id: 'nearby')];
+  }) async {
+    lastNearbyRadiusMeters = radiusMeters;
+    lastNearbyMaxResultCount = maxResultCount;
+    return [testPlace(id: 'nearby')];
+  }
 
   @override
   Future<EventHistorySummary> searchEventHistory({
@@ -258,6 +276,69 @@ class FakeProfileService implements SpectrumApplicationService {
     required String contentType,
     Map<String, String>? altText,
   }) async {}
+
+  @override
+  Future<ModerationQueues> loadModerationQueues() async => queues;
+
+  @override
+  Future<void> moderateContent({
+    required String collectionId,
+    required String targetId,
+    required String status,
+    String? reason,
+  }) async {}
+
+  @override
+  Future<AccessGrantResult> setUserAccessClaims({
+    required String email,
+    required bool admin,
+    required bool moderator,
+  }) async {
+    return AccessGrantResult(
+      email: email,
+      roles: [if (admin) 'admin', if (moderator || admin) 'moderator'],
+      claims: AccessClaims(admin: admin, moderator: moderator || admin),
+    );
+  }
+}
+
+class FakeGeolocatorPlatform extends GeolocatorPlatform {
+  FakeGeolocatorPlatform({
+    this.serviceEnabled = true,
+    this.permission = LocationPermission.whileInUse,
+    Position? position,
+  }) : position =
+           position ??
+           Position(
+             latitude: 41.3851,
+             longitude: 2.1734,
+             timestamp: DateTime(2026, 7, 5),
+             accuracy: 8,
+             altitude: 0,
+             altitudeAccuracy: 0,
+             heading: 0,
+             headingAccuracy: 0,
+             speed: 0,
+             speedAccuracy: 0,
+           );
+
+  final bool serviceEnabled;
+  final LocationPermission permission;
+  final Position position;
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => serviceEnabled;
+
+  @override
+  Future<LocationPermission> checkPermission() async => permission;
+
+  @override
+  Future<LocationPermission> requestPermission() async => permission;
+
+  @override
+  Future<Position> getCurrentPosition({
+    LocationSettings? locationSettings,
+  }) async => position;
 }
 
 class FailingEmailSignInService extends FakeProfileService {
@@ -297,8 +378,19 @@ class FailingEmailSignInService extends FakeProfileService {
 }
 
 void main() {
+  late GeolocatorPlatform defaultGeolocatorPlatform;
+
+  setUpAll(() {
+    defaultGeolocatorPlatform = GeolocatorPlatform.instance;
+  });
+
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
+    GeolocatorPlatform.instance = defaultGeolocatorPlatform;
+  });
+
+  tearDown(() {
+    GeolocatorPlatform.instance = defaultGeolocatorPlatform;
   });
 
   test('filters places only when real criterion averages exist', () {
@@ -435,7 +527,7 @@ void main() {
     },
   );
 
-  testWidgets('does not show old Firestore places before location discovery', (
+  testWidgets('shows Firestore places before location discovery', (
     WidgetTester tester,
   ) async {
     final service = FakeProfileService(
@@ -448,15 +540,157 @@ void main() {
 
     await tester.pumpWidget(
       SpectrumAccessApp(
+        key: UniqueKey(),
         firebaseInitialization: Future<void>.value(),
         createApplicationService: () => service,
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Place one'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Place one'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Place one'), findsWidgets);
     expect(find.text('Place nearby'), findsNothing);
     expect(find.textContaining('Jardins Artigas'), findsNothing);
+  });
+
+  testWidgets(
+    'uses mobile discovery radius and result limit for nearby search',
+    (WidgetTester tester) async {
+      GeolocatorPlatform.instance = FakeGeolocatorPlatform();
+      final service = FakeProfileService(
+        profile: const SpectrumUserProfile(
+          uid: 'user-a',
+          publicName: 'Josep Baró Roca',
+          roles: ['user'],
+        ),
+      );
+
+      await tester.pumpWidget(
+        SpectrumAccessApp(
+          key: UniqueKey(),
+          firebaseInitialization: Future<void>.value(),
+          createApplicationService: () => service,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(service.lastNearbyRadiusMeters, nearbyDiscoveryRadiusMeters);
+      expect(service.lastNearbyMaxResultCount, nearbyDiscoveryMaxResults);
+      expect(service.lastNearbyRadiusMeters, 1500.0);
+      expect(service.lastNearbyMaxResultCount, 10);
+    },
+  );
+
+  testWidgets('shows administration only for moderation claims', (
+    WidgetTester tester,
+  ) async {
+    final normalService = FakeProfileService(
+      profile: const SpectrumUserProfile(
+        uid: 'user-a',
+        publicName: 'Normal User',
+        roles: ['user'],
+      ),
+    );
+
+    await tester.pumpWidget(
+      SpectrumAccessApp(
+        key: UniqueKey(),
+        firebaseInitialization: Future<void>.value(),
+        createApplicationService: () => normalService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Administració'), findsNothing);
+
+    await tester.pumpWidget(
+      SpectrumAccessApp(
+        key: UniqueKey(),
+        firebaseInitialization: Future<void>.value(),
+        createApplicationService: () => FakeProfileService(
+          profile: const SpectrumUserProfile(
+            uid: 'mod-a',
+            publicName: 'Moderator',
+            roles: ['user'],
+          ),
+          claims: const AccessClaims(moderator: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Administració'), findsOneWidget);
+    await tester.tap(find.text('Perfils'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Administració'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Administració'), findsOneWidget);
+  });
+
+  testWidgets('shows grants only for super admin and moderation empty states', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      SpectrumAccessApp(
+        key: UniqueKey(),
+        firebaseInitialization: Future<void>.value(),
+        createApplicationService: () => FakeProfileService(
+          profile: const SpectrumUserProfile(
+            uid: 'mod-a',
+            publicName: 'Moderator',
+            roles: ['user'],
+          ),
+          claims: const AccessClaims(moderator: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Administració'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No hi ha imatges pendents.'), findsOneWidget);
+    expect(find.text('No hi ha experiències pendents.'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('No hi ha elements de catàleg pendents.'),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('No hi ha elements de catàleg pendents.'), findsOneWidget);
+    expect(find.text('Permisos'), findsNothing);
+
+    await tester.pumpWidget(
+      SpectrumAccessApp(
+        key: UniqueKey(),
+        firebaseInitialization: Future<void>.value(),
+        createApplicationService: () => FakeProfileService(
+          profile: const SpectrumUserProfile(
+            uid: 'super-a',
+            publicName: 'Super Admin',
+            roles: ['user'],
+          ),
+          claims: const AccessClaims(superAdmin: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Administració'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Permisos'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Permisos'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
   });
 
   testWidgets('keeps email sign-in failures generic', (

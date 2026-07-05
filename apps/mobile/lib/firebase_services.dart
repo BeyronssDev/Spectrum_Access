@@ -63,6 +63,17 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     return SpectrumUserProfile.fromMap({...data, ...?privateSnapshot.data()});
   }
 
+  @override
+  Future<AccessClaims> loadAccessClaims() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return AccessClaims.none;
+    }
+
+    final token = await user.getIdTokenResult(true);
+    return _accessClaimsFromMap(token.claims);
+  }
+
   Future<void> completeUserOnboarding({
     required String publicName,
     required String locale,
@@ -116,10 +127,7 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     required String password,
     required String locale,
   }) async {
-    await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    await _auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
   @override
@@ -691,6 +699,151 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
       if (altText != null) 'altText': altText,
     });
   }
+
+  @override
+  Future<ModerationQueues> loadModerationQueues() async {
+    final imageSnapshot = await _firestore
+        .collection('placeImages')
+        .where('status', isEqualTo: 'pending')
+        .limit(25)
+        .get();
+    final experienceSnapshot = await _firestore
+        .collection('eventExperiences')
+        .where('status', isEqualTo: 'pending')
+        .limit(25)
+        .get();
+    final seriesSnapshot = await _firestore
+        .collection('eventSeries')
+        .where('status', whereIn: ['active', 'pending'])
+        .limit(100)
+        .get();
+    final editionSnapshot = await _firestore
+        .collection('eventEditions')
+        .where('status', whereIn: ['active', 'pending'])
+        .limit(150)
+        .get();
+    final zoneSnapshot = await _firestore
+        .collection('eventZones')
+        .where('status', whereIn: ['active', 'pending'])
+        .limit(200)
+        .get();
+
+    final images = await Future.wait(
+      imageSnapshot.docs.map(_pendingPlaceImageFromDocument),
+    );
+    final experiences = await Future.wait(
+      experienceSnapshot.docs.map(_pendingEventExperienceFromDocument),
+    );
+
+    return ModerationQueues(
+      pendingImages: images.whereType<PendingPlaceImage>().toList(),
+      pendingEventExperiences: experiences
+          .whereType<PendingEventExperience>()
+          .toList(),
+      eventSeries: seriesSnapshot.docs
+          .map(_eventSeriesAdminRowFromDocument)
+          .toList(growable: false),
+      eventEditions: editionSnapshot.docs
+          .map(_eventEditionAdminRowFromDocument)
+          .toList(growable: false),
+      eventZones: zoneSnapshot.docs
+          .map(_eventZoneAdminRowFromDocument)
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  Future<void> moderateContent({
+    required String collectionId,
+    required String targetId,
+    required String status,
+    String? reason,
+  }) async {
+    await _callFunction('moderateContent', {
+      'collectionId': collectionId,
+      'targetId': targetId,
+      'status': status,
+      if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+    });
+  }
+
+  @override
+  Future<AccessGrantResult> setUserAccessClaims({
+    required String email,
+    required bool admin,
+    required bool moderator,
+  }) async {
+    final data = await _callFunction('setUserAccessClaims', {
+      'email': email.trim(),
+      'admin': admin,
+      'moderator': moderator || admin,
+    });
+    if (data is! Map) {
+      return AccessGrantResult(
+        email: email.trim(),
+        roles: const [],
+        claims: AccessClaims.none,
+      );
+    }
+
+    final roles = data['roles'];
+    return AccessGrantResult(
+      email: (data['email'] as String?) ?? email.trim(),
+      roles: roles is List
+          ? roles.whereType<String>().toList(growable: false)
+          : const [],
+      claims: _accessClaimsFromMap(data['claims']),
+    );
+  }
+
+  Future<PendingPlaceImage?> _pendingPlaceImageFromDocument(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final data = doc.data();
+    final storagePath = data['storagePath'] as String? ?? '';
+    if (storagePath.isEmpty) {
+      return null;
+    }
+
+    return PendingPlaceImage(
+      id: doc.id,
+      placeId: data['placeId'] as String? ?? '',
+      authorUid: data['authorUid'] as String? ?? '',
+      storagePath: storagePath,
+      createdAt: _dateString(data['createdAt']),
+      imageUrl: await _downloadUrlOrNull(storagePath),
+    );
+  }
+
+  Future<PendingEventExperience?> _pendingEventExperienceFromDocument(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final data = doc.data();
+    final photoPath = data['photoPath'] as String? ?? '';
+    if (photoPath.isEmpty) {
+      return null;
+    }
+
+    return PendingEventExperience(
+      id: doc.id,
+      eventSeriesId: data['eventSeriesId'] as String? ?? '',
+      eventEditionId: data['eventEditionId'] as String? ?? '',
+      eventZoneId: data['eventZoneId'] as String? ?? '',
+      authorUid: data['authorUid'] as String? ?? '',
+      observedAt: _dateString(data['observedAt']),
+      description: data['description'] as String? ?? '',
+      photoPath: photoPath,
+      imageUrl: await _downloadUrlOrNull(photoPath),
+    );
+  }
+
+  Future<String?> _downloadUrlOrNull(String storagePath) async {
+    try {
+      return await _storage.ref(storagePath).getDownloadURL();
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 SpectrumAuthUser? _authUserFromFirebase(User? user) {
@@ -703,6 +856,21 @@ SpectrumAuthUser? _authUserFromFirebase(User? user) {
     displayName: user.displayName,
     email: user.email,
     emailVerified: user.emailVerified,
+  );
+}
+
+AccessClaims _accessClaimsFromMap(Object? value) {
+  if (value is! Map) {
+    return AccessClaims.none;
+  }
+
+  final superAdmin = value['superAdmin'] == true;
+  final admin = superAdmin || value['admin'] == true;
+  final moderator = superAdmin || admin || value['moderator'] == true;
+  return AccessClaims(
+    superAdmin: superAdmin,
+    admin: admin,
+    moderator: moderator,
   );
 }
 
@@ -778,6 +946,53 @@ PlaceSummary _discoveredPlaceFromMap(Map<String, dynamic> data) {
     criterionAverages: _criterionAveragesFromMap(data['criterionAverages']),
     hasSpectrumData: hasSpectrumData,
   );
+}
+
+EventSeriesAdminRow _eventSeriesAdminRowFromDocument(
+  QueryDocumentSnapshot<Map<String, dynamic>> doc,
+) {
+  final data = doc.data();
+  return EventSeriesAdminRow(
+    id: doc.id,
+    title: data['title'] as String? ?? '',
+    city: data['city'] as String? ?? '',
+    status: data['status'] as String? ?? '',
+  );
+}
+
+EventEditionAdminRow _eventEditionAdminRowFromDocument(
+  QueryDocumentSnapshot<Map<String, dynamic>> doc,
+) {
+  final data = doc.data();
+  return EventEditionAdminRow(
+    id: doc.id,
+    eventSeriesId: data['eventSeriesId'] as String? ?? '',
+    title: data['title'] as String? ?? '',
+    status: data['status'] as String? ?? '',
+  );
+}
+
+EventZoneAdminRow _eventZoneAdminRowFromDocument(
+  QueryDocumentSnapshot<Map<String, dynamic>> doc,
+) {
+  final data = doc.data();
+  return EventZoneAdminRow(
+    id: doc.id,
+    eventSeriesId: data['eventSeriesId'] as String? ?? '',
+    eventEditionId: data['eventEditionId'] as String? ?? '',
+    name: data['name'] as String? ?? '',
+    status: data['status'] as String? ?? '',
+  );
+}
+
+String _dateString(Object? value) {
+  if (value is Timestamp) {
+    return value.toDate().toIso8601String();
+  }
+  if (value is DateTime) {
+    return value.toIso8601String();
+  }
+  return value is String ? value : '';
 }
 
 EventHistorySummary _eventHistoryFromMap(Map<String, dynamic> data) {

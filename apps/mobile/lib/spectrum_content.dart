@@ -9,7 +9,7 @@ enum LocaleOption {
   final String label;
 }
 
-enum MobileTab { consult, events, contribute, support, profiles }
+enum MobileTab { consult, events, contribute, support, profiles, admin }
 
 enum SensoryKey { noise, density, light, wait }
 
@@ -1166,6 +1166,257 @@ const authCopies = {
     organizationRegistryNumber: 'Optional registry number',
     requestVerification: 'Send verification',
     verificationRequested: 'Request sent for review.',
+  ),
+};
+
+class AdminCopy {
+  const AdminCopy({
+    required this.administration,
+    required this.adminIntro,
+    required this.refresh,
+    required this.currentPermission,
+    required this.photosTitle,
+    required this.experiencesTitle,
+    required this.catalogTitle,
+    required this.permissionsTitle,
+    required this.noPendingImages,
+    required this.noPendingExperiences,
+    required this.noPendingCatalog,
+    required this.approve,
+    required this.reject,
+    required this.createEvent,
+    required this.createEdition,
+    required this.createZone,
+    required this.eventName,
+    required this.city,
+    required this.edition,
+    required this.title,
+    required this.year,
+    required this.startsAt,
+    required this.endsAt,
+    required this.zoneName,
+    required this.latitude,
+    required this.longitude,
+    required this.radiusMeters,
+    required this.grantAccess,
+    required this.email,
+    required this.moderator,
+    required this.administrator,
+    required this.savePermissions,
+    required this.loadFailed,
+    required this.actionFailed,
+    required this.imageApproved,
+    required this.imageRejected,
+    required this.experienceApproved,
+    required this.experienceRejected,
+    required this.catalogApproved,
+    required this.catalogRejected,
+    required this.eventCreated,
+    required this.editionCreated,
+    required this.zoneCreated,
+    required this.permissionsSaved,
+    required this.superAdminRole,
+    required this.adminRole,
+    required this.moderatorRole,
+  });
+
+  final String administration;
+  final String adminIntro;
+  final String refresh;
+  final String currentPermission;
+  final String photosTitle;
+  final String experiencesTitle;
+  final String catalogTitle;
+  final String permissionsTitle;
+  final String noPendingImages;
+  final String noPendingExperiences;
+  final String noPendingCatalog;
+  final String approve;
+  final String reject;
+  final String createEvent;
+  final String createEdition;
+  final String createZone;
+  final String eventName;
+  final String city;
+  final String edition;
+  final String title;
+  final String year;
+  final String startsAt;
+  final String endsAt;
+  final String zoneName;
+  final String latitude;
+  final String longitude;
+  final String radiusMeters;
+  final String grantAccess;
+  final String email;
+  final String moderator;
+  final String administrator;
+  final String savePermissions;
+  final String loadFailed;
+  final String actionFailed;
+  final String imageApproved;
+  final String imageRejected;
+  final String experienceApproved;
+  final String experienceRejected;
+  final String catalogApproved;
+  final String catalogRejected;
+  final String eventCreated;
+  final String editionCreated;
+  final String zoneCreated;
+  final String permissionsSaved;
+  final String superAdminRole;
+  final String adminRole;
+  final String moderatorRole;
+}
+
+const adminCopies = {
+  LocaleOption.ca: AdminCopy(
+    administration: 'Administració',
+    adminIntro: 'Revisa contingut pendent i gestiona permisos des del mòbil.',
+    refresh: 'Actualitzar',
+    currentPermission: 'Permís actual',
+    photosTitle: 'Fotos per revisar',
+    experiencesTitle: 'Experiències per revisar',
+    catalogTitle: 'Catàleg pendent',
+    permissionsTitle: 'Permisos',
+    noPendingImages: 'No hi ha imatges pendents.',
+    noPendingExperiences: 'No hi ha experiències pendents.',
+    noPendingCatalog: 'No hi ha elements de catàleg pendents.',
+    approve: 'Aprovar',
+    reject: 'Rebutjar',
+    createEvent: 'Crear esdeveniment',
+    createEdition: 'Crear edició',
+    createZone: 'Crear zona',
+    eventName: 'Nom de l’esdeveniment',
+    city: 'Ciutat',
+    edition: 'Edició',
+    title: 'Títol',
+    year: 'Any',
+    startsAt: 'Inici',
+    endsAt: 'Final',
+    zoneName: 'Nom zona',
+    latitude: 'Latitud',
+    longitude: 'Longitud',
+    radiusMeters: 'Radi metres',
+    grantAccess: 'Donar accés',
+    email: 'Email',
+    moderator: 'Moderador',
+    administrator: 'Administrador',
+    savePermissions: 'Guardar permisos',
+    loadFailed: 'No s’ha pogut carregar la cua de moderació.',
+    actionFailed: 'No s’ha pogut completar l’acció.',
+    imageApproved: 'Imatge aprovada.',
+    imageRejected: 'Imatge rebutjada.',
+    experienceApproved: 'Experiència aprovada.',
+    experienceRejected: 'Experiència rebutjada.',
+    catalogApproved: 'Element del catàleg aprovat.',
+    catalogRejected: 'Element del catàleg rebutjat.',
+    eventCreated: 'Esdeveniment creat.',
+    editionCreated: 'Edició creada.',
+    zoneCreated: 'Zona creada.',
+    permissionsSaved: 'Permisos actualitzats.',
+    superAdminRole: 'Super',
+    adminRole: 'Admin',
+    moderatorRole: 'Mod',
+  ),
+  LocaleOption.es: AdminCopy(
+    administration: 'Administración',
+    adminIntro:
+        'Revisa contenido pendiente y gestiona permisos desde el móvil.',
+    refresh: 'Actualizar',
+    currentPermission: 'Permiso actual',
+    photosTitle: 'Fotos por revisar',
+    experiencesTitle: 'Experiencias por revisar',
+    catalogTitle: 'Catálogo pendiente',
+    permissionsTitle: 'Permisos',
+    noPendingImages: 'No hay imágenes pendientes.',
+    noPendingExperiences: 'No hay experiencias pendientes.',
+    noPendingCatalog: 'No hay elementos de catálogo pendientes.',
+    approve: 'Aprobar',
+    reject: 'Rechazar',
+    createEvent: 'Crear evento',
+    createEdition: 'Crear edición',
+    createZone: 'Crear zona',
+    eventName: 'Nombre del evento',
+    city: 'Ciudad',
+    edition: 'Edición',
+    title: 'Título',
+    year: 'Año',
+    startsAt: 'Inicio',
+    endsAt: 'Final',
+    zoneName: 'Nombre zona',
+    latitude: 'Latitud',
+    longitude: 'Longitud',
+    radiusMeters: 'Radio metros',
+    grantAccess: 'Dar acceso',
+    email: 'Email',
+    moderator: 'Moderador',
+    administrator: 'Administrador',
+    savePermissions: 'Guardar permisos',
+    loadFailed: 'No se ha podido cargar la cola de moderación.',
+    actionFailed: 'No se ha podido completar la acción.',
+    imageApproved: 'Imagen aprobada.',
+    imageRejected: 'Imagen rechazada.',
+    experienceApproved: 'Experiencia aprobada.',
+    experienceRejected: 'Experiencia rechazada.',
+    catalogApproved: 'Elemento del catálogo aprobado.',
+    catalogRejected: 'Elemento del catálogo rechazado.',
+    eventCreated: 'Evento creado.',
+    editionCreated: 'Edición creada.',
+    zoneCreated: 'Zona creada.',
+    permissionsSaved: 'Permisos actualizados.',
+    superAdminRole: 'Super',
+    adminRole: 'Admin',
+    moderatorRole: 'Mod',
+  ),
+  LocaleOption.en: AdminCopy(
+    administration: 'Administration',
+    adminIntro: 'Review pending content and manage access from mobile.',
+    refresh: 'Refresh',
+    currentPermission: 'Current access',
+    photosTitle: 'Photos to review',
+    experiencesTitle: 'Experiences to review',
+    catalogTitle: 'Pending catalog',
+    permissionsTitle: 'Permissions',
+    noPendingImages: 'No pending images.',
+    noPendingExperiences: 'No pending experiences.',
+    noPendingCatalog: 'No pending catalog items.',
+    approve: 'Approve',
+    reject: 'Reject',
+    createEvent: 'Create event',
+    createEdition: 'Create edition',
+    createZone: 'Create zone',
+    eventName: 'Event name',
+    city: 'City',
+    edition: 'Edition',
+    title: 'Title',
+    year: 'Year',
+    startsAt: 'Starts at',
+    endsAt: 'Ends at',
+    zoneName: 'Zone name',
+    latitude: 'Latitude',
+    longitude: 'Longitude',
+    radiusMeters: 'Radius meters',
+    grantAccess: 'Grant access',
+    email: 'Email',
+    moderator: 'Moderator',
+    administrator: 'Administrator',
+    savePermissions: 'Save permissions',
+    loadFailed: 'The moderation queue could not be loaded.',
+    actionFailed: 'The action could not be completed.',
+    imageApproved: 'Image approved.',
+    imageRejected: 'Image rejected.',
+    experienceApproved: 'Experience approved.',
+    experienceRejected: 'Experience rejected.',
+    catalogApproved: 'Catalog item approved.',
+    catalogRejected: 'Catalog item rejected.',
+    eventCreated: 'Event created.',
+    editionCreated: 'Edition created.',
+    zoneCreated: 'Zone created.',
+    permissionsSaved: 'Permissions updated.',
+    superAdminRole: 'Super',
+    adminRole: 'Admin',
+    moderatorRole: 'Mod',
   ),
 };
 

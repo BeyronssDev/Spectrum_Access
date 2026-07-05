@@ -45,6 +45,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Spectrum Access necesita acceder a la cámara para crear aportaciones sensoriales con imágenes.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Spectrum Access solo usa tu ubicación mientras utilizas la app para mostrar lugares cercanos en el mapa sensorial.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Spectrum Access necesita acceder a tu ubicación para mostrar lugares y profesionales cercanos a tu zona.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

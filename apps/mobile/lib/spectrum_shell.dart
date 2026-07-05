@@ -17,8 +17,8 @@ import 'spectrum_application_service.dart';
 import 'spectrum_content.dart';
 import 'spectrum_theme.dart';
 
-const nearbyDiscoveryRadiusMeters = 100.0;
-const nearbyDiscoveryMaxResults = 8;
+const nearbyDiscoveryRadiusMeters = 1500.0;
+const nearbyDiscoveryMaxResults = 10;
 const minimumPasswordLength = 12;
 final _birthDateSeparatorPattern = RegExp(
   r"[\u2010-\u2015\u2212/.\u2018\u2019`´]",
@@ -91,6 +91,9 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _placesLoading = false;
   bool _placesReloadQueued = false;
   bool _eventsLoading = false;
+  bool _adminLoading = false;
+  bool _adminCatalogBusy = false;
+  bool _adminGrantBusy = false;
   bool _isSubmittingEventExperience = false;
   int _selectedPlace = 0;
   int? _selectedFilter;
@@ -103,6 +106,8 @@ class _SpectrumShellState extends State<SpectrumShell> {
   Timer? _firebaseInitializationTimeout;
   SpectrumAuthUser? _authUser;
   SpectrumUserProfile? _userProfile;
+  AccessClaims _accessClaims = AccessClaims.none;
+  ModerationQueues _moderationQueues = ModerationQueues.empty;
   List<PlaceSummary> _places = const [];
   EventHistorySummary _eventHistory = const EventHistorySummary();
   Map<String, String> _eventPhotoUrls = const {};
@@ -162,6 +167,10 @@ class _SpectrumShellState extends State<SpectrumShell> {
   bool _isSubmittingReport = false;
   String? _reportMessage;
   String? _eventMessage;
+  String? _adminMessage;
+  String? _adminBusyItemId;
+  String _adminEditionSeriesId = '';
+  String _adminZoneEditionId = '';
   final Map<SensoryKey, double> _ratings = {
     SensoryKey.noise: 2,
     SensoryKey.density: 2,
@@ -177,11 +186,39 @@ class _SpectrumShellState extends State<SpectrumShell> {
     EventSensoryKey.perceivedSafety: 3,
     EventSensoryKey.exitEase: 3,
   };
+  final TextEditingController _adminSeriesTitleController =
+      TextEditingController();
+  final TextEditingController _adminSeriesCityController =
+      TextEditingController();
+  final TextEditingController _adminEditionTitleController =
+      TextEditingController();
+  final TextEditingController _adminEditionYearController =
+      TextEditingController();
+  final TextEditingController _adminEditionStartsAtController =
+      TextEditingController();
+  final TextEditingController _adminEditionEndsAtController =
+      TextEditingController();
+  final TextEditingController _adminZoneNameController =
+      TextEditingController();
+  final TextEditingController _adminZoneLatitudeController =
+      TextEditingController();
+  final TextEditingController _adminZoneLongitudeController =
+      TextEditingController();
+  final TextEditingController _adminZoneRadiusController =
+      TextEditingController(text: '150');
+  final TextEditingController _adminGrantEmailController =
+      TextEditingController();
+  bool _adminGrantModerator = true;
+  bool _adminGrantAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _eventObservedAtController.text = _formatEventDateInput(DateTime.now());
+    final currentYear = DateTime.now().year.toString();
+    _adminEditionYearController.text = currentYear;
+    _adminEditionStartsAtController.text = '$currentYear-01-01';
+    _adminEditionEndsAtController.text = '$currentYear-12-31';
     _startFirebaseInitialization();
     unawaited(_resolveGoogleMapsAvailability());
     unawaited(_locateDeviceOnLaunch());
@@ -219,6 +256,17 @@ class _SpectrumShellState extends State<SpectrumShell> {
     _eventZoneController.dispose();
     _eventObservedAtController.dispose();
     _eventDescriptionController.dispose();
+    _adminSeriesTitleController.dispose();
+    _adminSeriesCityController.dispose();
+    _adminEditionTitleController.dispose();
+    _adminEditionYearController.dispose();
+    _adminEditionStartsAtController.dispose();
+    _adminEditionEndsAtController.dispose();
+    _adminZoneNameController.dispose();
+    _adminZoneLatitudeController.dispose();
+    _adminZoneLongitudeController.dispose();
+    _adminZoneRadiusController.dispose();
+    _adminGrantEmailController.dispose();
     super.dispose();
   }
 
@@ -240,8 +288,14 @@ class _SpectrumShellState extends State<SpectrumShell> {
         });
         if (user != null) {
           unawaited(_loadUserProfile());
+          unawaited(_loadAccessClaims());
         } else {
-          setStateIfMounted(() => _userProfile = null);
+          setStateIfMounted(() {
+            _userProfile = null;
+            _accessClaims = AccessClaims.none;
+            _moderationQueues = ModerationQueues.empty;
+            _adminMessage = null;
+          });
         }
       });
     } catch (_) {
@@ -315,6 +369,65 @@ class _SpectrumShellState extends State<SpectrumShell> {
     }
   }
 
+  Future<void> _loadAccessClaims() async {
+    if (_authUser == null) {
+      setStateIfMounted(() {
+        _accessClaims = AccessClaims.none;
+        _moderationQueues = ModerationQueues.empty;
+      });
+      return;
+    }
+
+    try {
+      final claims = await _service().loadAccessClaims();
+      if (!mounted) {
+        return;
+      }
+      setState(() => _accessClaims = claims);
+      if (claims.canModerate) {
+        unawaited(_loadAdminQueues());
+      } else {
+        setStateIfMounted(() => _moderationQueues = ModerationQueues.empty);
+      }
+    } catch (_) {
+      setStateIfMounted(() {
+        _accessClaims = AccessClaims.none;
+        _moderationQueues = ModerationQueues.empty;
+      });
+    }
+  }
+
+  Future<void> _loadAdminQueues() async {
+    if (_adminLoading || !_accessClaims.canModerate) {
+      return;
+    }
+
+    setStateIfMounted(() {
+      _adminLoading = true;
+      _adminMessage = null;
+    });
+
+    try {
+      final queues = await _service().loadModerationQueues();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _moderationQueues = queues;
+        if (_adminEditionSeriesId.isEmpty && queues.eventSeries.isNotEmpty) {
+          _adminEditionSeriesId = queues.eventSeries.first.id;
+        }
+        if (_adminZoneEditionId.isEmpty && queues.eventEditions.isNotEmpty) {
+          _adminZoneEditionId = queues.eventEditions.first.id;
+        }
+      });
+    } catch (_) {
+      setStateIfMounted(() => _adminMessage = adminCopies[_locale]!.loadFailed);
+    } finally {
+      setStateIfMounted(() => _adminLoading = false);
+    }
+  }
+
   Future<void> _loadPlaces() async {
     if (_placesLoading) {
       _placesReloadQueued = true;
@@ -326,13 +439,27 @@ class _SpectrumShellState extends State<SpectrumShell> {
     });
 
     try {
+      final service = _service();
       final location = _deviceLocation;
+      List<PlaceSummary>? activePlaces;
+      if (_firebaseReady) {
+        activePlaces = await service.loadActivePlaces();
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _places = activePlaces!;
+          _selectedPlace = activePlaces.isEmpty
+              ? 0
+              : _selectedPlace.clamp(0, activePlaces.length - 1).toInt();
+        });
+      }
+
       if (location == null) {
-        _clearPlaces();
         return;
       }
 
-      final places = await _service().searchNearbyPlaces(
+      final places = await service.searchNearbyPlaces(
         latitude: location.latitude,
         longitude: location.longitude,
         locale: _locale.name,
@@ -342,14 +469,19 @@ class _SpectrumShellState extends State<SpectrumShell> {
       if (!mounted) {
         return;
       }
+      final nextPlaces = places.isEmpty && activePlaces != null
+          ? activePlaces
+          : places;
       setState(() {
-        _places = places;
-        _selectedPlace = places.isEmpty
+        _places = nextPlaces;
+        _selectedPlace = nextPlaces.isEmpty
             ? 0
-            : _selectedPlace.clamp(0, places.length - 1).toInt();
+            : _selectedPlace.clamp(0, nextPlaces.length - 1).toInt();
       });
     } catch (_) {
-      _clearPlaces();
+      if (kDebugMode || kProfileMode) {
+        debugPrint('Spectrum place load error.');
+      }
     } finally {
       final reloadQueued = _placesReloadQueued;
       _placesReloadQueued = false;
@@ -435,11 +567,232 @@ class _SpectrumShellState extends State<SpectrumShell> {
     });
   }
 
-  void _clearPlaces() {
-    setStateIfMounted(() {
-      _places = const [];
-      _selectedPlace = 0;
+  Future<void> _moderateAdminContent({
+    required String collectionId,
+    required String targetId,
+    required String status,
+  }) async {
+    if (_adminBusyItemId != null) {
+      return;
+    }
+
+    final labels = adminCopies[_locale]!;
+    final busyId = '$collectionId:$targetId';
+    setState(() {
+      _adminBusyItemId = busyId;
+      _adminMessage = null;
     });
+
+    try {
+      await _service().moderateContent(
+        collectionId: collectionId,
+        targetId: targetId,
+        status: status,
+        reason: status == 'rejected'
+            ? 'Revisat des del panell d’administració mòbil.'
+            : null,
+      );
+      await _loadAdminQueues();
+      if (!mounted) {
+        return;
+      }
+      setState(
+        () => _adminMessage = _adminModerationMessage(
+          labels,
+          collectionId,
+          status,
+        ),
+      );
+    } catch (_) {
+      setStateIfMounted(() => _adminMessage = labels.actionFailed);
+    } finally {
+      setStateIfMounted(() => _adminBusyItemId = null);
+    }
+  }
+
+  String _adminModerationMessage(
+    AdminCopy labels,
+    String collectionId,
+    String status,
+  ) {
+    final approved = status == 'active';
+    return switch (collectionId) {
+      'placeImages' => approved ? labels.imageApproved : labels.imageRejected,
+      'eventExperiences' =>
+        approved ? labels.experienceApproved : labels.experienceRejected,
+      'eventSeries' || 'eventEditions' || 'eventZones' =>
+        approved ? labels.catalogApproved : labels.catalogRejected,
+      _ => approved ? labels.catalogApproved : labels.catalogRejected,
+    };
+  }
+
+  Future<void> _createAdminEventSeries() async {
+    if (_adminCatalogBusy) {
+      return;
+    }
+
+    final labels = adminCopies[_locale]!;
+    final title = _adminSeriesTitleController.text.trim();
+    final city = _adminSeriesCityController.text.trim();
+    if (title.isEmpty || city.isEmpty) {
+      setState(() => _adminMessage = authCopies[_locale]!.requiredFields);
+      return;
+    }
+
+    setState(() {
+      _adminCatalogBusy = true;
+      _adminMessage = null;
+    });
+
+    try {
+      await _service().createEventSeries(
+        title: title,
+        category: 'other',
+        city: city,
+      );
+      _adminSeriesTitleController.clear();
+      _adminSeriesCityController.clear();
+      await _loadAdminQueues();
+      setStateIfMounted(() => _adminMessage = labels.eventCreated);
+    } catch (_) {
+      setStateIfMounted(() => _adminMessage = labels.actionFailed);
+    } finally {
+      setStateIfMounted(() => _adminCatalogBusy = false);
+    }
+  }
+
+  Future<void> _createAdminEventEdition() async {
+    if (_adminCatalogBusy) {
+      return;
+    }
+
+    final labels = adminCopies[_locale]!;
+    final title = _adminEditionTitleController.text.trim();
+    final year = int.tryParse(_adminEditionYearController.text.trim());
+    final startsAt = DateTime.tryParse(
+      _adminEditionStartsAtController.text.trim(),
+    );
+    final endsAt = DateTime.tryParse(_adminEditionEndsAtController.text.trim());
+    if (_adminEditionSeriesId.isEmpty ||
+        title.isEmpty ||
+        year == null ||
+        startsAt == null ||
+        endsAt == null) {
+      setState(() => _adminMessage = authCopies[_locale]!.requiredFields);
+      return;
+    }
+
+    setState(() {
+      _adminCatalogBusy = true;
+      _adminMessage = null;
+    });
+
+    try {
+      await _service().createEventEdition(
+        eventSeriesId: _adminEditionSeriesId,
+        title: title,
+        year: year,
+        startsAt: startsAt,
+        endsAt: endsAt,
+      );
+      _adminEditionTitleController.clear();
+      await _loadAdminQueues();
+      setStateIfMounted(() => _adminMessage = labels.editionCreated);
+    } catch (_) {
+      setStateIfMounted(() => _adminMessage = labels.actionFailed);
+    } finally {
+      setStateIfMounted(() => _adminCatalogBusy = false);
+    }
+  }
+
+  Future<void> _createAdminEventZone() async {
+    if (_adminCatalogBusy) {
+      return;
+    }
+
+    final labels = adminCopies[_locale]!;
+    EventEditionAdminRow? selectedEdition;
+    for (final edition in _moderationQueues.eventEditions) {
+      if (edition.id == _adminZoneEditionId) {
+        selectedEdition = edition;
+        break;
+      }
+    }
+    final name = _adminZoneNameController.text.trim();
+    final latitude = double.tryParse(_adminZoneLatitudeController.text.trim());
+    final longitude = double.tryParse(
+      _adminZoneLongitudeController.text.trim(),
+    );
+    final radiusMeters =
+        double.tryParse(_adminZoneRadiusController.text.trim()) ?? 150;
+    if (selectedEdition == null ||
+        name.isEmpty ||
+        latitude == null ||
+        longitude == null) {
+      setState(() => _adminMessage = authCopies[_locale]!.requiredFields);
+      return;
+    }
+
+    setState(() {
+      _adminCatalogBusy = true;
+      _adminMessage = null;
+    });
+
+    try {
+      await _service().createEventZone(
+        eventSeriesId: selectedEdition.eventSeriesId,
+        eventEditionId: selectedEdition.id,
+        name: name,
+        latitude: latitude,
+        longitude: longitude,
+        radiusMeters: radiusMeters,
+      );
+      _adminZoneNameController.clear();
+      _adminZoneLatitudeController.clear();
+      _adminZoneLongitudeController.clear();
+      await _loadAdminQueues();
+      setStateIfMounted(() => _adminMessage = labels.zoneCreated);
+    } catch (_) {
+      setStateIfMounted(() => _adminMessage = labels.actionFailed);
+    } finally {
+      setStateIfMounted(() => _adminCatalogBusy = false);
+    }
+  }
+
+  Future<void> _grantAdminAccess() async {
+    if (_adminGrantBusy || !_accessClaims.canGrantAccess) {
+      return;
+    }
+
+    final labels = adminCopies[_locale]!;
+    final email = _adminGrantEmailController.text.trim();
+    if (!_isValidEmail(email)) {
+      setState(() => _adminMessage = authCopies[_locale]!.invalidEmail);
+      return;
+    }
+
+    setState(() {
+      _adminGrantBusy = true;
+      _adminMessage = null;
+    });
+
+    try {
+      final result = await _service().setUserAccessClaims(
+        email: email,
+        admin: _adminGrantAdmin,
+        moderator: _adminGrantModerator || _adminGrantAdmin,
+      );
+      _adminGrantEmailController.clear();
+      setStateIfMounted(() {
+        _adminGrantModerator = true;
+        _adminGrantAdmin = false;
+        _adminMessage = '${result.email}: ${result.roles.join(', ')}';
+      });
+    } catch (_) {
+      setStateIfMounted(() => _adminMessage = labels.actionFailed);
+    } finally {
+      setStateIfMounted(() => _adminGrantBusy = false);
+    }
   }
 
   void _openTab(MobileTab tab) {
@@ -898,11 +1251,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        setStateIfMounted(() {
-          _locationStatus = LocationStatus.unavailable;
-          _places = const [];
-          _selectedPlace = 0;
-        });
+        setStateIfMounted(() => _locationStatus = LocationStatus.unavailable);
         return;
       }
 
@@ -913,11 +1262,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
 
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        setStateIfMounted(() {
-          _locationStatus = LocationStatus.denied;
-          _places = const [];
-          _selectedPlace = 0;
-        });
+        setStateIfMounted(() => _locationStatus = LocationStatus.denied);
         return;
       }
 
@@ -940,11 +1285,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
       unawaited(_loadPlaces());
       unawaited(_loadEventHistory());
     } catch (_) {
-      setStateIfMounted(() {
-        _locationStatus = LocationStatus.error;
-        _places = const [];
-        _selectedPlace = 0;
-      });
+      setStateIfMounted(() => _locationStatus = LocationStatus.error);
     }
   }
 
@@ -1434,6 +1775,15 @@ class _SpectrumShellState extends State<SpectrumShell> {
               isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
             ),
           ),
+          if (_accessClaims.canModerate)
+            IconButton(
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+              tooltip: adminCopies[_locale]!.administration,
+              onPressed: () => _openTab(MobileTab.admin),
+              icon: const Icon(Icons.shield_outlined),
+            ),
           PopupMenuButton<LocaleOption>(
             tooltip: 'Idioma',
             initialValue: _locale,
@@ -1614,6 +1964,7 @@ class _SpectrumShellState extends State<SpectrumShell> {
           authLabels: authLabels,
           locale: _locale,
           isAuthenticated: isAuthenticated,
+          accessClaims: _accessClaims,
           userProfile: _userProfile,
           isUserProfileEditing: _userProfileEditing,
           isUserProfileSubmitting: _userProfileSubmitting,
@@ -1628,6 +1979,59 @@ class _SpectrumShellState extends State<SpectrumShell> {
           onPickUserProfilePhoto: _pickUserProfilePhotoFromGallery,
           onTakeUserProfilePhoto: _takeUserProfilePhoto,
           onSaveUserProfile: _saveUserProfile,
+          onOpenAdmin: () => _openTab(MobileTab.admin),
+        );
+      case MobileTab.admin:
+        if (!_accessClaims.canModerate) {
+          return _protectedAuthScreen(labels, authLabels);
+        }
+        return AdminScreen(
+          key: const ValueKey('admin'),
+          labels: adminCopies[_locale]!,
+          claims: _accessClaims,
+          queues: _moderationQueues,
+          isLoading: _adminLoading,
+          message: _adminMessage,
+          busyItemId: _adminBusyItemId,
+          catalogBusy: _adminCatalogBusy,
+          grantBusy: _adminGrantBusy,
+          seriesTitleController: _adminSeriesTitleController,
+          seriesCityController: _adminSeriesCityController,
+          editionSeriesId: _adminEditionSeriesId,
+          editionTitleController: _adminEditionTitleController,
+          editionYearController: _adminEditionYearController,
+          editionStartsAtController: _adminEditionStartsAtController,
+          editionEndsAtController: _adminEditionEndsAtController,
+          zoneEditionId: _adminZoneEditionId,
+          zoneNameController: _adminZoneNameController,
+          zoneLatitudeController: _adminZoneLatitudeController,
+          zoneLongitudeController: _adminZoneLongitudeController,
+          zoneRadiusController: _adminZoneRadiusController,
+          grantEmailController: _adminGrantEmailController,
+          grantModerator: _adminGrantModerator,
+          grantAdmin: _adminGrantAdmin,
+          onRefresh: _loadAdminQueues,
+          onModerate: (collectionId, targetId, status) => _moderateAdminContent(
+            collectionId: collectionId,
+            targetId: targetId,
+            status: status,
+          ),
+          onCreateSeries: _createAdminEventSeries,
+          onEditionSeriesChanged: (value) =>
+              setState(() => _adminEditionSeriesId = value ?? ''),
+          onCreateEdition: _createAdminEventEdition,
+          onZoneEditionChanged: (value) =>
+              setState(() => _adminZoneEditionId = value ?? ''),
+          onCreateZone: _createAdminEventZone,
+          onGrantModeratorChanged: (value) =>
+              setState(() => _adminGrantModerator = value),
+          onGrantAdminChanged: (value) => setState(() {
+            _adminGrantAdmin = value;
+            if (value) {
+              _adminGrantModerator = true;
+            }
+          }),
+          onGrantAccess: _grantAdminAccess,
         );
     }
   }
@@ -3073,6 +3477,7 @@ class ProfilesScreen extends StatelessWidget {
     required this.authLabels,
     required this.locale,
     required this.isAuthenticated,
+    required this.accessClaims,
     required this.userProfile,
     required this.isUserProfileEditing,
     required this.isUserProfileSubmitting,
@@ -3087,6 +3492,7 @@ class ProfilesScreen extends StatelessWidget {
     required this.onPickUserProfilePhoto,
     required this.onTakeUserProfilePhoto,
     required this.onSaveUserProfile,
+    required this.onOpenAdmin,
     super.key,
   });
 
@@ -3094,6 +3500,7 @@ class ProfilesScreen extends StatelessWidget {
   final AuthCopy authLabels;
   final LocaleOption locale;
   final bool isAuthenticated;
+  final AccessClaims accessClaims;
   final SpectrumUserProfile? userProfile;
   final bool isUserProfileEditing;
   final bool isUserProfileSubmitting;
@@ -3108,6 +3515,7 @@ class ProfilesScreen extends StatelessWidget {
   final VoidCallback onPickUserProfilePhoto;
   final VoidCallback onTakeUserProfilePhoto;
   final VoidCallback onSaveUserProfile;
+  final VoidCallback onOpenAdmin;
 
   @override
   Widget build(BuildContext context) {
@@ -3188,10 +3596,825 @@ class ProfilesScreen extends StatelessWidget {
             const SizedBox(height: 12),
             StatusMessage(message: userProfileMessage!),
           ],
+          if (accessClaims.canModerate) ...[
+            const SizedBox(height: 14),
+            ProfilePanel(
+              icon: Icons.shield_outlined,
+              title: adminCopies[locale]!.administration,
+              body: adminCopies[locale]!.adminIntro,
+              action: adminCopies[locale]!.refresh,
+              onTap: onOpenAdmin,
+            ),
+          ],
         ],
       ],
     );
   }
+}
+
+class AdminScreen extends StatelessWidget {
+  const AdminScreen({
+    required this.labels,
+    required this.claims,
+    required this.queues,
+    required this.isLoading,
+    required this.message,
+    required this.busyItemId,
+    required this.catalogBusy,
+    required this.grantBusy,
+    required this.seriesTitleController,
+    required this.seriesCityController,
+    required this.editionSeriesId,
+    required this.editionTitleController,
+    required this.editionYearController,
+    required this.editionStartsAtController,
+    required this.editionEndsAtController,
+    required this.zoneEditionId,
+    required this.zoneNameController,
+    required this.zoneLatitudeController,
+    required this.zoneLongitudeController,
+    required this.zoneRadiusController,
+    required this.grantEmailController,
+    required this.grantModerator,
+    required this.grantAdmin,
+    required this.onRefresh,
+    required this.onModerate,
+    required this.onCreateSeries,
+    required this.onEditionSeriesChanged,
+    required this.onCreateEdition,
+    required this.onZoneEditionChanged,
+    required this.onCreateZone,
+    required this.onGrantModeratorChanged,
+    required this.onGrantAdminChanged,
+    required this.onGrantAccess,
+    super.key,
+  });
+
+  final AdminCopy labels;
+  final AccessClaims claims;
+  final ModerationQueues queues;
+  final bool isLoading;
+  final String? message;
+  final String? busyItemId;
+  final bool catalogBusy;
+  final bool grantBusy;
+  final TextEditingController seriesTitleController;
+  final TextEditingController seriesCityController;
+  final String editionSeriesId;
+  final TextEditingController editionTitleController;
+  final TextEditingController editionYearController;
+  final TextEditingController editionStartsAtController;
+  final TextEditingController editionEndsAtController;
+  final String zoneEditionId;
+  final TextEditingController zoneNameController;
+  final TextEditingController zoneLatitudeController;
+  final TextEditingController zoneLongitudeController;
+  final TextEditingController zoneRadiusController;
+  final TextEditingController grantEmailController;
+  final bool grantModerator;
+  final bool grantAdmin;
+  final Future<void> Function() onRefresh;
+  final Future<void> Function(
+    String collectionId,
+    String targetId,
+    String status,
+  )
+  onModerate;
+  final VoidCallback onCreateSeries;
+  final ValueChanged<String?> onEditionSeriesChanged;
+  final VoidCallback onCreateEdition;
+  final ValueChanged<String?> onZoneEditionChanged;
+  final VoidCallback onCreateZone;
+  final ValueChanged<bool> onGrantModeratorChanged;
+  final ValueChanged<bool> onGrantAdminChanged;
+  final VoidCallback onGrantAccess;
+
+  @override
+  Widget build(BuildContext context) {
+    final pendingSeries = queues.eventSeries
+        .where((item) => item.status == 'pending')
+        .toList(growable: false);
+    final pendingEditions = queues.eventEditions
+        .where((item) => item.status == 'pending')
+        .toList(growable: false);
+    final pendingZones = queues.eventZones
+        .where((item) => item.status == 'pending')
+        .toList(growable: false);
+    final seriesValue = _dropdownValue(
+      editionSeriesId,
+      queues.eventSeries.map((item) => item.id),
+    );
+    final editionValue = _dropdownValue(
+      zoneEditionId,
+      queues.eventEditions.map((item) => item.id),
+    );
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  labels.administration,
+                  style: Theme.of(context).textTheme.displayLarge,
+                ),
+              ),
+              IconButton(
+                tooltip: labels.refresh,
+                onPressed: isLoading ? null : onRefresh,
+                icon: isLoading
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_outlined),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            labels.adminIntro,
+            style: TextStyle(
+              color: mutedColor(context),
+              fontSize: 16,
+              height: 1.55,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(
+                avatar: const Icon(Icons.verified_user_outlined, size: 18),
+                label: Text(
+                  claims.superAdmin
+                      ? labels.superAdminRole
+                      : claims.admin
+                      ? labels.adminRole
+                      : labels.moderatorRole,
+                ),
+              ),
+              Chip(
+                label: Text(
+                  '${labels.photosTitle}: ${queues.pendingImages.length}',
+                ),
+              ),
+              Chip(
+                label: Text(
+                  '${labels.experiencesTitle}: ${queues.pendingEventExperiences.length}',
+                ),
+              ),
+            ],
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 14),
+            StatusMessage(message: message!),
+          ],
+          const SizedBox(height: 18),
+          _AdminSection(
+            title: labels.photosTitle,
+            emptyText: labels.noPendingImages,
+            isEmpty: queues.pendingImages.isEmpty,
+            children: [
+              for (final image in queues.pendingImages)
+                _AdminPlaceImageRow(
+                  labels: labels,
+                  image: image,
+                  busy: busyItemId == 'placeImages:${image.id}',
+                  onApprove: () =>
+                      onModerate('placeImages', image.id, 'active'),
+                  onReject: () =>
+                      onModerate('placeImages', image.id, 'rejected'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _AdminSection(
+            title: labels.experiencesTitle,
+            emptyText: labels.noPendingExperiences,
+            isEmpty: queues.pendingEventExperiences.isEmpty,
+            children: [
+              for (final experience in queues.pendingEventExperiences)
+                _AdminEventExperienceRow(
+                  labels: labels,
+                  experience: experience,
+                  series: _seriesTitleFor(queues, experience.eventSeriesId),
+                  edition: _editionTitleFor(queues, experience.eventEditionId),
+                  zone: _zoneNameFor(queues, experience.eventZoneId),
+                  busy: busyItemId == 'eventExperiences:${experience.id}',
+                  onApprove: () =>
+                      onModerate('eventExperiences', experience.id, 'active'),
+                  onReject: () =>
+                      onModerate('eventExperiences', experience.id, 'rejected'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _AdminSection(
+            title: labels.catalogTitle,
+            emptyText: labels.noPendingCatalog,
+            isEmpty:
+                pendingSeries.isEmpty &&
+                pendingEditions.isEmpty &&
+                pendingZones.isEmpty,
+            children: [
+              for (final series in pendingSeries)
+                _AdminCatalogRow(
+                  labels: labels,
+                  collectionId: 'eventSeries',
+                  targetId: series.id,
+                  title: series.title,
+                  subtitle: series.city,
+                  busy: busyItemId == 'eventSeries:${series.id}',
+                  onModerate: onModerate,
+                ),
+              for (final edition in pendingEditions)
+                _AdminCatalogRow(
+                  labels: labels,
+                  collectionId: 'eventEditions',
+                  targetId: edition.id,
+                  title: edition.title,
+                  subtitle: _seriesTitleFor(queues, edition.eventSeriesId),
+                  busy: busyItemId == 'eventEditions:${edition.id}',
+                  onModerate: onModerate,
+                ),
+              for (final zone in pendingZones)
+                _AdminCatalogRow(
+                  labels: labels,
+                  collectionId: 'eventZones',
+                  targetId: zone.id,
+                  title: zone.name,
+                  subtitle: _editionTitleFor(queues, zone.eventEditionId),
+                  busy: busyItemId == 'eventZones:${zone.id}',
+                  onModerate: onModerate,
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _AdminCreateForms(
+            labels: labels,
+            queues: queues,
+            catalogBusy: catalogBusy,
+            seriesTitleController: seriesTitleController,
+            seriesCityController: seriesCityController,
+            editionSeriesId: seriesValue,
+            editionTitleController: editionTitleController,
+            editionYearController: editionYearController,
+            editionStartsAtController: editionStartsAtController,
+            editionEndsAtController: editionEndsAtController,
+            zoneEditionId: editionValue,
+            zoneNameController: zoneNameController,
+            zoneLatitudeController: zoneLatitudeController,
+            zoneLongitudeController: zoneLongitudeController,
+            zoneRadiusController: zoneRadiusController,
+            onCreateSeries: onCreateSeries,
+            onEditionSeriesChanged: onEditionSeriesChanged,
+            onCreateEdition: onCreateEdition,
+            onZoneEditionChanged: onZoneEditionChanged,
+            onCreateZone: onCreateZone,
+          ),
+          if (claims.canGrantAccess) ...[
+            const SizedBox(height: 18),
+            _AdminGrantPanel(
+              labels: labels,
+              grantBusy: grantBusy,
+              emailController: grantEmailController,
+              grantModerator: grantModerator,
+              grantAdmin: grantAdmin,
+              onGrantModeratorChanged: onGrantModeratorChanged,
+              onGrantAdminChanged: onGrantAdminChanged,
+              onGrantAccess: onGrantAccess,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminCreateForms extends StatelessWidget {
+  const _AdminCreateForms({
+    required this.labels,
+    required this.queues,
+    required this.catalogBusy,
+    required this.seriesTitleController,
+    required this.seriesCityController,
+    required this.editionSeriesId,
+    required this.editionTitleController,
+    required this.editionYearController,
+    required this.editionStartsAtController,
+    required this.editionEndsAtController,
+    required this.zoneEditionId,
+    required this.zoneNameController,
+    required this.zoneLatitudeController,
+    required this.zoneLongitudeController,
+    required this.zoneRadiusController,
+    required this.onCreateSeries,
+    required this.onEditionSeriesChanged,
+    required this.onCreateEdition,
+    required this.onZoneEditionChanged,
+    required this.onCreateZone,
+  });
+
+  final AdminCopy labels;
+  final ModerationQueues queues;
+  final bool catalogBusy;
+  final TextEditingController seriesTitleController;
+  final TextEditingController seriesCityController;
+  final String? editionSeriesId;
+  final TextEditingController editionTitleController;
+  final TextEditingController editionYearController;
+  final TextEditingController editionStartsAtController;
+  final TextEditingController editionEndsAtController;
+  final String? zoneEditionId;
+  final TextEditingController zoneNameController;
+  final TextEditingController zoneLatitudeController;
+  final TextEditingController zoneLongitudeController;
+  final TextEditingController zoneRadiusController;
+  final VoidCallback onCreateSeries;
+  final ValueChanged<String?> onEditionSeriesChanged;
+  final VoidCallback onCreateEdition;
+  final ValueChanged<String?> onZoneEditionChanged;
+  final VoidCallback onCreateZone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SpectrumPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SectionHeading(title: labels.createEvent),
+              const SizedBox(height: 12),
+              TextField(
+                controller: seriesTitleController,
+                decoration: InputDecoration(labelText: labels.eventName),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: seriesCityController,
+                decoration: InputDecoration(labelText: labels.city),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: catalogBusy ? null : onCreateSeries,
+                icon: const Icon(Icons.event_available_outlined),
+                label: Text(labels.createEvent),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        SpectrumPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SectionHeading(title: labels.createEdition),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: editionSeriesId,
+                decoration: InputDecoration(labelText: labels.eventName),
+                items: queues.eventSeries
+                    .map(
+                      (series) => DropdownMenuItem(
+                        value: series.id,
+                        child: Text(series.title),
+                      ),
+                    )
+                    .toList(),
+                onChanged: catalogBusy ? null : onEditionSeriesChanged,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: editionTitleController,
+                decoration: InputDecoration(labelText: labels.title),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: editionYearController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: labels.year),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: editionStartsAtController,
+                keyboardType: TextInputType.datetime,
+                decoration: InputDecoration(labelText: labels.startsAt),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: editionEndsAtController,
+                keyboardType: TextInputType.datetime,
+                decoration: InputDecoration(labelText: labels.endsAt),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: catalogBusy ? null : onCreateEdition,
+                icon: const Icon(Icons.calendar_month_outlined),
+                label: Text(labels.createEdition),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        SpectrumPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SectionHeading(title: labels.createZone),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: zoneEditionId,
+                decoration: InputDecoration(labelText: labels.edition),
+                items: queues.eventEditions
+                    .map(
+                      (edition) => DropdownMenuItem(
+                        value: edition.id,
+                        child: Text(edition.title),
+                      ),
+                    )
+                    .toList(),
+                onChanged: catalogBusy ? null : onZoneEditionChanged,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: zoneNameController,
+                decoration: InputDecoration(labelText: labels.zoneName),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: zoneLatitudeController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                decoration: InputDecoration(labelText: labels.latitude),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: zoneLongitudeController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                decoration: InputDecoration(labelText: labels.longitude),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: zoneRadiusController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: labels.radiusMeters),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: catalogBusy ? null : onCreateZone,
+                icon: const Icon(Icons.map_outlined),
+                label: Text(labels.createZone),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminGrantPanel extends StatelessWidget {
+  const _AdminGrantPanel({
+    required this.labels,
+    required this.grantBusy,
+    required this.emailController,
+    required this.grantModerator,
+    required this.grantAdmin,
+    required this.onGrantModeratorChanged,
+    required this.onGrantAdminChanged,
+    required this.onGrantAccess,
+  });
+
+  final AdminCopy labels;
+  final bool grantBusy;
+  final TextEditingController emailController;
+  final bool grantModerator;
+  final bool grantAdmin;
+  final ValueChanged<bool> onGrantModeratorChanged;
+  final ValueChanged<bool> onGrantAdminChanged;
+  final VoidCallback onGrantAccess;
+
+  @override
+  Widget build(BuildContext context) {
+    return SpectrumPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeading(title: labels.permissionsTitle),
+          const SizedBox(height: 12),
+          TextField(
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(labelText: labels.email),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: grantModerator,
+            onChanged: grantBusy
+                ? null
+                : (value) => onGrantModeratorChanged(value ?? false),
+            title: Text(labels.moderator),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: grantAdmin,
+            onChanged: grantBusy
+                ? null
+                : (value) => onGrantAdminChanged(value ?? false),
+            title: Text(labels.administrator),
+          ),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            onPressed: grantBusy ? null : onGrantAccess,
+            icon: const Icon(Icons.admin_panel_settings_outlined),
+            label: Text(labels.savePermissions),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminSection extends StatelessWidget {
+  const _AdminSection({
+    required this.title,
+    required this.emptyText,
+    required this.isEmpty,
+    required this.children,
+  });
+
+  final String title;
+  final String emptyText;
+  final bool isEmpty;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacedChildren = <Widget>[];
+    for (final child in children) {
+      spacedChildren.add(child);
+      spacedChildren.add(const SizedBox(height: 12));
+    }
+
+    return SpectrumPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeading(title: title),
+          const SizedBox(height: 12),
+          if (isEmpty) StatusMessage(message: emptyText) else ...spacedChildren,
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminPlaceImageRow extends StatelessWidget {
+  const _AdminPlaceImageRow({
+    required this.labels,
+    required this.image,
+    required this.busy,
+    required this.onApprove,
+    required this.onReject,
+  });
+
+  final AdminCopy labels;
+  final PendingPlaceImage image;
+  final bool busy;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AdminReviewRow(
+      labels: labels,
+      title: image.placeId.isEmpty ? image.id : image.placeId,
+      subtitle: image.authorUid,
+      imageUrl: image.imageUrl,
+      busy: busy,
+      onApprove: onApprove,
+      onReject: onReject,
+    );
+  }
+}
+
+class _AdminEventExperienceRow extends StatelessWidget {
+  const _AdminEventExperienceRow({
+    required this.labels,
+    required this.experience,
+    required this.series,
+    required this.edition,
+    required this.zone,
+    required this.busy,
+    required this.onApprove,
+    required this.onReject,
+  });
+
+  final AdminCopy labels;
+  final PendingEventExperience experience;
+  final String series;
+  final String edition;
+  final String zone;
+  final bool busy;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = [
+      series,
+      edition,
+      zone,
+    ].where((value) => value.trim().isNotEmpty).join(' · ');
+    return _AdminReviewRow(
+      labels: labels,
+      title: subtitle.isEmpty ? experience.id : subtitle,
+      subtitle: experience.description,
+      imageUrl: experience.imageUrl,
+      busy: busy,
+      onApprove: onApprove,
+      onReject: onReject,
+    );
+  }
+}
+
+class _AdminCatalogRow extends StatelessWidget {
+  const _AdminCatalogRow({
+    required this.labels,
+    required this.collectionId,
+    required this.targetId,
+    required this.title,
+    required this.subtitle,
+    required this.busy,
+    required this.onModerate,
+  });
+
+  final AdminCopy labels;
+  final String collectionId;
+  final String targetId;
+  final String title;
+  final String subtitle;
+  final bool busy;
+  final Future<void> Function(
+    String collectionId,
+    String targetId,
+    String status,
+  )
+  onModerate;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AdminReviewRow(
+      labels: labels,
+      title: title.isEmpty ? targetId : title,
+      subtitle: subtitle,
+      icon: Icons.event_note_outlined,
+      busy: busy,
+      onApprove: () => onModerate(collectionId, targetId, 'active'),
+      onReject: () => onModerate(collectionId, targetId, 'rejected'),
+    );
+  }
+}
+
+class _AdminReviewRow extends StatelessWidget {
+  const _AdminReviewRow({
+    required this.labels,
+    required this.title,
+    required this.subtitle,
+    required this.busy,
+    required this.onApprove,
+    required this.onReject,
+    this.imageUrl,
+    this.icon = Icons.image_outlined,
+  });
+
+  final AdminCopy labels;
+  final String title;
+  final String subtitle;
+  final String? imageUrl;
+  final IconData icon;
+  final bool busy;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: softPanelColor(context),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox.square(
+                dimension: 72,
+                child: imageUrl == null
+                    ? ColoredBox(
+                        color: panelColor(context),
+                        child: Icon(icon, color: mutedColor(context)),
+                      )
+                    : Image.network(imageUrl!, fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (subtitle.trim().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: mutedColor(context),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: busy ? null : onApprove,
+                        icon: const Icon(Icons.check, size: 18),
+                        label: Text(labels.approve),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: busy ? null : onReject,
+                        icon: const Icon(Icons.close, size: 18),
+                        label: Text(labels.reject),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String? _dropdownValue(String value, Iterable<String> values) {
+  final list = values.toList(growable: false);
+  if (list.isEmpty) {
+    return null;
+  }
+  return list.contains(value) ? value : list.first;
+}
+
+String _seriesTitleFor(ModerationQueues queues, String id) {
+  for (final series in queues.eventSeries) {
+    if (series.id == id) {
+      return series.title;
+    }
+  }
+  return '';
+}
+
+String _editionTitleFor(ModerationQueues queues, String id) {
+  for (final edition in queues.eventEditions) {
+    if (edition.id == id) {
+      return edition.title;
+    }
+  }
+  return '';
+}
+
+String _zoneNameFor(ModerationQueues queues, String id) {
+  for (final zone in queues.eventZones) {
+    if (zone.id == id) {
+      return zone.name;
+    }
+  }
+  return '';
 }
 
 class BottomNavigation extends StatelessWidget {
