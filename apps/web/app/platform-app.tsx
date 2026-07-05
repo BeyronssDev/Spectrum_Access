@@ -3381,7 +3381,7 @@ function MapPanel({
           </button>
         </div>
       </div>
-      <div className="map-canvas" role="region" aria-label={title}>
+      <div className="map-canvas" data-consent-blocked={!mapsConsentGranted} role="region" aria-label={title}>
         {!mapsConsentGranted ? (
           <MapConsentCanvas
             title={privacyLabels.mapBlockedTitle}

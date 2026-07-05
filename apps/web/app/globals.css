@@ -795,6 +795,7 @@ svg {
   align-content: center;
   gap: 16px;
   padding: 34px 28px 110px;
+  background: var(--surface-container-low);
   color: var(--secondary);
   text-align: center;
 }
@@ -821,6 +822,10 @@ svg {
 
 .map-consent-action {
   min-height: 46px;
+}
+
+.map-canvas[data-consent-blocked="true"] .current-status {
+  display: none;
 }
 
 .spectrum-app[data-theme="dark"] .map-provider-note {
@@ -3621,15 +3626,20 @@ svg {
 
   .map-canvas,
   .map-panel[data-tall="true"] .map-canvas {
-    min-height: 360px;
+    min-height: 460px;
   }
 
   .map-consent-layer {
-    padding: 28px 18px 112px;
+    padding: 34px 18px 126px;
   }
 
   .map-consent-layer strong {
-    font-size: 24px;
+    font-size: 22px;
+  }
+
+  .map-consent-layer p {
+    font-size: 14px;
+    line-height: 1.45;
   }
 
   .current-status {
