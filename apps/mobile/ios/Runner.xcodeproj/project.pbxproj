@@ -281,6 +281,7 @@
 
 /* Begin PBXShellScriptBuildPhase section */
 		078F13E91B2356F8487E7DD3 /* FlutterFire: "flutterfire bundle-service-file" */ = {
+			alwaysOutOfDate = 1;
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -524,6 +525,7 @@
 				DEVELOPMENT_TEAM = 4TP6Q256LV;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
+				LM_FILTER_WARNINGS = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -714,6 +716,7 @@
 				DEVELOPMENT_TEAM = 4TP6Q256LV;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
+				LM_FILTER_WARNINGS = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -740,6 +743,7 @@
 				DEVELOPMENT_TEAM = 4TP6Q256LV;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
+				LM_FILTER_WARNINGS = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

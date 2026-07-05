@@ -36,16 +36,52 @@ target 'Runner' do
 end
 
 post_install do |installer|
+  cxx_linker_targets = %w[
+    abseil
+    FirebaseFirestoreInternal
+    gRPC-C++
+    gRPC-Core
+    leveldb-library
+  ]
+
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
 
-    # The app only asks for foreground location. Keep geolocator_apple from
-    # compiling the iOS "Always" permission path and triggering App Store warnings.
     target.build_configurations.each do |config|
-      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
-        '$(inherited)',
-        'BYPASS_PERMISSION_LOCATION_ALWAYS=1',
-      ]
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+      config.build_settings['LD_WARN_DUPLICATE_LIBRARIES'] = 'NO'
+      config.build_settings['LM_FILTER_WARNINGS'] = 'YES'
+      config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
+
+      if target.name == 'geolocator_apple'
+        # The app only asks for foreground location. Keep geolocator_apple from
+        # compiling the iOS "Always" permission path and triggering App Store warnings.
+        definitions = Array(config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || '$(inherited)')
+        definitions << 'BYPASS_PERMISSION_LOCATION_ALWAYS=1'
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = definitions.uniq
+      end
+
+      flags = Array(config.build_settings['OTHER_LDFLAGS'])
+      config.build_settings['OTHER_LDFLAGS'] = flags.uniq if flags.any?
+
+      next unless cxx_linker_targets.include?(target.name)
+
+      xcconfig_path = config.base_configuration_reference&.real_path
+      next unless xcconfig_path && File.exist?(xcconfig_path)
+
+      xcconfig = File.read(xcconfig_path)
+      xcconfig = xcconfig.gsub(/\s-l"c\+\+"/, '')
+      File.write(xcconfig_path, xcconfig)
+    end
+
+    target.shell_script_build_phases.each do |phase|
+      output_paths = Array(phase.output_paths)
+      output_file_list_paths = Array(phase.output_file_list_paths)
+      next unless output_paths.empty? && output_file_list_paths.empty?
+      next unless phase.respond_to?(:always_out_of_date=)
+
+      phase.always_out_of_date = '1'
     end
   end
 end
