@@ -1866,6 +1866,28 @@ svg {
   pointer-events: none;
 }
 
+.event-form-panel .event-form-section > .file-input-label {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding-inline: 18px;
+  text-align: left;
+}
+
+.event-form-panel .event-form-section > .file-input-label svg {
+  flex: 0 0 auto;
+}
+
+.event-form-panel .event-form-section > .file-input-label span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .event-form-panel .rating-stack {
   border-top: 1px solid var(--surface-container-high);
   padding-top: 18px;
