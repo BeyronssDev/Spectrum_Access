@@ -9,6 +9,9 @@ import 'spectrum_app.dart';
 const _webAppCheckSiteKey = String.fromEnvironment(
   'FIREBASE_APPCHECK_RECAPTCHA_SITE_KEY',
 );
+const _useAppCheckDebugProvider = bool.fromEnvironment(
+  'SPECTRUM_APP_CHECK_DEBUG',
+);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,7 +54,7 @@ Future<void> _activateFirebaseAppCheck() async {
     providerAndroid: kDebugMode
         ? const AndroidDebugProvider()
         : const AndroidPlayIntegrityProvider(),
-    providerApple: kDebugMode
+    providerApple: kDebugMode || _useAppCheckDebugProvider
         ? const AppleDebugProvider()
         : const AppleAppAttestWithDeviceCheckFallbackProvider(),
   );
