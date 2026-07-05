@@ -116,11 +116,10 @@ class SpectrumFirebaseServices implements SpectrumApplicationService {
     required String password,
     required String locale,
   }) async {
-    final credential = await _auth.signInWithEmailAndPassword(
+    await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
-    await _completeOnboardingFromUser(credential.user, locale, 'password');
   }
 
   @override
